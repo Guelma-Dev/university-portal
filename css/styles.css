@@ -791,6 +791,7 @@ input { font-family: inherit; }
 }
 .sched-input:focus { border-color: var(--accent); outline: none; }
 .sched-type { font-size: 0.75rem; }
+.sched-editor-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* ============================================
    TOAST NOTIFICATIONS
@@ -846,6 +847,11 @@ input { font-family: inherit; }
     .pdf-viewer-body { padding: 8px; }
     .detail-tabs { overflow-x: auto; }
     .stats-grid { grid-template-columns: 1fr 1fr; }
+    .admin-container { padding: 0 8px; }
+    .stat-card { padding: 14px 16px; gap: 12px; }
+    .admin-card { margin-bottom: 16px; }
+    .admin-card-header { padding: 14px 16px; }
+    .admin-card form, .admin-card .admin-add-subject { padding: 12px; }
     .admin-add-subject { flex-direction: column; }
     .admin-add-subject input { min-width: 100%; }
     .sched-editor-table { font-size: 0.8rem; }
@@ -938,6 +944,11 @@ input { font-family: inherit; }
     .file-card { flex-direction: column; text-align: center; }
     .file-actions { width: 100%; justify-content: center; }
     .topbar-title { display: none; }
+
+    /* Admin small mobile */
+    .stat-card { padding: 16px; gap: 10px; }
+    .stat-icon { width: 40px; height: 40px; font-size: 1rem; }
+    .stat-number { font-size: 1.1rem; }
 
     /* Schedule small mobile */
     .day-picker-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; }

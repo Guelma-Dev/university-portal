@@ -1185,7 +1185,7 @@ const SCHED_TYPES = [
 function renderScheduleEditor() {
     const grid = document.getElementById('schedule-editor-grid');
     if (!grid) return;
-    let html = '<table class="sched-editor-table"><thead><tr><th>الوقت</th>';
+    let html = '<div class="sched-editor-wrapper"><table class="sched-editor-table"><thead><tr><th>الوقت</th>';
     DAY_LABELS.forEach(l => html += `<th>${l}</th>`);
     html += '</tr></thead><tbody>';
     TIME_SLOTS.forEach((time, ti) => {
@@ -1202,7 +1202,7 @@ function renderScheduleEditor() {
         });
         html += '</tr>';
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     grid.innerHTML = html;
 }
 

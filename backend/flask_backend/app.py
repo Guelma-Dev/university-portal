@@ -460,18 +460,28 @@ def register():
     if '@' not in email:
         return jsonify({'error': 'بريد إلكتروني غير صالح'}), 400
 
-    if User.query.filter_by(email=email).first():
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user and existing_user.is_verified:
         return jsonify({'error': 'البريد الإلكتروني مستخدم بالفعل'}), 409
-    if User.query.filter_by(username=username).first():
+    existing_username = User.query.filter_by(username=username).first()
+    if existing_username and (
+        not existing_user or existing_username.id != existing_user.id
+    ):
         return jsonify({'error': 'اسم المستخدم مستخدم بالفعل'}), 409
 
-    user = User(
-        email=email,
-        username=username,
-        password_hash=hash_password(password),
-        is_verified=False,
-    )
-    db.session.add(user)
+    if existing_user:
+        # Unverified account: allow re-registration by updating the existing user
+        existing_user.username = username
+        existing_user.password_hash = hash_password(password)
+        user = existing_user
+    else:
+        user = User(
+            email=email,
+            username=username,
+            password_hash=hash_password(password),
+            is_verified=False,
+        )
+        db.session.add(user)
     db.session.commit()
 
     # Generate and send OTP for email verification
@@ -910,50 +920,52 @@ async def on_document(update, context):
 
 
 def run_bot():
-    try:
-        from telegram import Update
-        from telegram.ext import (Application, CallbackQueryHandler,
-                                  CommandHandler, MessageHandler, filters)
-
-        import traceback as _tb
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        application = (Application.builder()
-                       .token(TG_BOT_TOKEN)
-                       .bootstrap_retries(5)
-                       .build())
-        application.add_handler(CommandHandler('start', cmd_start))
-        application.add_handler(CommandHandler('help', cmd_help))
-        application.add_handler(CommandHandler('cancel', cmd_cancel))
-        application.add_handler(CommandHandler('subjects', cmd_start))
-        application.add_handler(CallbackQueryHandler(on_callback))
-        application.add_handler(MessageHandler(filters.Document.ALL, on_document))
-
-        async def safe_start():
-            try:
-                await application.initialize()
-                await application.start()
-                await application.updater.start_polling(
-                    drop_pending_updates=True,
-                    read_timeout=10,
-                    connect_timeout=10,
-                )
-                print('[BOT] Polling started successfully', flush=True)
-            except Exception as e:
-                print(f'[BOT] Init error: {e}', flush=True)
-                _tb.print_exc()
-
-        loop.run_until_complete(safe_start())
-
+    while True:
         try:
-            loop.run_forever()
-        except (KeyboardInterrupt, SystemExit):
-            print('[BOT] Shutting down...', flush=True)
-    except Exception as e:
-        print(f'[BOT] Thread crashed: {e}', flush=True)
-        import traceback
-        traceback.print_exc()
+            import telegram.ext
+            from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
+            import _thread as _tb
+
+            print('[BOT] Starting bot...', flush=True)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            application = (Application.builder()
+                           .token(TG_BOT_TOKEN)
+                           .bootstrap_retries(5)
+                           .build())
+            application.add_handler(CommandHandler('start', cmd_start))
+            application.add_handler(CommandHandler('help', cmd_help))
+            application.add_handler(CommandHandler('cancel', cmd_cancel))
+            application.add_handler(CommandHandler('subjects', cmd_start))
+            application.add_handler(CallbackQueryHandler(on_callback))
+            application.add_handler(MessageHandler(filters.Document.ALL, on_document))
+
+            async def safe_start():
+                try:
+                    await application.initialize()
+                    await application.start()
+                    await application.updater.start_polling(
+                        drop_pending_updates=True,
+                        read_timeout=30,
+                        connect_timeout=30,
+                    )
+                    print('[BOT] Polling started successfully', flush=True)
+                except Exception as e:
+                    print(f'[BOT] Init error: {e}', flush=True)
+                    _tb.print_exc()
+
+            loop.run_until_complete(safe_start())
+
+            try:
+                loop.run_forever()
+            except (KeyboardInterrupt, SystemExit):
+                print('[BOT] Shutting down...', flush=True)
+                break
+        except Exception as e:
+            print(f'[BOT] Bot crashed: {e}. Retrying in 10s...', flush=True)
+            import traceback
+            traceback.print_exc()
+            time.sleep(10)
 
 
 def start_bot_thread():
