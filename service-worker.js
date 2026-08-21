@@ -1,4 +1,4 @@
-const CACHE_NAME = 'university-portal-v6';
+const CACHE_NAME = 'university-portal-v7';
 const STATIC_ASSETS = ['/', '/index.html', '/css/styles.css', '/js/app.js'];
 
 self.addEventListener('install', e => {
@@ -13,5 +13,11 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.url.includes('/api/') || e.request.url.includes('/files/')) return;
-  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+  e.respondWith(
+    fetch(e.request).then(r => {
+      const clone = r.clone();
+      caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+      return r;
+    }).catch(() => caches.match(e.request))
+  );
 });

@@ -983,35 +983,29 @@ function downloadFile(filename) {
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
 const DAY_LABELS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
 
+function isScheduleEmpty() {
+    return !schedule || Object.keys(schedule).length === 0;
+}
+
 function renderSchedule() {
     const tbody = document.getElementById('schedule-body');
-    const isEmpty = !schedule || Object.keys(schedule).length === 0;
 
-    if (isEmpty) {
+    if (isScheduleEmpty()) {
         const msg = '<div class="schedule-not-available"><i class="fas fa-calendar-xmark"></i><p>الرزنامة غير متوفرة حالياً</p><small>سيتم إضافة الرزنامة مع بداية الدخول الجامعي</small></div>';
-        tbody.innerHTML = `<tr><td colspan="6" style="border:none; padding:0;">${msg}</td></tr>`;
-        const mobileView = document.getElementById('schedule-mobile-view');
-        if (mobileView) mobileView.innerHTML = msg;
-        const picker = document.getElementById('schedule-day-picker');
-        if (picker) picker.style.display = 'none';
-        return;
+        tbody.innerHTML = '<tr><td colspan="6" style="border:none;padding:0;">' + msg + '</td></tr>';
+    } else {
+        tbody.innerHTML = TIME_SLOTS.map((time, i) => {
+            return '<tr><td class="time-col">' + time + '</td>' +
+                DAYS.map(day => {
+                    const cell = schedule[day + '_' + i] || {};
+                    let cls = '';
+                    if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
+                    if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
+                    return '<td class="' + cls + '">' + (cell.text || '') + '</td>';
+                }).join('') + '</tr>';
+        }).join('');
     }
 
-    const picker = document.getElementById('schedule-day-picker');
-    if (picker) picker.style.display = '';
-
-    tbody.innerHTML = TIME_SLOTS.map((time, i) => {
-        return `<tr>
-            <td class="time-col">${time}</td>
-            ${DAYS.map(day => {
-                const cell = schedule[`${day}_${i}`] || {};
-                let cls = '';
-                if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
-                if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
-                return `<td class="${cls}">${cell.text || ''}</td>`;
-            }).join('')}
-        </tr>`;
-    }).join('');
     renderMobileDayPicker();
     renderMobileSchedule();
 }
@@ -1051,19 +1045,20 @@ function renderMobileSchedule() {
         container.innerHTML = '<div class="mobile-empty"><i class="fas fa-hand-pointer"></i><p>اختر يوماً من الأعلى لعرض جدوله</p></div>';
         return;
     }
+    if (isScheduleEmpty()) {
+        container.innerHTML = '<div class="schedule-not-available"><i class="fas fa-calendar-xmark"></i><p>الرزنامة غير متوفرة حالياً</p><small>سيتم إضافة الرزنامة مع بداية الدخول الجامعي</small></div>';
+        return;
+    }
     const day = DAYS[selectedScheduleDay];
     const label = DAY_LABELS[selectedScheduleDay];
-    let html = `<div class="mobile-day-title"><i class="fas fa-calendar-check"></i> جدول ${label}</div>`;
+    let html = '<div class="mobile-day-title"><i class="fas fa-calendar-check"></i> جدول ' + label + '</div>';
     TIME_SLOTS.forEach((time, i) => {
-        const cell = schedule[`${day}_${i}`] || {};
+        const cell = schedule[day + '_' + i] || {};
         let cls = '';
         if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
         if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
         const text = cell.text || '';
-        html += `<div class="mobile-slot">
-            <div class="mobile-slot-time"><i class="fas fa-clock"></i> ${time}</div>
-            <div class="mobile-slot-content ${cls} ${!text ? 'empty' : ''}">${text || 'فارغ'}</div>
-        </div>`;
+        html += '<div class="mobile-slot"><div class="mobile-slot-time"><i class="fas fa-clock"></i> ' + time + '</div><div class="mobile-slot-content ' + cls + ' ' + (!text ? 'empty' : '') + '">' + (text || 'فارغ') + '</div></div>';
     });
     container.innerHTML = html;
 }
