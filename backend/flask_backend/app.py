@@ -324,22 +324,32 @@ def serve_uploaded_file(filename):
         if not f:
             print(f'[FILE] Not found in DB: {filename}', flush=True)
             return jsonify({'error': 'File not found'}), 404
-        if not f.content:
-            print(f'[FILE] No content for: {filename} (id={f.id})', flush=True)
-            if f.telegram_file_id:
-                return jsonify({'error': 'File not found', 'hint': 're-upload via telegram bot'}), 404
-            return jsonify({'error': 'File not found'}), 404
-        response = Response(
-            f.content,
-            mimetype=f.mime_type or 'application/pdf',
-        )
-        response.headers['Content-Disposition'] = f'inline; filename="{f.name}"'
+
+        content = f.content
+        if content is None:
+            print(f'[FILE] Content is None for: {filename} (id={f.id})', flush=True)
+            return jsonify({'error': 'File content is empty'}), 404
+
+        # Ensure content is bytes (not memoryview from PostgreSQL)
+        if not isinstance(content, bytes):
+            content = bytes(content)
+
+        if len(content) == 0:
+            print(f'[FILE] Content is empty (0 bytes) for: {filename}', flush=True)
+            return jsonify({'error': 'File content is empty'}), 404
+
+        response = Response(content)
+        response.headers['Content-Type'] = f.mime_type or 'application/pdf'
+        response.headers['Content-Disposition'] = 'inline; filename="{}"'.format(f.name.replace('"', ''))
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Cache-Control'] = 'public, max-age=3600'
+        print(f'[FILE] Serving {filename} ({len(content)} bytes)', flush=True)
         return response
     except Exception as e:
+        import traceback
         print(f'[FILE] Error serving {filename}: {e}', flush=True)
-        return jsonify({'error': 'Internal server error'}), 500
+        traceback.print_exc()
+        return jsonify({'error': 'File serving error', 'detail': str(e)}), 500
 
 
 # ============================================
