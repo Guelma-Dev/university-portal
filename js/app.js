@@ -222,14 +222,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.removeItem('user_name');
     }
 
-    // No valid token - show as guest
+    // No valid token - show landing page
     APP_STATE.role = 'guest';
-    document.getElementById('landing-page').classList.add('hidden');
-    document.getElementById('main-app').classList.remove('hidden');
-    document.getElementById('admin-nav-item').style.display = 'none';
-    document.getElementById('logout-btn').style.display = 'none';
-    document.getElementById('user-badge').innerHTML = '<i class="fas fa-eye"></i><span>ضيف</span>';
-    applyInitialRoute();
+    document.getElementById('landing-page').classList.remove('hidden');
+    document.getElementById('main-app').classList.add('hidden');
 });
 
 // ============================================
