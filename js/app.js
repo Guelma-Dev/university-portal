@@ -2,7 +2,7 @@
 // APP STATE & DATA
 // ============================================
 const APP_STATE = {
-    role: null, // 'student' or 'admin'
+    role: null, // 'guest', 'student', or 'admin'
     theme: localStorage.getItem('theme') || 'light',
     currentSection: 'library',
     currentSubject: null,
@@ -41,7 +41,7 @@ async function verifyAuth() {
     const token = localStorage.getItem('admin_token');
     if (!token) return false;
     try {
-        const res = await fetch(`${API_BASE}/api/auth/verify`, {
+        const res = await fetch(`${API_BASE}/api/auth/me`, {
             headers: { 'Authorization': `Bearer ${token}` },
         });
         return res.ok;
@@ -63,9 +63,14 @@ function handleAuthError() {
 // ============================================
 async function loadSubjectsFromAPI() {
     try {
-        const res = await fetch(`${API_BASE}/api/subjects`);
+        const headers = {};
+        const token = localStorage.getItem('admin_token');
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch(`${API_BASE}/api/subjects`, { headers });
         if (res.ok) {
             subjects = await res.json();
+        } else if (res.status === 401) {
+            subjects = [];
         }
     } catch (e) {
         console.warn('API not available, using empty subjects');
@@ -78,9 +83,13 @@ async function loadSubjectsFromAPI() {
 let examsData = { sem1: [], sem2: [] };
 
 async function loadExams() {
+    const token = localStorage.getItem('admin_token');
+    const endpoint = token ? '/api/exams' : '/api/guest/exams';
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     await Promise.all(['sem1', 'sem2'].map(async (sem) => {
         try {
-            const res = await fetch(`${API_BASE}/api/exams?semester=${sem}`);
+            const res = await fetch(`${API_BASE}${endpoint}?semester=${sem}`, { headers });
             examsData[sem] = res.ok ? await res.json() : [];
         } catch (e) {
             examsData[sem] = [];
@@ -180,21 +189,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadExams();
     trackVisit();
 
-    if (localStorage.getItem('admin_token')) {
-        if (await verifyAuth()) {
-            const role = localStorage.getItem('user_role');
-            if (role === 'admin') {
-                enterAdminSession(true);
-            } else {
-                const username = localStorage.getItem('user_name') || 'طالب';
-                enterStudentSession(username);
+    const token = localStorage.getItem('admin_token');
+    const role = localStorage.getItem('user_role');
+
+    if (token) {
+        try {
+            const res = await fetch(`${API_BASE}/api/auth/me`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                APP_STATE.role = data.role || role || 'student';
+                localStorage.setItem('user_role', APP_STATE.role);
+                localStorage.setItem('user_name', data.username || localStorage.getItem('user_name') || '');
+                document.getElementById('landing-page').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+                if (APP_STATE.role === 'admin') {
+                    document.getElementById('admin-nav-item').style.display = 'flex';
+                    document.getElementById('user-badge').innerHTML = '<i class="fas fa-shield-halved"></i><span>مسؤول</span>';
+                } else {
+                    document.getElementById('admin-nav-item').style.display = 'none';
+                    const uname = localStorage.getItem('user_name') || 'طالب';
+                    document.getElementById('user-badge').innerHTML = `<i class="fas fa-user-graduate"></i><span>${uname}</span>`;
+                }
+                applyInitialRoute();
+                return;
             }
-        } else {
-            localStorage.removeItem('admin_token');
-            localStorage.removeItem('user_role');
-            localStorage.removeItem('user_name');
-        }
+        } catch (e) { /* token invalid */ }
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('user_role');
+        localStorage.removeItem('user_name');
     }
+
+    // No valid token - show as guest
+    APP_STATE.role = 'guest';
+    document.getElementById('landing-page').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+    document.getElementById('admin-nav-item').style.display = 'none';
+    document.getElementById('user-badge').innerHTML = '<i class="fas fa-eye"></i><span>ضيف</span>';
+    applyInitialRoute();
 });
 
 // ============================================
@@ -226,12 +259,13 @@ function toggleTheme() {
 // AUTHENTICATION
 // ============================================
 function enterAsStudent() {
-    APP_STATE.role = 'student';
+    APP_STATE.role = 'guest';
+    localStorage.setItem('user_role', 'guest');
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     document.getElementById('admin-nav-item').style.display = 'none';
-    document.getElementById('user-badge').innerHTML = '<i class="fas fa-user-graduate"></i><span>طالب</span>';
-    showToast('مرحباً بك في المنصة', 'info');
+    document.getElementById('user-badge').innerHTML = '<i class="fas fa-eye"></i><span>ضيف</span>';
+    showToast('مرحباً بك في المنصة (وضع الضيف)', 'info');
     applyInitialRoute();
 }
 
@@ -316,11 +350,13 @@ async function handleStudentLogin(e) {
 
 function enterStudentSession(username) {
     APP_STATE.role = 'student';
+    localStorage.setItem('user_role', 'student');
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     document.getElementById('admin-nav-item').style.display = 'none';
     document.getElementById('user-badge').innerHTML = `<i class="fas fa-user-graduate"></i><span>${username || 'طالب'}</span>`;
     showToast(`مرحباً بك ${username || ''}`, 'success');
+    loadSubjectsFromAPI().then(() => { renderSubjects(); updateStats(); });
     applyInitialRoute();
 }
 
@@ -473,12 +509,14 @@ async function handleAdminLogin(e) {
 
 function enterAdminSession(restored = false) {
     APP_STATE.role = 'admin';
+    localStorage.setItem('user_role', 'admin');
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     document.getElementById('admin-nav-item').style.display = 'flex';
     document.getElementById('user-badge').innerHTML = '<i class="fas fa-shield-halved"></i><span>مسؤول</span>';
     updateStats();
     prefillTelegramConfig();
+    loadSubjectsFromAPI().then(() => { renderSubjects(); renderAdminSubjects(); updateStats(); });
     applyInitialRoute();
     showToast(restored ? 'تم استعادة جلسة المسؤول' : 'مرحباً بك أيها المسؤول', 'success');
 }
@@ -487,17 +525,19 @@ function adminLogout() {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('user_role');
     localStorage.removeItem('user_name');
-    APP_STATE.role = 'student';
+    APP_STATE.role = 'guest';
     document.getElementById('admin-nav-item').style.display = 'none';
-    document.getElementById('user-badge').innerHTML = '<i class="fas fa-user-graduate"></i><span>طالب</span>';
+    document.getElementById('user-badge').innerHTML = '<i class="fas fa-eye"></i><span>ضيف</span>';
     showToast('تم تسجيل الخروج', 'info');
-    switchSection('library');
+    switchSection('schedule');
 }
 
 // ============================================
 // NAVIGATION - SPA HASH ROUTING
 // ============================================
 const VALID_SECTIONS = ['library', 'schedule', 'calculator', 'exams', 'admin'];
+
+const GUEST_SECTIONS = ['schedule', 'exams'];
 
 function getSectionFromHash() {
     const h = window.location.hash.replace(/^#\/?/, '').trim();
@@ -514,11 +554,50 @@ function applyInitialRoute() {
     }
 }
 
+function canAccessSection(section) {
+    if (APP_STATE.role === 'admin') return true;
+    if (APP_STATE.role === 'student') return true;
+    if (APP_STATE.role === 'guest') return GUEST_SECTIONS.includes(section);
+    return false;
+}
+
+function showGuestRestriction() {
+    closeAllModals();
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'guest-restriction-modal';
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 420px;">
+            <div class="modal-header">
+                <i class="fas fa-lock" style="color: var(--accent); font-size: 2rem;"></i>
+                <h3>هذا القسم مخصص للطلبة المسجلين</h3>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">يرجى تسجيل الدخول أو إنشاء حساب للوصول إلى المحاضرات وملفات الـ TD/TP</p>
+            </div>
+            <div style="display: flex; gap: 12px; padding: 0 24px 24px;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="document.getElementById('guest-restriction-modal').remove(); showStudentLogin();">
+                    <i class="fas fa-right-to-bracket"></i> تسجيل الدخول
+                </button>
+                <button class="btn btn-register" style="flex: 1;" onclick="document.getElementById('guest-restriction-modal').remove(); showStudentRegister();">
+                    <i class="fas fa-user-plus"></i> إنشاء حساب
+                </button>
+            </div>
+            <div style="text-align: center; padding: 0 24px 16px;">
+                <button class="btn btn-ghost btn-full" onclick="document.getElementById('guest-restriction-modal').remove()">إلغاء</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
 function switchSection(section) {
     let target = VALID_SECTIONS.includes(section) ? section : 'library';
     if (target === 'admin' && APP_STATE.role !== 'admin') {
         showToast('هذه الصفحة متاحة للمسؤول فقط', 'error');
         target = 'library';
+    }
+    if (!canAccessSection(target)) {
+        showGuestRestriction();
+        return;
     }
     if (getSectionFromHash() === target) {
         navigateToSection(target);
@@ -530,6 +609,7 @@ function switchSection(section) {
 function navigateToSection(section) {
     if (!VALID_SECTIONS.includes(section)) section = 'library';
     if (section === 'admin' && APP_STATE.role !== 'admin') section = 'library';
+    if (!canAccessSection(section)) section = GUEST_SECTIONS[0] || 'schedule';
     APP_STATE.currentSection = section;
     // Update nav items
     document.querySelectorAll('.nav-item').forEach(item => {

@@ -1561,3 +1561,13 @@ input { font-family: inherit; }
         padding: 20px 24px;
     }
 }
+
+/* Guest Restriction Modal */
+.guest-restriction-modal .modal-card {
+    text-align: center;
+}
+.guest-restriction-modal .modal-card .modal-header h3 {
+    font-size: 1.1rem;
+    margin-top: 12px;
+    color: var(--text-primary);
+}

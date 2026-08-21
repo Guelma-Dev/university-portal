@@ -40,7 +40,7 @@ PORT = int(os.environ.get('PORT', 5000))
 EMAIL_API_KEY = os.environ.get('EMAIL_API_KEY', '')
 EMAIL_FROM = os.environ.get('EMAIL_FROM', '')
 
-JWT_EXP_SECONDS = 24 * 60 * 60  # tokens expire after 24 hours
+JWT_EXP_SECONDS = 30 * 24 * 60 * 60  # tokens expire after 30 days
 ADMIN_PASS_HASH = hashlib.sha256(ADMIN_PASS.encode()).hexdigest()
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
@@ -357,12 +357,14 @@ def serve_uploaded_file(filename):
 # PUBLIC API (no auth)
 # ============================================
 @app.route('/api/subjects', methods=['GET'])
+@auth_required
 def get_subjects():
     subjects = Subject.query.order_by(Subject.id).all()
     return jsonify([s.to_dict() for s in subjects])
 
 
 @app.route('/api/exams', methods=['GET'])
+@auth_required
 def get_exams():
     semester = request.args.get('semester')
     query = Exam.query.order_by(Exam.date)
@@ -378,7 +380,6 @@ def get_stats():
         'files': File.query.count(),
         'subjects': Subject.query.count(),
         'exams': Exam.query.count(),
-        'users': User.query.count(),
     })
 
 
@@ -389,6 +390,18 @@ def log_visit():
     db.session.add(VisitLog(ip_address=ip[:50]))
     db.session.commit()
     return jsonify({'message': 'visit logged'}), 201
+
+
+# ============================================
+# PUBLIC GUEST API (schedule & exams only, no file data)
+# ============================================
+@app.route('/api/guest/exams', methods=['GET'])
+def get_public_exams():
+    semester = request.args.get('semester')
+    query = Exam.query.order_by(Exam.date)
+    if semester:
+        query = query.filter_by(semester=semester)
+    return jsonify([e.to_dict() for e in query.all()])
 
 
 # ============================================
