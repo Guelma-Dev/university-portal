@@ -954,16 +954,20 @@ function downloadFile(filename) {
 function renderSchedule() {
     const tbody = document.getElementById('schedule-body');
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
+    const dayLabels = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
     tbody.innerHTML = TIME_SLOTS.map((time, i) => {
-        return `<tr>
+        const dayCells = days.map((day, di) => {
+            const cell = schedule[`${day}_${i}`] || {};
+            let cls = '';
+            if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
+            if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
+            return { cls, text: cell.text || '', label: dayLabels[di] };
+        });
+        const hasContent = dayCells.some(c => c.text.trim());
+        const rowCls = hasContent ? '' : 'empty-row';
+        return `<tr class="${rowCls}">
             <td class="time-col">${time}</td>
-            ${days.map(day => {
-                const cell = schedule[`${day}_${i}`] || {};
-                let cls = '';
-                if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
-                if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
-                return `<td class="${cls}">${cell.text || ''}</td>`;
-            }).join('')}
+            ${dayCells.map(c => `<td class="${c.cls}" data-day="${c.label}">${c.text}</td>`).join('')}
         </tr>`;
     }).join('');
 }

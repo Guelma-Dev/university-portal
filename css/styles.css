@@ -821,11 +821,37 @@ input { font-family: inherit; }
     .admin-add-subject { flex-direction: column; }
     .admin-add-subject input { min-width: 100%; }
 
-    /* Schedule mobile */
-    .schedule-container { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius-lg); }
-    .schedule-table { min-width: 480px; }
-    .schedule-table th { padding: 8px 6px; font-size: 0.72rem; white-space: nowrap; }
-    .schedule-table td { padding: 8px 5px; font-size: 0.7rem; min-width: 75px; line-height: 1.3; }
+    /* Schedule mobile - card layout */
+    .schedule-container { overflow-x: visible; -webkit-overflow-scrolling: touch; border-radius: var(--radius-lg); padding: 0; }
+    .schedule-table { display: block; min-width: 0; width: 100%; }
+    .schedule-table thead { display: none; }
+    .schedule-table tbody { display: block; width: 100%; }
+    .schedule-table tr {
+        display: block; background: var(--bg-card); border-radius: var(--radius-lg);
+        border: 1px solid var(--border); margin-bottom: 12px; padding: 12px;
+        box-shadow: var(--shadow-sm);
+    }
+    .schedule-table td {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 8px 10px; border: none; border-bottom: 1px solid var(--border);
+        min-width: 0; font-size: 0.82rem; line-height: 1.5; border-radius: 0;
+        text-align: right;
+    }
+    .schedule-table td:last-child { border-bottom: none; }
+    .schedule-table td:empty { display: none; }
+    .schedule-table td::before {
+        content: attr(data-day); font-weight: 700; font-size: 0.7rem;
+        color: var(--accent); min-width: 50px; flex-shrink: 0;
+        text-align: left; margin-left: 8px;
+    }
+    .schedule-table td.time-col {
+        background: var(--accent); color: #fff; font-size: 0.85rem;
+        font-weight: 800; border-radius: var(--radius-md); margin-bottom: 8px;
+        justify-content: center; min-height: 36px;
+    }
+    .schedule-table td.time-col::before { display: none; }
+    .schedule-table td.time-col:empty { display: block; }
+    .schedule-table tr.empty-row { display: none; }
 
     /* Exams mobile */
     .exams-container { border-radius: var(--radius-md); }
@@ -849,8 +875,8 @@ input { font-family: inherit; }
     .topbar-title { display: none; }
 
     /* Schedule small mobile */
-    .schedule-table th { padding: 6px 4px; font-size: 0.65rem; }
-    .schedule-table td { padding: 6px 4px; font-size: 0.62rem; min-width: 60px; }
+    .schedule-table td { padding: 6px 8px; font-size: 0.78rem; }
+    .schedule-table td.time-col { font-size: 0.8rem; padding: 6px; }
 
     /* Exams small mobile */
     .exams-header { padding: 12px; }
