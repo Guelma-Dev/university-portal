@@ -151,6 +151,34 @@ async function trackVisit() {
 }
 
 // ============================================
+// SCHEDULE - loaded from backend API
+// ============================================
+async function loadScheduleFromAPI() {
+    try {
+        const res = await fetch(`${API_BASE}/api/schedule`);
+        if (res.ok) {
+            schedule = await res.json();
+        }
+    } catch (e) {
+        console.warn('Failed to load schedule from API');
+    }
+}
+
+async function saveScheduleToAPI() {
+    try {
+        const res = await fetch(`${API_BASE}/api/schedule`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ schedule }),
+        });
+        return res.ok;
+    } catch (e) {
+        console.warn('Failed to save schedule to API');
+        return false;
+    }
+}
+
+// ============================================
 // SCHEDULE DATA
 // ============================================
 const TIME_SLOTS = [
@@ -161,8 +189,8 @@ const TIME_SLOTS = [
     '15:30 - 17:00',
 ];
 
-// Empty schedule - to be filled by admin
-let schedule = JSON.parse(localStorage.getItem('schedule') || 'null') || {};
+// Empty schedule - loaded from API
+let schedule = {};
 
 // ============================================
 // PDF VIEWER STATE
@@ -178,10 +206,11 @@ let pdfPagePending = null;
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
     applyTheme(APP_STATE.theme);
-    await loadSubjectsFromAPI();
+    await Promise.all([loadSubjectsFromAPI(), loadScheduleFromAPI()]);
     renderSubjects();
     renderSchedule();
     renderAdminSubjects();
+    renderScheduleEditor();
     updateStats();
     initSidebarOverlay();
     renderCalcModules('sem1');
@@ -1131,6 +1160,61 @@ async function deleteSubject(id) {
         showToast('تم حذف المادة', 'success');
     } catch (e) {
         showToast('حدث خطأ أثناء حذف المادة', 'error');
+    }
+}
+
+// ============================================
+// SCHEDULE EDITOR (Admin Panel)
+// ============================================
+const SCHED_TYPES = [
+    { value: '', label: 'فارغ' },
+    { value: 'lecture', label: 'محاضرة' },
+    { value: 'tdtp', label: 'TD / TP' },
+];
+
+function renderScheduleEditor() {
+    const grid = document.getElementById('schedule-editor-grid');
+    if (!grid) return;
+    let html = '<table class="sched-editor-table"><thead><tr><th>الوقت</th>';
+    DAY_LABELS.forEach(l => html += `<th>${l}</th>`);
+    html += '</tr></thead><tbody>';
+    TIME_SLOTS.forEach((time, ti) => {
+        html += `<tr><td class="time-col">${time}</td>`;
+        DAYS.forEach((day, di) => {
+            const key = `${day}_${ti}`;
+            const cell = schedule[key] || { text: '', type: '' };
+            html += `<td>
+                <input type="text" class="sched-input sched-text" data-key="${key}" value="${(cell.text || '').replace(/"/g, '&quot;')}" placeholder="المادة...">
+                <select class="sched-input sched-type" data-key="${key}">
+                    ${SCHED_TYPES.map(t => `<option value="${t.value}" ${cell.type === t.value ? 'selected' : ''}>${t.label}</option>`).join('')}
+                </select>
+            </td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    grid.innerHTML = html;
+}
+
+async function saveAdminSchedule() {
+    const inputs = document.querySelectorAll('.sched-text');
+    const selects = document.querySelectorAll('.sched-type');
+    const data = {};
+    inputs.forEach(inp => {
+        const key = inp.dataset.key;
+        const sel = document.querySelector(`.sched-type[data-key="${key}"]`);
+        data[key] = {
+            text: inp.value.trim(),
+            type: sel ? sel.value : '',
+        };
+    });
+    schedule = data;
+    const ok = await saveScheduleToAPI();
+    if (ok) {
+        renderSchedule();
+        showToast('تم حفظ الرزنامة بنجاح', 'success');
+    } else {
+        showToast('حدث خطأ أثناء الحفظ', 'error');
     }
 }
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'university-portal-v5';
+const CACHE_NAME = 'university-portal-v6';
 const STATIC_ASSETS = ['/', '/index.html', '/css/styles.css', '/js/app.js'];
 
 self.addEventListener('install', e => {

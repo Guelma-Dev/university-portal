@@ -769,6 +769,23 @@ input { font-family: inherit; }
 }
 .admin-add-subject input { flex: 1; min-width: 200px; }
 
+/* Schedule Editor */
+.sched-editor-table { width: 100%; border-collapse: collapse; }
+.sched-editor-table th {
+    background: var(--accent); color: #fff; padding: 12px 8px;
+    font-size: 0.85rem; font-weight: 700; text-align: center;
+}
+.sched-editor-table td { padding: 8px 6px; border: 1px solid var(--border); vertical-align: top; }
+.sched-editor-table .time-col { background: var(--bg-tertiary); font-weight: 700; font-size: 0.8rem; text-align: center; white-space: nowrap; }
+.sched-input {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 0.82rem;
+    background: var(--bg-primary); color: var(--text-primary);
+    font-family: inherit; margin-bottom: 4px; box-sizing: border-box;
+}
+.sched-input:focus { border-color: var(--accent); outline: none; }
+.sched-type { font-size: 0.75rem; }
+
 /* ============================================
    TOAST NOTIFICATIONS
    ============================================ */
@@ -825,6 +842,10 @@ input { font-family: inherit; }
     .stats-grid { grid-template-columns: 1fr 1fr; }
     .admin-add-subject { flex-direction: column; }
     .admin-add-subject input { min-width: 100%; }
+    .sched-editor-table { font-size: 0.8rem; }
+    .sched-editor-table th { padding: 8px 4px; font-size: 0.72rem; }
+    .sched-editor-table td { padding: 4px 3px; }
+    .sched-input { padding: 6px 6px; font-size: 0.75rem; }
 
     /* Schedule mobile - day picker */
     .schedule-desktop { display: none; }

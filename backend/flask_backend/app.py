@@ -273,6 +273,17 @@ class PasswordResetToken(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class ScheduleCell(db.Model):
+    __tablename__ = 'schedule_cells'
+    id = db.Column(db.Integer, primary_key=True)
+    cell_key = db.Column(db.String(50), unique=True, nullable=False)
+    cell_text = db.Column(db.Text, default='')
+    cell_type = db.Column(db.String(20), default='')
+
+    def to_dict(self):
+        return {'key': self.cell_key, 'text': self.cell_text, 'type': self.cell_type}
+
+
 # ============================================
 # SERVE FRONTEND & STATIC FILES
 # ============================================
@@ -402,6 +413,34 @@ def get_public_exams():
     if semester:
         query = query.filter_by(semester=semester)
     return jsonify([e.to_dict() for e in query.all()])
+
+
+# ============================================
+# SCHEDULE API (public GET, admin POST)
+# ============================================
+@app.route('/api/schedule', methods=['GET'])
+def get_schedule():
+    cells = ScheduleCell.query.all()
+    data = {c.cell_key: {'text': c.cell_text, 'type': c.cell_type} for c in cells}
+    return jsonify(data)
+
+
+@app.route('/api/schedule', methods=['POST'])
+def save_schedule():
+    data = request.get_json(silent=True) or {}
+    schedule_data = data.get('schedule', {})
+    if not isinstance(schedule_data, dict):
+        return jsonify({'error': 'Invalid data'}), 400
+    ScheduleCell.query.delete()
+    for key, val in schedule_data.items():
+        cell = ScheduleCell(
+            cell_key=key,
+            cell_text=val.get('text', ''),
+            cell_type=val.get('type', ''),
+        )
+        db.session.add(cell)
+    db.session.commit()
+    return jsonify({'message': 'Schedule saved'}), 200
 
 
 # ============================================
