@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة المالية والمحاسبة | جامعة 8 ماي 1945 قالمة</title>
+    <meta name="description" content="منصة التنظيم الجامعي - المالية والمحاسبة - جامعة 8 ماي 1945 قالمة">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="المنصة الجامعية">
+    <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- ===== LANDING PAGE ===== -->
+    <div id="landing-page" class="landing-page">
+        <div class="landing-bg">
+            <div class="floating-shapes">
+                <div class="shape shape-1"></div>
+                <div class="shape shape-2"></div>
+                <div class="shape shape-3"></div>
+                <div class="shape shape-4"></div>
+                <div class="shape shape-5"></div>
+            </div>
+        </div>
+        <div class="landing-content">
+            <div class="landing-logo">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <h1 class="landing-title">منصة التنظيم الجامعي</h1>
+            <p class="landing-subtitle">السنة الثانية - تخصص مالية ومحاسبة</p>
+            <p class="landing-university">جامعة 8 ماي 1945 - قالمة</p>
+            <div class="landing-divider"></div>
+            <div class="landing-buttons">
+                <button class="btn btn-student" onclick="showStudentLogin()">
+                    <i class="fas fa-right-to-bracket"></i>
+                    <span>تسجيل الدخول</span>
+                    <small>لديك حساب بالفعل؟</small>
+                </button>
+                <button class="btn btn-register" onclick="showStudentRegister()">
+                    <i class="fas fa-user-plus"></i>
+                    <span>إنشاء حساب جديد</span>
+                    <small>انضم إلى المنصة الآن</small>
+                </button>
+                <button class="btn btn-quick" onclick="enterAsStudent()">
+                    <i class="fas fa-user-graduate"></i>
+                    <span>دخول سريع</span>
+                    <small>بدون تسجيل</small>
+                </button>
+                <button class="btn btn-admin" onclick="showAdminLogin()">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>الدخول كمسؤول</span>
+                    <small>يتطلب كلمة مرور</small>
+                </button>
+            </div>
+        </div>
+        <!-- Admin Login Modal -->
+        <div id="admin-login-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <i class="fas fa-lock"></i>
+                    <h3>دخول المسؤول</h3>
+                </div>
+                <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
+                    <div class="input-group">
+                        <label>اسم المستخدم</label>
+                        <input type="text" id="admin-username" placeholder="admin" required>
+                    </div>
+                    <div class="input-group">
+                        <label>كلمة المرور</label>
+                        <input type="password" id="admin-password" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">
+                        <i class="fas fa-right-to-bracket"></i> تسجيل الدخول
+                    </button>
+                    <button type="button" class="btn btn-ghost btn-full" onclick="closeAdminModal()">
+                        إلغاء
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Student Login Modal -->
+        <div id="student-login-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <i class="fas fa-right-to-bracket"></i>
+                    <h3>تسجيل الدخول</h3>
+                </div>
+                <form onsubmit="handleStudentLogin(event)">
+                    <div class="input-group">
+                        <label>البريد الإلكتروني أو اسم المستخدم</label>
+                        <input type="text" id="login-email" placeholder="example@email.com" required>
+                    </div>
+                    <div class="input-group">
+                        <label>كلمة المرور</label>
+                        <input type="password" id="login-password" placeholder="••••••••" required>
+                    </div>
+                    <div class="auth-links">
+                        <a href="#" onclick="showForgotPassword(); return false;">نسيت كلمة المرور؟</a>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">
+                        <i class="fas fa-right-to-bracket"></i> تسجيل الدخول
+                    </button>
+                    <div class="auth-switch">
+                        ليس لديك حساب؟ <a href="#" onclick="showStudentRegister(); return false;">إنشاء حساب</a>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-full" onclick="closeAllModals()">إلغاء</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Student Register Modal -->
+        <div id="student-register-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <i class="fas fa-user-plus"></i>
+                    <h3>إنشاء حساب جديد</h3>
+                </div>
+                <form onsubmit="handleStudentRegister(event)">
+                    <div class="input-group">
+                        <label>البريد الإلكتروني</label>
+                        <input type="email" id="reg-email" placeholder="example@email.com" required>
+                    </div>
+                    <div class="input-group">
+                        <label>اسم المستخدم</label>
+                        <input type="text" id="reg-username" placeholder="محمد" required>
+                    </div>
+                    <div class="input-group">
+                        <label>كلمة المرور</label>
+                        <input type="password" id="reg-password" placeholder="6 أحرف على الأقل" required minlength="6">
+                    </div>
+                    <div class="input-group">
+                        <label>تأكيد كلمة المرور</label>
+                        <input type="password" id="reg-password-confirm" placeholder="أعد إدخال كلمة المرور" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">
+                        <i class="fas fa-user-plus"></i> إنشاء الحساب
+                    </button>
+                    <div class="auth-switch">
+                        لديك حساب بالفعل؟ <a href="#" onclick="showStudentLogin(); return false;">تسجيل الدخول</a>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-full" onclick="closeAllModals()">إلغاء</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Forgot Password Modal -->
+        <div id="forgot-password-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <i class="fas fa-key"></i>
+                    <h3>استعادة كلمة المرور</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">أدخل بريدك الإلكتروني وسنرسل لك كود التحقق</p>
+                </div>
+                <form onsubmit="handleForgotPassword(event)">
+                    <div class="input-group">
+                        <label>البريد الإلكتروني</label>
+                        <input type="email" id="forgot-email" placeholder="example@email.com" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">
+                        <i class="fas fa-paper-plane"></i> إرسال كود التحقق
+                    </button>
+                    <div class="auth-switch">
+                        تذكرت كلمة المرور؟ <a href="#" onclick="showStudentLogin(); return false;">تسجيل الدخول</a>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-full" onclick="closeAllModals()">إلغاء</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- OTP Verification Modal -->
+        <div id="otp-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <i class="fas fa-shield-halved"></i>
+                    <h3>التحقق من الكود</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">أدخل الكود المرسل إلى بريدك الإلكتروني</p>
+                </div>
+                <form onsubmit="handleVerifyOtp(event)">
+                    <div class="input-group">
+                        <label>كود التحقق (6 أرقام)</label>
+                        <input type="text" id="otp-code" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required
+                            style="text-align: center; font-size: 1.5rem; letter-spacing: 8px; font-weight: 700;">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">
+                        <i class="fas fa-check"></i> التحقق
+                    </button>
+                    <div class="auth-switch">
+                        <a href="#" onclick="resendOtp(); return false;">إعادة إرسال الكود</a>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-full" onclick="closeAllModals()">إلغاء</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Reset Password Modal -->
+        <div id="reset-password-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <i class="fas fa-lock"></i>
+                    <h3>كلمة مرور جديدة</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">أدخل كلمة المرور الجديدة</p>
+                </div>
+                <form onsubmit="handleResetPassword(event)">
+                    <div class="input-group">
+                        <label>كلمة المرور الجديدة</label>
+                        <input type="password" id="new-password" placeholder="6 أحرف على الأقل" required minlength="6">
+                    </div>
+                    <div class="input-group">
+                        <label>تأكيد كلمة المرور</label>
+                        <input type="password" id="new-password-confirm" placeholder="أعد إدخال كلمة المرور" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">
+                        <i class="fas fa-save"></i> حفظ كلمة المرور
+                    </button>
+                    <button type="button" class="btn btn-ghost btn-full" onclick="closeAllModals()">إلغاء</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MAIN APP ===== -->
+    <div id="main-app" class="main-app hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <span class="sidebar-title">المالية والمحاسبة</span>
+                <button class="sidebar-close" onclick="toggleSidebar()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <a class="nav-item active" data-section="library" onclick="switchSection('library')">
+                    <i class="fas fa-book-open"></i>
+                    <span>مكتبة المواد</span>
+                </a>
+                <a class="nav-item" data-section="schedule" onclick="switchSection('schedule')">
+                    <i class="fas fa-calendar-week"></i>
+                    <span>الرزنامة الأسبوعية</span>
+                </a>
+                <a class="nav-item" data-section="calculator" onclick="switchSection('calculator')">
+                    <i class="fas fa-calculator"></i>
+                    <span>حاسبة المعدل</span>
+                </a>
+                <a class="nav-item" data-section="exams" onclick="switchSection('exams')">
+                    <i class="fas fa-file-lines"></i>
+                    <span>تواريخ الامتحانات</span>
+                </a>
+                <a class="nav-item nav-admin" data-section="admin" onclick="switchSection('admin')" id="admin-nav-item" style="display:none;">
+                    <i class="fas fa-cog"></i>
+                    <span>لوحة التحكم</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <i class="fas fa-moon" id="theme-icon"></i>
+                    <span id="theme-text">الوضع الليلي</span>
+                </button>
+                <div class="user-badge" id="user-badge">
+                    <i class="fas fa-user-graduate"></i>
+                    <span>طالب</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <button class="hamburger" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h2 class="topbar-title" id="topbar-title">مكتبة المواد</h2>
+                <div class="topbar-actions">
+                    <div class="search-box" id="global-search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="global-search" placeholder="ابحث عن مادة أو درس..." oninput="handleSearch(this.value)">
+                    </div>
+                    <button class="btn-icon" onclick="toggleTheme()" title="تبديل الوضع">
+                        <i class="fas fa-circle-half-stroke"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- ===== LIBRARY SECTION ===== -->
+            <section id="section-library" class="section active">
+                <!-- Subject Cards Grid -->
+                <div id="subjects-grid" class="subjects-grid">
+                    <!-- Cards injected by JS -->
+                </div>
+
+                <!-- Subject Detail View -->
+                <div id="subject-detail" class="subject-detail hidden">
+                    <button class="btn-back" onclick="backToSubjects()">
+                        <i class="fas fa-arrow-right"></i> العودة للمواد
+                    </button>
+                    <div class="subject-detail-header">
+                        <h3 id="detail-subject-name"></h3>
+                        <div class="subject-search">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="subject-search" placeholder="بحث عن درس داخل المادة..." oninput="filterFiles(this.value)">
+                        </div>
+                    </div>
+                    <!-- Tabs -->
+                    <div class="detail-tabs">
+                        <button class="detail-tab active" onclick="switchDetailTab('lectures')">
+                            <i class="fas fa-chalkboard-teacher"></i> المحاضرات
+                        </button>
+                        <button class="detail-tab" onclick="switchDetailTab('tdtp')">
+                            <i class="fas fa-pen-ruler"></i> الأعمال التطبيقية (TD/TP)
+                        </button>
+                    </div>
+                    <!-- Files List -->
+                    <div id="files-lectures" class="files-list">
+                        <!-- Injected by JS -->
+                    </div>
+                    <div id="files-tdtp" class="files-list hidden">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+
+                <!-- PDF Viewer Modal -->
+                <div id="pdf-viewer-modal" class="modal-overlay hidden">
+                    <div class="pdf-viewer-container">
+                        <div class="pdf-viewer-header">
+                            <span id="pdf-viewer-title">عرض الملف</span>
+                            <div class="pdf-viewer-actions">
+                                <button class="btn-icon" onclick="pdfPrevPage()"><i class="fas fa-chevron-right"></i></button>
+                                <span id="pdf-page-info">1 / 1</span>
+                                <button class="btn-icon" onclick="pdfNextPage()"><i class="fas fa-chevron-left"></i></button>
+                                <button class="btn-icon" onclick="pdfZoomOut()"><i class="fas fa-minus"></i></button>
+                                <button class="btn-icon" onclick="pdfZoomIn()"><i class="fas fa-plus"></i></button>
+                                <a id="pdf-download-link" href="#" download class="btn-icon"><i class="fas fa-download"></i></a>
+                                <button class="btn-icon btn-close-pdf" onclick="closePdfViewer()"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <div class="pdf-viewer-body">
+                            <canvas id="pdf-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile File Bottom Sheet -->
+                <div id="mobile-file-sheet" class="mobile-sheet hidden">
+                    <div class="mobile-sheet-backdrop" onclick="closeMobileSheet()"></div>
+                    <div class="mobile-sheet-card">
+                        <div class="mobile-sheet-handle"></div>
+                        <div class="mobile-sheet-title" id="mobile-sheet-title">اسم الملف</div>
+                        <div class="mobile-sheet-actions">
+                            <button class="mobile-sheet-btn open" onclick="mobileSheetOpen()">
+                                <i class="fas fa-external-link-alt"></i>
+                                <span>فتح الملف</span>
+                                <small>يفتح في تبويب جديد</small>
+                            </button>
+                            <button class="mobile-sheet-btn download" onclick="mobileSheetDownload()">
+                                <i class="fas fa-download"></i>
+                                <span>تحميل</span>
+                                <small>حفظ على الجهاز</small>
+                            </button>
+                            <button class="mobile-sheet-btn cancel" onclick="closeMobileSheet()">
+                                <i class="fas fa-times"></i>
+                                <span>إلغاء</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== SCHEDULE SECTION ===== -->
+            <section id="section-schedule" class="section">
+                <div class="schedule-container">
+                    <table class="schedule-table">
+                        <thead>
+                            <tr>
+                                <th class="time-col">الوقت</th>
+                                <th>الأحد</th>
+                                <th>الاثنين</th>
+                                <th>الثلاثاء</th>
+                                <th>الأربعاء</th>
+                                <th>الخميس</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schedule-body">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ===== CALCULATOR SECTION ===== -->
+            <section id="section-calculator" class="section">
+                <div class="calc-wrapper">
+                    <!-- Animated GPA Ring -->
+                    <div class="calc-hero">
+                        <div class="calc-gauge" id="calc-gauge-ring">
+                            <svg viewBox="0 0 120 120">
+                                <circle class="gauge-bg" cx="60" cy="60" r="52"></circle>
+                                <circle class="gauge-fill" id="gauge-circle" cx="60" cy="60" r="52"></circle>
+                            </svg>
+                            <div class="gauge-center">
+                                <span class="gauge-value" id="gauge-value">--</span>
+                                <span class="gauge-label">من 20</span>
+                            </div>
+                        </div>
+                        <div class="calc-hero-info">
+                            <h2><i class="fas fa-graduation-cap"></i> حاسبة المعدل</h2>
+                            <p>نظام LMD — الجامعة الجزائرية</p>
+                            <div class="calc-formula-badge">
+                                <span>TD</span> × 0.40 + <span>الامتحان</span> × 0.60
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Semester Tabs -->
+                    <div class="calc-tabs">
+                        <button class="calc-tab active" onclick="switchCalcTab(this, 'sem1')">
+                            <i class="fas fa-book-open"></i> السداسي الأول
+                        </button>
+                        <button class="calc-tab" onclick="switchCalcTab(this, 'sem2')">
+                            <i class="fas fa-book"></i> السداسي الثاني
+                        </button>
+                    </div>
+
+                    <!-- Modules Container -->
+                    <div id="calc-sem1" class="calc-sem active">
+                        <div id="calc-modules-sem1" class="calc-modules-list"></div>
+                        <button class="calc-add-btn" onclick="addCalcModule('sem1')">
+                            <i class="fas fa-plus-circle"></i> إضافة مادة جديدة
+                        </button>
+                    </div>
+                    <div id="calc-sem2" class="calc-sem">
+                        <div id="calc-modules-sem2" class="calc-modules-list"></div>
+                        <button class="calc-add-btn" onclick="addCalcModule('sem2')">
+                            <i class="fas fa-plus-circle"></i> إضافة مادة جديدة
+                        </button>
+                    </div>
+
+                    <!-- Smart Advisor -->
+                    <div id="calc-advisor" class="calc-advisor hidden">
+                        <i class="fas fa-lightbulb"></i>
+                        <span id="calc-advisor-text"></span>
+                    </div>
+
+                    <!-- Results -->
+                    <div class="calc-results-panel">
+                        <div class="calc-result-row">
+                            <div class="calc-result-label"><i class="fas fa-calendar-alt"></i> معدل السداسي الأول</div>
+                            <div class="calc-result-val" id="calc-sem1-avg">--</div>
+                        </div>
+                        <div class="calc-result-row">
+                            <div class="calc-result-label"><i class="fas fa-calendar-check"></i> معدل السداسي الثاني</div>
+                            <div class="calc-result-val" id="calc-sem2-avg">--</div>
+                        </div>
+                        <div class="calc-result-divider"></div>
+                        <div class="calc-result-row calc-final-row">
+                            <div class="calc-result-label"><i class="fas fa-trophy"></i> المعدل العام</div>
+                            <div class="calc-result-val calc-final-val" id="calc-final-gpa">--</div>
+                        </div>
+                        <div id="calc-status-msg" class="calc-status-msg"></div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="calc-actions">
+                        <button class="calc-action-btn primary" onclick="shareCalcResult()">
+                            <i class="fas fa-share-nodes"></i> مشاركة
+                        </button>
+                        <button class="calc-action-btn danger" onclick="resetCalculator()">
+                            <i class="fas fa-rotate-left"></i> إعادة ضبط
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== EXAMS SECTION ===== -->
+            <section id="section-exams" class="section">
+                <div class="exams-container">
+                    <div class="exams-header">
+                        <i class="fas fa-file-lines"></i>
+                        <h3>تواريخ الامتحانات</h3>
+                    </div>
+                    <div class="exams-tabs">
+                        <button class="exam-tab active" onclick="switchExamTab('sem1')">السداسي الأول</button>
+                        <button class="exam-tab" onclick="switchExamTab('sem2')">السداسي الثاني</button>
+                    </div>
+                    <div id="exam-sem1" class="exam-content active">
+                        <table class="exam-table">
+                            <thead>
+                                <tr>
+                                    <th>المادة</th>
+                                    <th>التاريخ</th>
+                                    <th>الوقت</th>
+                                    <th>المكان</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="empty-row">
+                                    <td colspan="4">
+                                        <i class="fas fa-clock"></i>
+                                        سيتم إضافة توقيتات الامتحانات قريباً
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="exam-sem2" class="exam-content hidden">
+                        <table class="exam-table">
+                            <thead>
+                                <tr>
+                                    <th>المادة</th>
+                                    <th>التاريخ</th>
+                                    <th>الوقت</th>
+                                    <th>المكان</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="empty-row">
+                                    <td colspan="4">
+                                        <i class="fas fa-clock"></i>
+                                        سيتم إضافة توقيتات الامتحانات قريباً
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== ADMIN SECTION ===== -->
+            <section id="section-admin" class="section">
+                <div class="admin-container">
+                    <div class="admin-header">
+                        <i class="fas fa-cog"></i>
+                        <h3>لوحة تحكم المسؤول</h3>
+                    </div>
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-eye"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="stat-visits">0</span>
+                                <span class="stat-label">عدد الزيارات</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-file-pdf"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="stat-files">0</span>
+                                <span class="stat-label">الملفات المرفوعة</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-book"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="stat-subjects">0</span>
+                                <span class="stat-label">المواد الدراسية</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fab fa-telegram"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="stat-bot-status">غير متصل</span>
+                                <span class="stat-label">حالة البوت</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Telegram Bot Config -->
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <i class="fab fa-telegram"></i>
+                            <h4>إعدادات بوت تلغرام</h4>
+                        </div>
+                        <form id="telegram-config-form" onsubmit="saveTelegramConfig(event)">
+                            <div class="input-group">
+                                <label>Bot Token</label>
+                                <input type="text" id="tg-bot-token" placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11">
+                            </div>
+                            <div class="input-group">
+                                <label>Chat ID / Group ID</label>
+                                <input type="text" id="tg-chat-id" placeholder="-1001234567890">
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> حفظ الإعدادات
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Manage Subjects -->
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <i class="fas fa-book"></i>
+                            <h4>إدارة المواد الدراسية</h4>
+                        </div>
+                        <div id="admin-subjects-list">
+                            <!-- Injected by JS -->
+                        </div>
+                        <div class="admin-add-subject">
+                            <input type="text" id="new-subject-name" placeholder="اسم المادة الجديدة">
+                            <input type="text" id="new-subject-icon" placeholder="أيقونة Font Awesome (مثال: fa-calculator)">
+                            <button class="btn btn-primary" onclick="addSubject()">
+                                <i class="fas fa-plus"></i> إضافة مادة
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="js/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+        }
+    </script>
+</body>
+</html>

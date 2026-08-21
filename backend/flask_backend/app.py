@@ -1,0 +1,908 @@
+"""
+University Portal Backend
+Flask + PostgreSQL (Neon/Render) + JWT auth + files stored in DB + Telegram bot
+"""
+
+import asyncio
+import base64
+import functools
+import hashlib
+import hmac
+import json
+import os
+import secrets
+import string
+import threading
+import time
+from datetime import datetime, timedelta
+
+import bcrypt
+import httpx
+from flask import Flask, Response, jsonify, request, send_from_directory
+from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
+
+# ============================================
+# CONFIGURATION (environment variables)
+# ============================================
+FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///university.db')
+# Render/Neon sometimes gives postgres:// instead of postgresql://
+if DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+JWT_SECRET = os.environ.get('JWT_SECRET', 'change-me-in-production')
+ADMIN_USER = os.environ.get('ADMIN_USER', 'admin')
+ADMIN_PASS = os.environ.get('ADMIN_PASS', 'admin123')
+TG_BOT_TOKEN = os.environ.get('TG_BOT_TOKEN', '')
+PORT = int(os.environ.get('PORT', 5000))
+EMAIL_API_KEY = os.environ.get('EMAIL_API_KEY', '')
+EMAIL_FROM = os.environ.get('EMAIL_FROM', '')
+
+JWT_EXP_SECONDS = 24 * 60 * 60  # tokens expire after 24 hours
+ADMIN_PASS_HASH = hashlib.sha256(ADMIN_PASS.encode()).hexdigest()
+
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
+CORS(app)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max
+
+db = SQLAlchemy(app)
+
+
+# ============================================
+# JWT AUTHENTICATION (no external lib)
+# ============================================
+def _b64url_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b'=').decode()
+
+
+def _b64url_decode(data: str) -> bytes:
+    padding = '=' * (-len(data) % 4)
+    return base64.urlsafe_b64decode(data + padding)
+
+
+def make_token(username: str) -> str:
+    header = {'alg': 'HS256', 'typ': 'JWT'}
+    now = int(time.time())
+    payload = {'sub': username, 'iat': now, 'exp': now + JWT_EXP_SECONDS}
+    h = _b64url_encode(json.dumps(header, separators=(',', ':')).encode())
+    p = _b64url_encode(json.dumps(payload, separators=(',', ':')).encode())
+    sig = hmac.new(JWT_SECRET.encode(), f'{h}.{p}'.encode(), hashlib.sha256).digest()
+    return f'{h}.{p}.{_b64url_encode(sig)}'
+
+
+def decode_token(token: str):
+    """Return the payload dict if valid and unexpired, else None."""
+    try:
+        h, p, s = token.split('.')
+        expected = hmac.new(JWT_SECRET.encode(), f'{h}.{p}'.encode(), hashlib.sha256).digest()
+        if not hmac.compare_digest(_b64url_decode(s), expected):
+            return None
+        payload = json.loads(_b64url_decode(p))
+        if int(payload.get('exp', 0)) < time.time():
+            return None
+        return payload
+    except Exception:
+        return None
+
+
+def auth_required(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Missing bearer token'}), 401
+        payload = decode_token(auth_header[len('Bearer '):])
+        if not payload:
+            return jsonify({'error': 'Invalid or expired token'}), 401
+        request.user = payload.get('sub')
+        return f(*args, **kwargs)
+    return wrapper
+
+
+# ============================================
+# PASSWORD HASHING HELPERS
+# ============================================
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+
+def check_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+
+def generate_otp() -> str:
+    return ''.join(secrets.choice(string.digits) for _ in range(6))
+
+
+# ============================================
+# EMAIL SENDING HELPER (Elastic Email API)
+# ============================================
+def send_otp_email(email: str, otp_code: str, username: str) -> bool:
+    if not EMAIL_API_KEY or not EMAIL_FROM:
+        print(f'[EMAIL] EMAIL_API_KEY/EMAIL_FROM not set. OTP for {email}: {otp_code}', flush=True)
+        return False
+    try:
+        html_content = f"""
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head><meta charset="UTF-8"></head>
+        <body style="font-family: 'Segoe UI', Tahoma, sans-serif; background: #f1f5f9; padding: 40px;">
+            <div style="max-width: 480px; margin: auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 32px; text-align: center;">
+                    <h1 style="color: #fff; margin: 0; font-size: 1.5rem;">&#127891; منصة الجامعية</h1>
+                </div>
+                <div style="padding: 32px; text-align: center;">
+                    <h2 style="color: #1e293b; margin-bottom: 8px;">مرحباً {username}</h2>
+                    <p style="color: #64748b; margin-bottom: 24px;">كود التحقق الخاص بك:</p>
+                    <div style="background: #f1f5f9; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+                        <span style="font-size: 2rem; font-weight: 800; color: #6366f1; letter-spacing: 8px;">{otp_code}</span>
+                    </div>
+                    <p style="color: #94a3b8; font-size: 0.85rem;">صالح لمدة 15 دقيقة فقط</p>
+                    <p style="color: #94a3b8; font-size: 0.85rem;">إذا لم تطلب هذا الكود، تجاهل هذه الرسالة</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        with httpx.Client(timeout=30) as client:
+            resp = client.post(
+                "https://api.elasticemail.com/v2/email/send",
+                data={
+                    "apikey": EMAIL_API_KEY,
+                    "from": EMAIL_FROM,
+                    "to": email,
+                    "subject": "كود التحقق - منصة الجامعية",
+                    "bodyHtml": html_content,
+                },
+            )
+        result = resp.json()
+        if result.get("success"):
+            print(f'[EMAIL] OTP sent to {email}: {otp_code}', flush=True)
+            return True
+        else:
+            print(f'[EMAIL] Elastic Email error: {result}', flush=True)
+            return False
+    except Exception as e:
+        print(f'[EMAIL] Failed to send to {email}: {e}', flush=True)
+        return False
+
+
+# ============================================
+# DATABASE MODELS
+# ============================================
+class Subject(db.Model):
+    __tablename__ = 'subjects'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    icon = db.Column(db.String(50), default='fa-book')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    files = db.relationship('File', backref='subject', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'icon': self.icon,
+            'lectures': [f.to_dict() for f in self.files if f.file_type == 'lecture'],
+            'tdtp': [f.to_dict() for f in self.files if f.file_type == 'tdtp'],
+        }
+
+
+class File(db.Model):
+    __tablename__ = 'files'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(300), nullable=False)
+    filename = db.Column(db.String(500), nullable=False)
+    file_type = db.Column(db.String(20), nullable=False)
+    size = db.Column(db.String(20))
+    content = db.Column(db.LargeBinary)  # file binary stored in DB
+    mime_type = db.Column(db.String(100), default='application/pdf')
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+    telegram_file_id = db.Column(db.String(500))
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'file': self.filename,
+            'size': self.size,
+            'type': self.file_type,
+        }
+
+
+class Exam(db.Model):
+    __tablename__ = 'exams'
+    id = db.Column(db.Integer, primary_key=True)
+    subject_name = db.Column(db.String(200), nullable=False)
+    date = db.Column(db.String(50))
+    time = db.Column(db.String(50))
+    location = db.Column(db.String(200))
+    semester = db.Column(db.String(10), nullable=False, default='sem1')  # sem1 | sem2
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'subject_name': self.subject_name,
+            'date': self.date,
+            'time': self.time,
+            'location': self.location,
+            'semester': self.semester,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class VisitLog(db.Model):
+    __tablename__ = 'visit_log'
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    ip_address = db.Column(db.String(50))
+
+
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(200), unique=True, nullable=False)
+    username = db.Column(db.String(100), nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    is_verified = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+            'username': self.username,
+            'is_verified': self.is_verified,
+        }
+
+
+class PasswordResetToken(db.Model):
+    __tablename__ = 'password_reset_tokens'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    otp_code = db.Column(db.String(6), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ============================================
+# SERVE FRONTEND & STATIC FILES
+# ============================================
+@app.route('/')
+def serve_index():
+    return send_from_directory(FRONTEND_DIR, 'index.html')
+
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_from_directory(FRONTEND_DIR, 'manifest.json')
+
+
+@app.route('/service-worker.js')
+def serve_service_worker():
+    return send_from_directory(FRONTEND_DIR, 'service-worker.js')
+
+
+@app.route('/css/<path:filename>')
+def serve_css(filename):
+    return send_from_directory(os.path.join(FRONTEND_DIR, 'css'), filename)
+
+
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    return send_from_directory(os.path.join(FRONTEND_DIR, 'js'), filename)
+
+
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    return send_from_directory(os.path.join(FRONTEND_DIR, 'assets'), filename)
+
+
+@app.route('/<path:path>')
+def serve_static(path):
+    file_path = os.path.join(FRONTEND_DIR, path)
+    if os.path.isfile(file_path):
+        return send_from_directory(FRONTEND_DIR, path)
+    return send_from_directory(FRONTEND_DIR, 'index.html')
+
+
+# ============================================
+# FILE SERVING - from database
+# ============================================
+@app.route('/files/<path:filename>')
+def serve_uploaded_file(filename):
+    f = File.query.filter_by(filename=filename).first()
+    if not f or not f.content:
+        return jsonify({'error': 'File not found'}), 404
+    return Response(
+        f.content,
+        mimetype=f.mime_type or 'application/pdf',
+        headers={'Content-Disposition': f'inline; filename="{f.name}"'},
+    )
+
+
+# ============================================
+# PUBLIC API (no auth)
+# ============================================
+@app.route('/api/subjects', methods=['GET'])
+def get_subjects():
+    subjects = Subject.query.order_by(Subject.id).all()
+    return jsonify([s.to_dict() for s in subjects])
+
+
+@app.route('/api/exams', methods=['GET'])
+def get_exams():
+    semester = request.args.get('semester')
+    query = Exam.query.order_by(Exam.date)
+    if semester:
+        query = query.filter_by(semester=semester)
+    return jsonify([e.to_dict() for e in query.all()])
+
+
+@app.route('/api/stats')
+def get_stats():
+    return jsonify({
+        'visits': VisitLog.query.count(),
+        'files': File.query.count(),
+        'subjects': Subject.query.count(),
+        'exams': Exam.query.count(),
+        'users': User.query.count(),
+    })
+
+
+@app.route('/api/visit', methods=['POST'])
+def log_visit():
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr or '')
+    ip = ip.split(',')[0].strip()
+    db.session.add(VisitLog(ip_address=ip[:50]))
+    db.session.commit()
+    return jsonify({'message': 'visit logged'}), 201
+
+
+# ============================================
+# AUTH API - User Registration, Login, Password Reset
+# ============================================
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    username = (data.get('username') or '').strip()
+    password = data.get('password', '')
+
+    if not email or not username or not password:
+        return jsonify({'error': 'جميع الحقول مطلوبة'}), 400
+    if len(password) < 6:
+        return jsonify({'error': 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'}), 400
+    if '@' not in email:
+        return jsonify({'error': 'بريد إلكتروني غير صالح'}), 400
+
+    if User.query.filter_by(email=email).first():
+        return jsonify({'error': 'البريد الإلكتروني مستخدم بالفعل'}), 409
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': 'اسم المستخدم مستخدم بالفعل'}), 409
+
+    user = User(
+        email=email,
+        username=username,
+        password_hash=hash_password(password),
+        is_verified=False,
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    # Generate and send OTP for email verification
+    otp = generate_otp()
+    reset_token = PasswordResetToken(
+        user_id=user.id,
+        otp_code=otp,
+        expires_at=datetime.utcnow().replace(
+            hour=datetime.utcnow().hour,
+            minute=datetime.utcnow().minute + 15
+        ) if datetime.utcnow().minute + 15 < 60 else datetime.utcnow().replace(
+            hour=datetime.utcnow().hour + 1,
+            minute=(datetime.utcnow().minute + 15) % 60
+        ),
+    )
+    db.session.add(reset_token)
+    db.session.commit()
+    send_otp_email(email, otp, username)
+
+    return jsonify({
+        'message': 'تم التسجيل بنجاح',
+        'user': user.to_dict(),
+    }), 201
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    data = request.get_json(silent=True) or {}
+    login_id = (data.get('email') or data.get('username') or '').strip()
+    password = data.get('password', '')
+
+    if not login_id or not password:
+        return jsonify({'error': 'أدخل البريد الإلكتروني وكلمة المرور'}), 400
+
+    # Check admin first
+    if login_id == ADMIN_USER and password == ADMIN_PASS:
+        return jsonify({
+            'token': make_token(ADMIN_USER),
+            'username': ADMIN_USER,
+            'role': 'admin',
+            'expires_in': JWT_EXP_SECONDS,
+        })
+
+    # Check regular users
+    user = User.query.filter(
+        (User.email == login_id.lower()) | (User.username == login_id)
+    ).first()
+
+    if not user or not check_password(password, user.password_hash):
+        return jsonify({'error': 'بيانات الدخول غير صحيحة'}), 401
+
+    return jsonify({
+        'token': make_token(user.username),
+        'username': user.username,
+        'email': user.email,
+        'role': 'student',
+        'is_verified': user.is_verified,
+        'expires_in': JWT_EXP_SECONDS,
+    })
+
+
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+
+    if not email:
+        return jsonify({'error': 'أدخل البريد الإلكتروني'}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        # Don't reveal if email exists
+        return jsonify({'message': 'إذا كان البريد مسجلاً، ستتلقى رسالة التحقق'}), 200
+
+    # Invalidate old tokens
+    PasswordResetToken.query.filter_by(user_id=user.id, used=False).update({'used': True})
+    db.session.commit()
+
+    # Create new OTP (expires in 15 minutes)
+    otp = generate_otp()
+    reset_token = PasswordResetToken(
+        user_id=user.id,
+        otp_code=otp,
+        expires_at=datetime.utcnow() + timedelta(minutes=15),
+    )
+    db.session.add(reset_token)
+    db.session.commit()
+    send_otp_email(email, otp, user.username)
+
+    return jsonify({'message': 'إذا كان البريد مسجلاً، ستتلقى رسالة التحقق'}), 200
+
+
+@app.route('/api/auth/verify-otp', methods=['POST'])
+def verify_otp():
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    otp_code = (data.get('otp') or '').strip()
+
+    if not email or not otp_code:
+        return jsonify({'error': 'أدخل البريد الإلكتروني وكود التحقق'}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'error': 'بريد غير مسجل'}), 404
+
+    token = PasswordResetToken.query.filter_by(
+        user_id=user.id, otp_code=otp_code, used=False
+    ).order_by(PasswordResetToken.id.desc()).first()
+
+    if not token:
+        return jsonify({'error': 'كود التحقق غير صحيح'}), 400
+    if token.expires_at < datetime.utcnow():
+        return jsonify({'error': 'انتهت صلاحية الكود، اطلب كوداً جديداً'}), 400
+
+    # Mark as used
+    token.used = True
+    db.session.commit()
+
+    # Generate a reset token for password reset
+    reset_token_str = secrets.token_urlsafe(32)
+    reset_token_record = PasswordResetToken(
+        user_id=user.id,
+        otp_code=reset_token_str[:6],  # reuse field for token
+        expires_at=datetime.utcnow() + timedelta(minutes=15),
+    )
+    db.session.add(reset_token_record)
+    db.session.commit()
+
+    return jsonify({
+        'message': 'تم التحقق بنجاح',
+        'reset_token': reset_token_str,
+    }), 200
+
+
+@app.route('/api/auth/reset-password', methods=['POST'])
+def reset_password():
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    reset_token = data.get('reset_token', '')
+    new_password = data.get('new_password', '')
+
+    if not email or not reset_token or not new_password:
+        return jsonify({'error': 'جميع الحقول مطلوبة'}), 400
+    if len(new_password) < 6:
+        return jsonify({'error': 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'error': 'بريد غير مسجل'}), 404
+
+    token = PasswordResetToken.query.filter_by(
+        user_id=user.id, used=False
+    ).order_by(PasswordResetToken.id.desc()).first()
+
+    if not token or token.otp_code != reset_token[:6]:
+        return jsonify({'error': 'رمز غير صالح'}), 400
+    if token.expires_at < datetime.utcnow():
+        return jsonify({'error': 'انتهت صلاحية الرابط'}), 400
+
+    # Update password
+    user.password_hash = hash_password(new_password)
+    token.used = True
+    db.session.commit()
+
+    return jsonify({'message': 'تم تغيير كلمة المرور بنجاح'}), 200
+
+
+@app.route('/api/auth/verify-email/<token>', methods=['GET'])
+def verify_email(token):
+    """Optional: email verification link"""
+    user = User.query.filter_by(is_verified=False).first()
+    # Simple implementation - verify by OTP
+    return jsonify({'message': 'Email verification endpoint'}), 200
+
+
+@app.route('/api/auth/me', methods=['GET'])
+@auth_required
+def get_me():
+    username = request.user
+    if username == ADMIN_USER:
+        return jsonify({'username': ADMIN_USER, 'role': 'admin', 'email': 'admin'})
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    return jsonify({**user.to_dict(), 'role': 'student'})
+
+
+# ============================================
+# PROTECTED ADMIN API
+# ============================================
+@app.route('/api/admin/subjects', methods=['POST'])
+@auth_required
+def create_subject():
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'error': 'name is required'}), 400
+    subject = Subject(name=name, icon=data.get('icon', 'fa-book'))
+    db.session.add(subject)
+    db.session.commit()
+    return jsonify(subject.to_dict()), 201
+
+
+@app.route('/api/admin/subjects/<int:subject_id>', methods=['DELETE'])
+@auth_required
+def delete_subject(subject_id):
+    subject = Subject.query.get(subject_id)
+    if not subject:
+        return jsonify({'error': 'Subject not found'}), 404
+    db.session.delete(subject)
+    db.session.commit()
+    return jsonify({'message': 'deleted'})
+
+
+@app.route('/api/admin/exams', methods=['POST'])
+@auth_required
+def create_exam():
+    data = request.get_json(silent=True) or {}
+    subject_name = (data.get('subject_name') or '').strip()
+    semester = data.get('semester', 'sem1')
+    if not subject_name:
+        return jsonify({'error': 'subject_name is required'}), 400
+    if semester not in ('sem1', 'sem2'):
+        return jsonify({'error': "semester must be 'sem1' or 'sem2'"}), 400
+    exam = Exam(
+        subject_name=subject_name,
+        date=data.get('date'),
+        time=data.get('time'),
+        location=data.get('location'),
+        semester=semester,
+    )
+    db.session.add(exam)
+    db.session.commit()
+    return jsonify(exam.to_dict()), 201
+
+
+@app.route('/api/admin/exams/<int:exam_id>', methods=['DELETE'])
+@auth_required
+def delete_exam(exam_id):
+    exam = Exam.query.get(exam_id)
+    if not exam:
+        return jsonify({'error': 'Exam not found'}), 404
+    db.session.delete(exam)
+    db.session.commit()
+    return jsonify({'message': 'deleted'})
+
+
+# ============================================
+# TELEGRAM BOT - Integrated in Flask process
+# Token comes from TG_BOT_TOKEN env var.
+# Uploaded files are stored as binary in the DB.
+# ============================================
+user_sessions = {}
+
+
+def get_subjects_from_db():
+    with app.app_context():
+        return [(s.id, s.name) for s in Subject.query.order_by(Subject.id).all()]
+
+
+def build_subject_keyboard():
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+    subjects = get_subjects_from_db()
+    keyboard = []
+    row = []
+    for i, (sid, name) in enumerate(subjects):
+        row.append(InlineKeyboardButton(name, callback_data=f'pick_subject_{sid}'))
+        if len(row) == 2 or i == len(subjects) - 1:
+            keyboard.append(row)
+            row = []
+    return InlineKeyboardMarkup(keyboard)
+
+
+async def send_subject_list(update, context):
+    text = 'اختر المادة:'
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text, reply_markup=build_subject_keyboard())
+    else:
+        await update.message.reply_text(text, reply_markup=build_subject_keyboard())
+
+
+async def cmd_start(update, context):
+    chat_id = update.effective_chat.id
+    user_sessions.pop(chat_id, None)
+    await send_subject_list(update, context)
+
+
+async def cmd_help(update, context):
+    await update.message.reply_text(
+        'الهدف: رفع ملفات الدروس للموقع\n\n'
+        '1. ابدأ بـ /start\n'
+        '2. اختر المادة\n'
+        '3. اختر نوع الملف\n'
+        '4. أرسل الملف\n\n'
+        'الملفات المدعومة: PDF, DOC, DOCX, PPT, ZIP\n'
+        'إلغاء: /cancel'
+    )
+
+
+async def cmd_cancel(update, context):
+    chat_id = update.effective_chat.id
+    user_sessions.pop(chat_id, None)
+    await update.message.reply_text('تم الإلغاء. ابدأ من جديد بـ /start')
+
+
+async def on_callback(update, context):
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+    query = update.callback_query
+    chat_id = query.message.chat.id
+    data = query.data
+
+    if data.startswith('pick_subject_'):
+        subject_id = int(data.split('_')[-1])
+        subjects = get_subjects_from_db()
+        subject_name = next((n for sid, n in subjects if sid == subject_id), None)
+        if not subject_name:
+            await query.answer('مادة غير موجودة')
+            return
+        user_sessions[chat_id] = {'step': 'choose_type', 'subject_id': subject_id}
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton('محاضرة', callback_data='pick_type_lecture')],
+            [InlineKeyboardButton('عمل تطبيقي (TD/TP)', callback_data='pick_type_tdtp')],
+            [InlineKeyboardButton('رجوع للقائمة', callback_data='back_to_list')],
+        ])
+        await query.answer()
+        await query.edit_message_text(f'المادة: {subject_name}\n\nالآن اختر نوع الملف:', reply_markup=keyboard)
+
+    elif data.startswith('pick_type_'):
+        file_type = data.replace('pick_type_', '')
+        session = user_sessions.get(chat_id)
+        if not session:
+            await query.answer('انتهت الجلسة، ابدأ بـ /start')
+            return
+        session['step'] = 'wait_file'
+        session['file_type'] = file_type
+        subjects = get_subjects_from_db()
+        subject_name = next((n for sid, n in subjects if sid == session['subject_id']), '')
+        type_label = 'محاضرة' if file_type == 'lecture' else 'عمل تطبيقي (TD/TP)'
+        await query.answer()
+        await query.edit_message_text(
+            f'المادة: {subject_name}\nالنوع: {type_label}\n\n'
+            f'الآن أرسل الملف مباشرة هنا.\n'
+            f'(PDF, DOC, DOCX, PPT, ZIP)'
+        )
+
+    elif data == 'back_to_list':
+        user_sessions.pop(chat_id, None)
+        await query.answer()
+        await query.edit_message_text('اختر المادة:', reply_markup=build_subject_keyboard())
+
+    elif data == 'upload_more':
+        await query.answer()
+        await send_subject_list(update, context)
+
+
+MIME_MAP = {
+    '.pdf': 'application/pdf',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.ppt': 'application/vnd.ms-powerpoint',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    '.zip': 'application/zip',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+}
+
+
+async def on_document(update, context):
+    chat_id = update.effective_chat.id
+    doc = update.message.document
+    if not doc:
+        return
+
+    session = user_sessions.get(chat_id)
+    if not session or session.get('step') != 'wait_file':
+        await update.message.reply_text(
+            'لم تختر المادة بعد.\nابدأ بـ /start ثم اختر المادة والنوع أولاً.'
+        )
+        return
+
+    await update.message.reply_text('جاري رفع الملف...')
+
+    try:
+        tg_file = await context.bot.get_file(doc.file_id)
+        filename = doc.file_name
+        file_bytes = await tg_file.download_as_bytearray()
+
+        size_bytes = len(file_bytes)
+        size_str = (f'{size_bytes / (1024 * 1024):.1f} MB'
+                    if size_bytes > 1024 * 1024
+                    else f'{size_bytes / 1024:.0f} KB')
+        lesson_name = os.path.splitext(filename)[0]
+        ext = os.path.splitext(filename)[1].lower()
+        mime_type = MIME_MAP.get(ext, 'application/octet-stream')
+
+        with app.app_context():
+            new_file = File(
+                name=lesson_name,
+                filename=filename,
+                file_type=session['file_type'],
+                size=size_str,
+                content=bytes(file_bytes),
+                mime_type=mime_type,
+                subject_id=session['subject_id'],
+                telegram_file_id=doc.file_id,
+            )
+            db.session.add(new_file)
+            db.session.commit()
+            subject = Subject.query.get(session['subject_id'])
+            subject_name = subject.name if subject else ''
+
+        type_label = 'محاضرة' if session['file_type'] == 'lecture' else 'عمل تطبيقي'
+        user_sessions.pop(chat_id, None)
+
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton('رفع ملف آخر', callback_data='upload_more')],
+            [InlineKeyboardButton('القائمة الرئيسية', callback_data='back_to_list')],
+        ])
+        await update.message.reply_text(
+            f'تم الرفع بنجاح\n\n'
+            f'الملف: {filename}\n'
+            f'المادة: {subject_name}\n'
+            f'النوع: {type_label}\n'
+            f'الحجم: {size_str}',
+            reply_markup=keyboard,
+        )
+    except Exception as e:
+        print(f'[BOT] Error handling document: {e}', flush=True)
+        user_sessions.pop(chat_id, None)
+        await update.message.reply_text('حدث خطأ أثناء رفع الملف. حاول بـ /start')
+
+
+def run_bot():
+    try:
+        from telegram import Update
+        from telegram.ext import (Application, CallbackQueryHandler,
+                                  CommandHandler, MessageHandler, filters)
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        application = Application.builder().token(TG_BOT_TOKEN).build()
+        application.add_handler(CommandHandler('start', cmd_start))
+        application.add_handler(CommandHandler('help', cmd_help))
+        application.add_handler(CommandHandler('cancel', cmd_cancel))
+        application.add_handler(CommandHandler('subjects', cmd_start))
+        application.add_handler(CallbackQueryHandler(on_callback))
+        application.add_handler(MessageHandler(filters.Document.ALL, on_document))
+
+        async def safe_start():
+            try:
+                await application.initialize()
+                await application.start()
+                await application.updater.start_polling(drop_pending_updates=True)
+                print('[BOT] Polling started successfully', flush=True)
+            except Exception as e:
+                print(f'[BOT] Init error: {e}', flush=True)
+
+        loop.run_until_complete(safe_start())
+        loop.run_forever()
+    except Exception as e:
+        print(f'[BOT] Thread crashed: {e}', flush=True)
+
+
+def start_bot_thread():
+    bot_thread = threading.Thread(target=run_bot, daemon=True, name='telegram-bot')
+    bot_thread.start()
+
+
+# ============================================
+# INITIALIZE
+# ============================================
+with app.app_context():
+    db.create_all()
+    if Subject.query.count() == 0:
+        default_subjects = [
+            Subject(name='المحاسبة المالية', icon='fa-calculator'),
+            Subject(name='التمويل الخارجي', icon='fa-money-bill-trend-up'),
+            Subject(name='القانون التجاري', icon='fa-scale-balanced'),
+            Subject(name='الاقتصاد القياسي', icon='fa-chart-line'),
+            Subject(name='اللغة الإنجزية', icon='fa-language'),
+            Subject(name='أساسيات التسويق', icon='fa-bullseye'),
+            Subject(name='المحاسبة التحليلية', icon='fa-chart-pie'),
+            Subject(name='النظام الضريبي', icon='fa-file-invoice-dollar'),
+            Subject(name='نظم المعلومات المحاسبية', icon='fa-database'),
+        ]
+        db.session.add_all(default_subjects)
+        db.session.commit()
+        print('[INIT] Seeded 9 default subjects', flush=True)
+
+if TG_BOT_TOKEN:
+    try:
+        start_bot_thread()
+        print(f'[BOT] Telegram bot thread started with token: {TG_BOT_TOKEN[:10]}...', flush=True)
+    except Exception as e:
+        print(f'[BOT] Failed to start: {e}', flush=True)
+else:
+    print('[BOT] TG_BOT_TOKEN not set - skipping bot startup', flush=True)
+
+print(f'[INIT] University portal backend starting on port {PORT}', flush=True)
+print(f"[INIT] Database: {'postgresql' if DATABASE_URL.startswith('postgresql') else 'sqlite'}", flush=True)
+print(f'[INIT] Admin user: {ADMIN_USER}', flush=True)
+
+
+if __name__ == '__main__':
+    app.run(debug=False, host='0.0.0.0', port=PORT)
