@@ -319,14 +319,27 @@ def serve_static(path):
 # ============================================
 @app.route('/files/<path:filename>')
 def serve_uploaded_file(filename):
-    f = File.query.filter_by(filename=filename).first()
-    if not f or not f.content:
-        return jsonify({'error': 'File not found'}), 404
-    return Response(
-        f.content,
-        mimetype=f.mime_type or 'application/pdf',
-        headers={'Content-Disposition': f'inline; filename="{f.name}"'},
-    )
+    try:
+        f = File.query.filter_by(filename=filename).first()
+        if not f:
+            print(f'[FILE] Not found in DB: {filename}', flush=True)
+            return jsonify({'error': 'File not found'}), 404
+        if not f.content:
+            print(f'[FILE] No content for: {filename} (id={f.id})', flush=True)
+            if f.telegram_file_id:
+                return jsonify({'error': 'File not found', 'hint': 're-upload via telegram bot'}), 404
+            return jsonify({'error': 'File not found'}), 404
+        response = Response(
+            f.content,
+            mimetype=f.mime_type or 'application/pdf',
+        )
+        response.headers['Content-Disposition'] = f'inline; filename="{f.name}"'
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Cache-Control'] = 'public, max-age=3600'
+        return response
+    except Exception as e:
+        print(f'[FILE] Error serving {filename}: {e}', flush=True)
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 # ============================================
@@ -857,11 +870,20 @@ def run_bot():
                 print('[BOT] Polling started successfully', flush=True)
             except Exception as e:
                 print(f'[BOT] Init error: {e}', flush=True)
+                import traceback
+                traceback.print_exc()
 
         loop.run_until_complete(safe_start())
-        loop.run_forever()
+
+        # Keep event loop alive - needed for polling
+        try:
+            loop.run_forever()
+        except (KeyboardInterrupt, SystemExit):
+            print('[BOT] Shutting down...', flush=True)
     except Exception as e:
         print(f'[BOT] Thread crashed: {e}', flush=True)
+        import traceback
+        traceback.print_exc()
 
 
 def start_bot_thread():

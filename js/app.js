@@ -347,7 +347,7 @@ async function handleStudentRegister(e) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'register_failed');
         authFlow.otpEmail = email;
-        showToast('تم التسجيل بنجاح! تم إرسال كود التحقق إلى بريدك', 'success');
+        showToast('تم التسجيل! تحقق من بريدك (وصندوق Spam إذا لم يصل)', 'success');
         showOtpModal();
     } catch (err) {
         const messages = {
@@ -368,7 +368,7 @@ async function handleForgotPassword(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),
         });
-        showToast('تم إرسال كود التحقق إلى بريدك الإلكتروني', 'success');
+        showToast('تم إرسال كود التحقق. تحقق من صندوق الوارد أو مجلد Spam', 'success');
         showOtpModal();
     } catch (err) {
         showToast('تعذر الاتصال بالخادم', 'error');
