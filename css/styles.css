@@ -621,6 +621,12 @@ input { font-family: inherit; }
     background: var(--tdtp-bg) !important; color: var(--tdtp-text);
     border-right: 3px solid var(--tdtp-border);
 }
+.schedule-not-available {
+    text-align: center; padding: 60px 20px; color: var(--text-tertiary);
+}
+.schedule-not-available i { font-size: 2.5rem; margin-bottom: 16px; display: block; opacity: 0.4; }
+.schedule-not-available p { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; }
+.schedule-not-available small { font-size: 0.85rem; opacity: 0.7; }
 
 /* ============================================
    CALCULATOR

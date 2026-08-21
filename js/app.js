@@ -985,6 +985,21 @@ const DAY_LABELS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأ�
 
 function renderSchedule() {
     const tbody = document.getElementById('schedule-body');
+    const isEmpty = !schedule || Object.keys(schedule).length === 0;
+
+    if (isEmpty) {
+        const msg = '<div class="schedule-not-available"><i class="fas fa-calendar-xmark"></i><p>الرزنامة غير متوفرة حالياً</p><small>سيتم إضافة الرزنامة مع بداية الدخول الجامعي</small></div>';
+        tbody.innerHTML = `<tr><td colspan="6" style="border:none; padding:0;">${msg}</td></tr>`;
+        const mobileView = document.getElementById('schedule-mobile-view');
+        if (mobileView) mobileView.innerHTML = msg;
+        const picker = document.getElementById('schedule-day-picker');
+        if (picker) picker.style.display = 'none';
+        return;
+    }
+
+    const picker = document.getElementById('schedule-day-picker');
+    if (picker) picker.style.display = '';
+
     tbody.innerHTML = TIME_SLOTS.map((time, i) => {
         return `<tr>
             <td class="time-col">${time}</td>
