@@ -862,9 +862,14 @@ def run_bot():
         from telegram.ext import (Application, CallbackQueryHandler,
                                   CommandHandler, MessageHandler, filters)
 
+        import traceback as _tb
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        application = Application.builder().token(TG_BOT_TOKEN).build()
+        application = (Application.builder()
+                       .token(TG_BOT_TOKEN)
+                       .bootstrap_retries(5)
+                       .build())
         application.add_handler(CommandHandler('start', cmd_start))
         application.add_handler(CommandHandler('help', cmd_help))
         application.add_handler(CommandHandler('cancel', cmd_cancel))
@@ -876,16 +881,18 @@ def run_bot():
             try:
                 await application.initialize()
                 await application.start()
-                await application.updater.start_polling(drop_pending_updates=True)
+                await application.updater.start_polling(
+                    drop_pending_updates=True,
+                    read_timeout=10,
+                    connect_timeout=10,
+                )
                 print('[BOT] Polling started successfully', flush=True)
             except Exception as e:
                 print(f'[BOT] Init error: {e}', flush=True)
-                import traceback
-                traceback.print_exc()
+                _tb.print_exc()
 
         loop.run_until_complete(safe_start())
 
-        # Keep event loop alive - needed for polling
         try:
             loop.run_forever()
         except (KeyboardInterrupt, SystemExit):
