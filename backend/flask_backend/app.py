@@ -340,7 +340,8 @@ def serve_uploaded_file(filename):
 
         response = Response(content)
         response.headers['Content-Type'] = f.mime_type or 'application/pdf'
-        response.headers['Content-Disposition'] = 'inline; filename="{}"'.format(f.name.replace('"', ''))
+        safe_name = ''.join(c if c.isascii() and c not in '";\\' else '_' for c in f.name)
+        response.headers['Content-Disposition'] = f'inline; filename="{safe_name}.pdf"'
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Cache-Control'] = 'public, max-age=3600'
         print(f'[FILE] Serving {filename} ({len(content)} bytes)', flush=True)
