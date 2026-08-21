@@ -589,6 +589,11 @@ input { font-family: inherit; }
    SCHEDULE TABLE
    ============================================ */
 .schedule-container { overflow-x: auto; }
+
+/* Mobile day picker - hidden on desktop */
+.schedule-day-picker { display: none; }
+.schedule-mobile-view { display: none; }
+
 .schedule-table {
     width: 100%; border-collapse: separate; border-spacing: 0;
     background: var(--bg-card); border-radius: var(--radius-lg);
@@ -821,37 +826,70 @@ input { font-family: inherit; }
     .admin-add-subject { flex-direction: column; }
     .admin-add-subject input { min-width: 100%; }
 
-    /* Schedule mobile - card layout */
-    .schedule-container { overflow-x: visible; -webkit-overflow-scrolling: touch; border-radius: var(--radius-lg); padding: 0; }
-    .schedule-table { display: block; min-width: 0; width: 100%; }
-    .schedule-table thead { display: none; }
-    .schedule-table tbody { display: block; width: 100%; }
-    .schedule-table tr {
-        display: block; background: var(--bg-card); border-radius: var(--radius-lg);
-        border: 1px solid var(--border); margin-bottom: 12px; padding: 12px;
+    /* Schedule mobile - day picker */
+    .schedule-desktop { display: none; }
+    .schedule-day-picker { display: block; margin-bottom: 16px; }
+    .schedule-mobile-view { display: block; }
+    .day-picker-title {
+        font-size: 1rem; font-weight: 700; color: var(--text-primary);
+        margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .day-picker-title i { color: var(--accent); }
+    .day-picker-grid {
+        display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+    }
+    .day-btn {
+        display: flex; flex-direction: column; align-items: center; gap: 6px;
+        padding: 14px 8px; border-radius: var(--radius-lg); border: 2px solid var(--border);
+        background: var(--bg-card); color: var(--text-primary); cursor: pointer;
+        font-size: 0.8rem; font-weight: 600; transition: var(--transition);
+        font-family: inherit;
+    }
+    .day-btn i { font-size: 1.1rem; color: var(--text-secondary); transition: var(--transition); }
+    .day-btn:hover, .day-btn.active {
+        border-color: var(--accent); background: var(--accent-light); color: var(--accent);
+    }
+    .day-btn.active i { color: var(--accent); }
+    .day-btn.has-classes { position: relative; }
+    .day-btn.has-classes::after {
+        content: ''; width: 6px; height: 6px; border-radius: 50%;
+        background: var(--accent); position: absolute; top: 6px; right: 6px;
+    }
+    /* Mobile vertical schedule cards */
+    .schedule-mobile-view .mobile-slot {
+        background: var(--bg-card); border-radius: var(--radius-lg); padding: 14px 16px;
+        border: 1px solid var(--border); margin-bottom: 10px;
         box-shadow: var(--shadow-sm);
     }
-    .schedule-table td {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 8px 10px; border: none; border-bottom: 1px solid var(--border);
-        min-width: 0; font-size: 0.82rem; line-height: 1.5; border-radius: 0;
-        text-align: right;
+    .mobile-slot-time {
+        font-size: 0.78rem; font-weight: 800; color: var(--accent);
+        margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
     }
-    .schedule-table td:last-child { border-bottom: none; }
-    .schedule-table td:empty { display: none; }
-    .schedule-table td::before {
-        content: attr(data-day); font-weight: 700; font-size: 0.7rem;
-        color: var(--accent); min-width: 50px; flex-shrink: 0;
-        text-align: left; margin-left: 8px;
+    .mobile-slot-time i { font-size: 0.7rem; }
+    .mobile-slot-content {
+        font-size: 0.88rem; font-weight: 500; color: var(--text-primary);
+        line-height: 1.6; min-height: 20px;
     }
-    .schedule-table td.time-col {
-        background: var(--accent); color: #fff; font-size: 0.85rem;
-        font-weight: 800; border-radius: var(--radius-md); margin-bottom: 8px;
-        justify-content: center; min-height: 36px;
+    .mobile-slot-content.empty { color: var(--text-tertiary); font-style: italic; font-weight: 400; }
+    .mobile-slot-content.schedule-cell-lecture {
+        border-right: 3px solid var(--lecture-border); padding-right: 10px;
+        background: var(--lecture-bg); padding: 8px 10px; border-radius: var(--radius-sm);
     }
-    .schedule-table td.time-col::before { display: none; }
-    .schedule-table td.time-col:empty { display: block; }
-    .schedule-table tr.empty-row { display: none; }
+    .mobile-slot-content.schedule-cell-tdtp {
+        border-right: 3px solid var(--tdtp-border); padding-right: 10px;
+        background: var(--tdtp-bg); padding: 8px 10px; border-radius: var(--radius-sm);
+    }
+    .mobile-empty {
+        text-align: center; padding: 40px 20px; color: var(--text-tertiary);
+    }
+    .mobile-empty i { font-size: 2rem; margin-bottom: 12px; display: block; opacity: 0.5; }
+    .mobile-empty p { font-size: 0.95rem; }
+    .mobile-day-title {
+        font-size: 1rem; font-weight: 700; color: var(--accent);
+        margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+        padding-bottom: 10px; border-bottom: 2px solid var(--accent-light);
+    }
+    .mobile-day-title i { font-size: 0.9rem; }
 
     /* Exams mobile */
     .exams-container { border-radius: var(--radius-md); }
@@ -875,8 +913,9 @@ input { font-family: inherit; }
     .topbar-title { display: none; }
 
     /* Schedule small mobile */
-    .schedule-table td { padding: 6px 8px; font-size: 0.78rem; }
-    .schedule-table td.time-col { font-size: 0.8rem; padding: 6px; }
+    .day-picker-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .day-btn { padding: 10px 4px; font-size: 0.72rem; }
+    .day-btn i { font-size: 0.95rem; }
 
     /* Exams small mobile */
     .exams-header { padding: 12px; }

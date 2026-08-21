@@ -384,7 +384,21 @@
 
             <!-- ===== SCHEDULE SECTION ===== -->
             <section id="section-schedule" class="section">
-                <div class="schedule-container">
+                <!-- Mobile day picker (hidden on desktop) -->
+                <div class="schedule-day-picker" id="schedule-day-picker">
+                    <div class="day-picker-title"><i class="fas fa-calendar-day"></i> اختر اليوم</div>
+                    <div class="day-picker-grid">
+                        <button class="day-btn" data-day="0" onclick="selectScheduleDay(0)"><i class="fas fa-sun"></i> الأحد</button>
+                        <button class="day-btn" data-day="1" onclick="selectScheduleDay(1)"><i class="fas fa-cloud-sun"></i> الاثنين</button>
+                        <button class="day-btn" data-day="2" onclick="selectScheduleDay(2)"><i class="fas fa-cloud"></i> الثلاثاء</button>
+                        <button class="day-btn" data-day="3" onclick="selectScheduleDay(3)"><i class="fas fa-cloud-rain"></i> الأربعاء</button>
+                        <button class="day-btn" data-day="4" onclick="selectScheduleDay(4)"><i class="fas fa-moon"></i> الخميس</button>
+                    </div>
+                </div>
+                <!-- Mobile vertical schedule (hidden on desktop) -->
+                <div class="schedule-mobile-view" id="schedule-mobile-view"></div>
+                <!-- Desktop table (hidden on mobile) -->
+                <div class="schedule-container schedule-desktop">
                     <table class="schedule-table">
                         <thead>
                             <tr>

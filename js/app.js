@@ -951,25 +951,77 @@ function downloadFile(filename) {
 // ============================================
 // SCHEDULE RENDERING
 // ============================================
+const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
+const DAY_LABELS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
+
 function renderSchedule() {
     const tbody = document.getElementById('schedule-body');
-    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
-    const dayLabels = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
     tbody.innerHTML = TIME_SLOTS.map((time, i) => {
-        const dayCells = days.map((day, di) => {
-            const cell = schedule[`${day}_${i}`] || {};
-            let cls = '';
-            if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
-            if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
-            return { cls, text: cell.text || '', label: dayLabels[di] };
-        });
-        const hasContent = dayCells.some(c => c.text.trim());
-        const rowCls = hasContent ? '' : 'empty-row';
-        return `<tr class="${rowCls}">
+        return `<tr>
             <td class="time-col">${time}</td>
-            ${dayCells.map(c => `<td class="${c.cls}" data-day="${c.label}">${c.text}</td>`).join('')}
+            ${DAYS.map(day => {
+                const cell = schedule[`${day}_${i}`] || {};
+                let cls = '';
+                if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
+                if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
+                return `<td class="${cls}">${cell.text || ''}</td>`;
+            }).join('')}
         </tr>`;
     }).join('');
+    renderMobileDayPicker();
+    renderMobileSchedule();
+}
+
+let selectedScheduleDay = -1;
+
+function renderMobileDayPicker() {
+    const picker = document.getElementById('schedule-day-picker');
+    if (!picker) return;
+    document.querySelectorAll('.day-btn').forEach((btn, i) => {
+        const hasContent = DAYS.some((day, di) => {
+            return TIME_SLOTS.some((_, ti) => {
+                const cell = schedule[`${day}_${ti}`] || {};
+                return cell.text && cell.text.trim();
+            });
+        });
+        const dayHasContent = TIME_SLOTS.some((_, ti) => {
+            const cell = schedule[`${DAYS[i]}_${ti}`] || {};
+            return cell.text && cell.text.trim();
+        });
+        btn.classList.toggle('has-classes', dayHasContent);
+    });
+}
+
+function selectScheduleDay(dayIndex) {
+    selectedScheduleDay = dayIndex;
+    document.querySelectorAll('.day-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === dayIndex);
+    });
+    renderMobileSchedule();
+}
+
+function renderMobileSchedule() {
+    const container = document.getElementById('schedule-mobile-view');
+    if (!container) return;
+    if (selectedScheduleDay < 0) {
+        container.innerHTML = '<div class="mobile-empty"><i class="fas fa-hand-pointer"></i><p>اختر يوماً من الأعلى لعرض جدوله</p></div>';
+        return;
+    }
+    const day = DAYS[selectedScheduleDay];
+    const label = DAY_LABELS[selectedScheduleDay];
+    let html = `<div class="mobile-day-title"><i class="fas fa-calendar-check"></i> جدول ${label}</div>`;
+    TIME_SLOTS.forEach((time, i) => {
+        const cell = schedule[`${day}_${i}`] || {};
+        let cls = '';
+        if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
+        if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
+        const text = cell.text || '';
+        html += `<div class="mobile-slot">
+            <div class="mobile-slot-time"><i class="fas fa-clock"></i> ${time}</div>
+            <div class="mobile-slot-content ${cls} ${!text ? 'empty' : ''}">${text || 'فارغ'}</div>
+        </div>`;
+    });
+    container.innerHTML = html;
 }
 
 // ============================================
