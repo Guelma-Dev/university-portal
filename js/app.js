@@ -204,6 +204,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('user_name', data.username || localStorage.getItem('user_name') || '');
                 document.getElementById('landing-page').classList.add('hidden');
                 document.getElementById('main-app').classList.remove('hidden');
+                document.getElementById('logout-btn').style.display = 'flex';
                 if (APP_STATE.role === 'admin') {
                     document.getElementById('admin-nav-item').style.display = 'flex';
                     document.getElementById('user-badge').innerHTML = '<i class="fas fa-shield-halved"></i><span>مسؤول</span>';
@@ -226,6 +227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     document.getElementById('admin-nav-item').style.display = 'none';
+    document.getElementById('logout-btn').style.display = 'none';
     document.getElementById('user-badge').innerHTML = '<i class="fas fa-eye"></i><span>ضيف</span>';
     applyInitialRoute();
 });
@@ -264,6 +266,7 @@ function enterAsStudent() {
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     document.getElementById('admin-nav-item').style.display = 'none';
+    document.getElementById('logout-btn').style.display = 'none';
     document.getElementById('user-badge').innerHTML = '<i class="fas fa-eye"></i><span>ضيف</span>';
     showToast('مرحباً بك في المنصة (وضع الضيف)', 'info');
     applyInitialRoute();
@@ -354,6 +357,7 @@ function enterStudentSession(username) {
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     document.getElementById('admin-nav-item').style.display = 'none';
+    document.getElementById('logout-btn').style.display = 'flex';
     document.getElementById('user-badge').innerHTML = `<i class="fas fa-user-graduate"></i><span>${username || 'طالب'}</span>`;
     showToast(`مرحباً بك ${username || ''}`, 'success');
     loadSubjectsFromAPI().then(() => { renderSubjects(); updateStats(); });
@@ -513,6 +517,7 @@ function enterAdminSession(restored = false) {
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     document.getElementById('admin-nav-item').style.display = 'flex';
+    document.getElementById('logout-btn').style.display = 'flex';
     document.getElementById('user-badge').innerHTML = '<i class="fas fa-shield-halved"></i><span>مسؤول</span>';
     updateStats();
     prefillTelegramConfig();
@@ -522,11 +527,16 @@ function enterAdminSession(restored = false) {
 }
 
 function adminLogout() {
+    handleLogout();
+}
+
+function handleLogout() {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('user_role');
     localStorage.removeItem('user_name');
     APP_STATE.role = 'guest';
     document.getElementById('admin-nav-item').style.display = 'none';
+    document.getElementById('logout-btn').style.display = 'none';
     document.getElementById('user-badge').innerHTML = '<i class="fas fa-eye"></i><span>ضيف</span>';
     showToast('تم تسجيل الخروج', 'info');
     switchSection('schedule');
