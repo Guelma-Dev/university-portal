@@ -849,19 +849,26 @@ input { font-family: inherit; }
     .pdf-viewer-header { padding: 8px 12px; }
     .pdf-viewer-body { padding: 8px; }
     .detail-tabs { overflow-x: auto; }
-    .stats-grid { grid-template-columns: 1fr 1fr; }
-    .admin-container { padding: 0 8px; }
-    .stat-card { padding: 10px 12px; gap: 10px; }
-    .stat-icon { width: 40px; height: 40px; font-size: 1rem; }
-    .stat-number { font-size: 1.1rem; }
-    .stat-label { font-size: 0.7rem; }
-    .admin-card { margin-bottom: 12px; }
-    .admin-card-header { padding: 10px 14px; gap: 8px; }
-    .admin-card-header i { font-size: 0.95rem; }
-    .admin-card-header h4 { font-size: 0.88rem; }
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .admin-container { padding: 0 12px; }
+    .admin-header { margin-bottom: 16px; gap: 8px; }
+    .admin-header i { font-size: 1.2rem; }
+    .admin-header h3 { font-size: 1.05rem; }
+    .stat-card { padding: 10px; gap: 8px; border-radius: var(--radius-sm); }
+    .stat-icon { width: 36px; height: 36px; font-size: 0.9rem; border-radius: var(--radius-sm); }
+    .stat-number { font-size: 1rem; }
+    .stat-label { font-size: 0.65rem; }
+    .admin-card { margin-bottom: 10px; border-radius: var(--radius-md); }
+    .admin-card-header { padding: 10px 12px; gap: 8px; }
+    .admin-card-header i { font-size: 0.9rem; }
+    .admin-card-header h4 { font-size: 0.85rem; }
     .admin-card form, .admin-card .admin-add-subject { padding: 12px; }
-    .admin-add-subject { flex-direction: column; }
-    .admin-add-subject input { min-width: 100%; }
+    .admin-add-subject { flex-direction: column; gap: 8px; }
+    .admin-add-subject input { min-width: 100%; padding: 10px; font-size: 0.85rem; }
+    .admin-subject-item { padding: 8px 10px; gap: 8px; }
+    .admin-subject-item span { font-size: 0.82rem; }
+    .admin-subject-item .btn-icon { width: 28px; height: 28px; font-size: 0.75rem; }
+    .admin-card .btn-primary { width: 100%; padding: 10px; font-size: 0.85rem; }
     .sched-editor-wrapper { display: none; }
     .sched-save-wrap { display: none; }
     .sched-desktop-only-note {
@@ -956,9 +963,14 @@ input { font-family: inherit; }
     .topbar-title { display: none; }
 
     /* Admin small mobile */
-    .stat-card { padding: 16px; gap: 10px; }
-    .stat-icon { width: 40px; height: 40px; font-size: 1rem; }
-    .stat-number { font-size: 1.1rem; }
+    .stats-grid { gap: 6px; margin-bottom: 12px; }
+    .stat-card { padding: 8px; gap: 6px; }
+    .stat-icon { width: 32px; height: 32px; font-size: 0.8rem; }
+    .stat-number { font-size: 0.9rem; }
+    .stat-label { font-size: 0.6rem; }
+    .admin-container { padding: 0 8px; }
+    .admin-card-header { padding: 8px 10px; }
+    .admin-card form, .admin-card .admin-add-subject { padding: 10px; }
 
     /* Schedule small mobile */
     .day-picker-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; }
