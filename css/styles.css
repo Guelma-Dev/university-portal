@@ -815,6 +815,89 @@ input { font-family: inherit; }
 .sched-editor-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* ============================================
+   POMODORO TIMER WIDGET
+   ============================================ */
+.pomo-fab {
+    position: fixed; bottom: 24px; right: 24px; z-index: 1500;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; box-shadow: var(--shadow-lg);
+    transition: var(--transition); font-family: inherit;
+}
+.pomo-fab:hover { transform: scale(1.08); }
+.pomo-fab.running { animation: pomoPulse 2s ease infinite; }
+@keyframes pomoPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
+    50% { box-shadow: 0 0 0 12px rgba(99,102,241,0); }
+}
+.pomo-fab-time {
+    position: absolute; top: -8px; left: -8px;
+    background: var(--bg-card); color: var(--text-primary);
+    font-size: 0.62rem; font-weight: 800; padding: 2px 6px;
+    border-radius: 10px; border: 1px solid var(--border);
+}
+.pomo-fab-time.hidden { display: none; }
+
+.pomo-panel {
+    position: fixed; bottom: 92px; right: 24px; z-index: 1500;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px;
+    width: 260px; box-shadow: var(--shadow-xl);
+    animation: slideUp 0.3s ease;
+}
+.pomo-panel.hidden { display: none; }
+.pomo-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; font-size: 0.88rem; font-weight: 700;
+}
+.pomo-header i { color: var(--accent); margin-left: 6px; }
+.pomo-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-tertiary); font-size: 0.9rem; padding: 4px;
+}
+.pomo-modes {
+    display: flex; gap: 6px; margin-bottom: 14px;
+    background: var(--bg-tertiary); padding: 4px; border-radius: 10px;
+}
+.pomo-mode {
+    flex: 1; padding: 7px; border: none; border-radius: 8px;
+    background: transparent; color: var(--text-secondary);
+    font-family: inherit; font-size: 0.78rem; font-weight: 700;
+    cursor: pointer; transition: var(--transition);
+}
+.pomo-mode.active { background: var(--accent); color: #fff; }
+.pomo-display { position: relative; width: 130px; height: 130px; margin: 0 auto 8px; }
+.pomo-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+.pomo-ring-bg { fill: none; stroke: var(--border); stroke-width: 6; }
+.pomo-ring-progress {
+    fill: none; stroke: var(--accent); stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 283; stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+}
+.pomo-display.break-mode .pomo-ring-progress { stroke: #22c55e; }
+.pomo-time {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    font-size: 1.5rem; font-weight: 800;
+    font-variant-numeric: tabular-nums; direction: ltr;
+}
+.pomo-count {
+    text-align: center; font-size: 0.72rem; color: var(--text-tertiary);
+    margin-bottom: 12px;
+}
+.pomo-controls { display: flex; gap: 8px; }
+.pomo-btn { flex: 1; padding: 10px !important; font-size: 0.85rem !important; }
+.pomo-btn.btn-ghost { flex: 0 0 48px; }
+
+@media (max-width: 480px) {
+    .pomo-fab { bottom: 20px; right: 16px; width: 50px; height: 50px; font-size: 1.15rem; }
+    .pomo-panel { bottom: 82px; right: 16px; width: calc(100vw - 32px); max-width: 280px; }
+}
+
+/* ============================================
    TOAST NOTIFICATIONS
    ============================================ */
 .toast-container {

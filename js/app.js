@@ -1260,6 +1260,110 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ============================================
+// POMODORO TIMER
+// ============================================
+const POMO_DURATIONS = { study: 25 * 60, break: 5 * 60 };
+let pomoState = {
+    mode: 'study',
+    remaining: POMO_DURATIONS.study,
+    running: false,
+    interval: null,
+    completed: parseInt(localStorage.getItem('pomo_completed') || '0'),
+};
+
+function togglePomo() {
+    document.getElementById('pomo-panel').classList.toggle('hidden');
+}
+
+function setPomoMode(mode) {
+    if (pomoState.running) stopPomoTick();
+    pomoState.mode = mode;
+    pomoState.remaining = POMO_DURATIONS[mode];
+    document.getElementById('pomo-mode-study').classList.toggle('active', mode === 'study');
+    document.getElementById('pomo-mode-break').classList.toggle('active', mode === 'break');
+    updatePomoUI();
+}
+
+function startPomo() {
+    if (pomoState.running) {
+        stopPomoTick();
+        return;
+    }
+    pomoState.running = true;
+    document.getElementById('pomo-fab').classList.add('running');
+    document.getElementById('pomo-start-btn').innerHTML = '<i class="fas fa-pause"></i> إيقاف مؤقت';
+    pomoState.interval = setInterval(pomoTick, 1000);
+}
+
+function stopPomoTick() {
+    pomoState.running = false;
+    clearInterval(pomoState.interval);
+    document.getElementById('pomo-fab').classList.remove('running');
+    document.getElementById('pomo-start-btn').innerHTML = '<i class="fas fa-play"></i> ابدأ';
+}
+
+function resetPomo() {
+    stopPomoTick();
+    pomoState.remaining = POMO_DURATIONS[pomoState.mode];
+    updatePomoUI();
+}
+
+function pomoTick() {
+    pomoState.remaining--;
+    if (pomoState.remaining <= 0) {
+        pomoSessionDone();
+        return;
+    }
+    updatePomoUI();
+}
+
+function pomoSessionDone() {
+    stopPomoTick();
+    playPomoBeep();
+    if (pomoState.mode === 'study') {
+        pomoState.completed++;
+        localStorage.setItem('pomo_completed', pomoState.completed);
+        showToast('انتهت جلسة الدراسة! خذ 5 دقائق راحة ☕', 'success');
+        setPomoMode('break');
+    } else {
+        showToast('انتهت الراحة! جاهز لجلسة دراسة جديدة 💪', 'info');
+        setPomoMode('study');
+    }
+    startPomo();
+}
+
+function playPomoBeep() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [0, 0.3, 0.6].forEach(delay => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.value = 880; osc.type = 'sine';
+            gain.gain.setValueAtTime(0.3, ctx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + delay + 0.2);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + 0.2);
+        });
+    } catch (e) {}
+}
+
+function updatePomoUI() {
+    const m = Math.floor(pomoState.remaining / 60);
+    const s = pomoState.remaining % 60;
+    const timeStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    document.getElementById('pomo-time').textContent = timeStr;
+    const fabTime = document.getElementById('pomo-fab-time');
+    fabTime.textContent = timeStr;
+    fabTime.classList.remove('hidden');
+    document.getElementById('pomo-count').textContent = `جلسات مكتملة: ${pomoState.completed}`;
+    const total = POMO_DURATIONS[pomoState.mode];
+    const progress = 283 * (1 - pomoState.remaining / total);
+    document.getElementById('pomo-ring').style.strokeDashoffset = progress;
+    document.querySelector('.pomo-display').classList.toggle('break-mode', pomoState.mode === 'break');
+}
+
+// ============================================
 // LMD GPA CALCULATOR v2
 // ============================================
 let calcData = JSON.parse(localStorage.getItem('lmd_calc_v2') || '{"sem1":[],"sem2":[]}');
