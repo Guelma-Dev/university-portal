@@ -1363,5 +1363,34 @@ print(f"[INIT] Database: {'postgresql' if DATABASE_URL.startswith('postgresql') 
 print(f'[INIT] Admin user: {ADMIN_USER}', flush=True)
 
 
+# ---------------------------------------------------------------------------
+# Keep-alive: free-tier Render sleeps after ~15 idle minutes, and the first
+# student to arrive then eats a ~50s cold start. A daemon thread taps our own
+# public health endpoint every 60s so the instance stays warm around the clock.
+# Disable with env KEEP_ALIVE=0.
+# ---------------------------------------------------------------------------
+KEEP_ALIVE_URL = os.environ.get('RENDER_EXTERNAL_URL', 'https://university-portal-gv78.onrender.com')
+
+
+def _keep_alive_loop():
+    while True:
+        time.sleep(60)
+        try:
+            requests.get(f'{KEEP_ALIVE_URL}/api/health', timeout=10)
+        except Exception:
+            pass
+
+
+if os.environ.get('KEEP_ALIVE', '1') != '0':
+    _ka = threading.Thread(target=_keep_alive_loop, daemon=True, name='keep-alive')
+    _ka.start()
+    print(f'[INIT] Keep-alive pinging {KEEP_ALIVE_URL}/api/health every 60s', flush=True)
+
+
+@app.route('/api/health', methods=['GET'])
+def health():
+    return jsonify({'ok': True})
+
+
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=PORT)
