@@ -1431,6 +1431,136 @@ async function progresFetch(path, params = '') {
     return res.json();
 }
 
+function progresCardLabel(c) {
+    const niveau = c.niveauLibelleLongAr || c.niveauLibelleLongLt || '';
+    const year = c.anneeAcademiqueCode || '';
+    return [niveau, year].filter(Boolean).join(' — ') || `بطاقة ${c.id}`;
+}
+
+function progresCardHasData(r) {
+    const t = r.transcripts.status === 'fulfilled' ? r.transcripts.value : [];
+    const e = r.exams.status === 'fulfilled' ? r.exams.value : [];
+    const c = r.cc.status === 'fulfilled' ? r.cc.value : [];
+    return (Array.isArray(t) && t.length) || (Array.isArray(e) && e.length) || (Array.isArray(c) && c.length);
+}
+
+async function fetchProgresCardData(cardId) {
+    const results = await Promise.allSettled([
+        progresFetch(`transcripts/${cardId}`),
+        progresFetch(`exams/${cardId}`),
+        progresFetch(`cc/${cardId}`),
+        progresFetch(`annual/${cardId}`),
+    ]);
+    return { transcripts: results[0], exams: results[1], cc: results[2], annual: results[3] };
+}
+
+function renderTranscripts(bilans) {
+    if (!Array.isArray(bilans) || !bilans.length) return '';
+    let html = '<h4 class="grades-section-title"><i class="fas fa-list-check"></i> كشف النقاط</h4>';
+    html += bilans.map(t => `
+        <div class="transcript-card">
+            <div class="transcript-header">
+                <span class="period-name">${t.periodeLibelleAr || t.periodeLibelleFr || ''}</span>
+                <span class="avg-badge ${t.moyenne >= 10 ? 'pass' : 'fail'}">${t.moyenne != null ? Number(t.moyenne).toFixed(2) : '--'}</span>
+            </div>
+            <div class="transcript-meta">
+                <span><i class="fas fa-coins"></i> الأرصدة المحصلة: ${t.creditAcquis ?? '--'}</span>
+            </div>
+            ${(t.bilanUes || []).map(ue => {
+                const mcs = ue.bilanMcs || [];
+                return `
+                <details class="ue-details" ${mcs.length ? '' : 'open'}>
+                    <summary class="ue-row">
+                        <span class="ue-name">${ue.ueNatureLcAr || ''} ${ue.ueLibelleAr || ''}</span>
+                        <span class="ue-avg ${ue.moyenne >= 10 ? 'grade-pass' : 'grade-fail'}">${ue.moyenne != null ? Number(ue.moyenne).toFixed(2) : '--'}</span>
+                        <span class="ue-credit">${ue.creditAcquis ?? 0}/${ue.credit ?? '--'}</span>
+                    </summary>
+                    <div class="mc-list">
+                        ${mcs.map(mc => `
+                            <div class="mc-row">
+                                <span class="mc-name">${mc.mcLibelleAr || mc.mcLibelleFr || ''}</span>
+                                <span>معامل ${mc.coefficient ?? '-'}</span>
+                                <span class="${mc.moyenneGenerale >= 10 ? 'grade-pass' : 'grade-fail'}">${mc.moyenneGenerale != null ? mc.moyenneGenerale : '--'}</span>
+                                <span class="ue-credit">رصيد ${mc.creditObtenu ?? 0}</span>
+                            </div>
+                        `).join('') || '<div class="mc-row"><span class="ue-name">لا توجد مواد</span></div>'}
+                    </div>
+                </details>`;
+            }).join('')}
+        </div>
+    `).join('');
+    return html;
+}
+
+function renderExamTable(exams) {
+    if (!Array.isArray(exams) || !exams.length) return '';
+    return `<h4 class="grades-section-title"><i class="fas fa-file-pen"></i> نقاط الامتحانات</h4>
+        <div class="grades-table-wrap"><table class="exam-table"><thead><tr><th>المادة</th><th>الدورة</th><th>النقطة</th><th>المعامل</th></tr></thead><tbody>
+        ${exams.map(g => `
+            <tr>
+                <td>${g.mcLibelleAr || g.mcLibelleFr || ''}</td>
+                <td>${g.planningSessionIntitule || '-'}</td>
+                <td class="${g.noteExamen != null && g.noteExamen < 10 ? 'grade-fail' : 'grade-pass'}">${g.noteExamen ?? '--'}</td>
+                <td>${g.rattachementMcCoefficient ?? '--'}</td>
+            </tr>`).join('')}
+        </tbody></table></div>`;
+}
+
+function renderCcGroups(cc) {
+    if (!Array.isArray(cc) || !cc.length) return '';
+    const byPeriod = {};
+    cc.forEach(g => {
+        const p = g.llPeriodeAr || g.llPeriode || '-';
+        (byPeriod[p] = byPeriod[p] || []).push(g);
+    });
+    return `<h4 class="grades-section-title"><i class="fas fa-pen-ruler"></i> نقاط التحكم المستمر (TD/TP)</h4>` +
+        Object.entries(byPeriod).map(([period, grades]) => `
+            <p class="cc-period">${period}</p>
+            <div class="grades-table-wrap"><table class="exam-table"><thead><tr><th>المادة</th><th>النوع</th><th>النقطة</th></tr></thead><tbody>
+            ${grades.map(g => `
+                <tr>
+                    <td>${g.rattachementMcMcLibelleAr || g.rattachementMcMcLibelleFr || ''}</td>
+                    <td>${g.apCode || '-'}</td>
+                    <td class="${g.absent ? 'grade-fail' : (g.note != null && g.note < 10 ? 'grade-fail' : 'grade-pass')}">${g.absent ? 'غائب' : (g.note ?? '--')}</td>
+                </tr>`).join('')}
+            </tbody></table></div>`).join('');
+}
+
+function renderAnnual(annual, cardLabel) {
+    if (!annual || annual.status !== 'fulfilled' || !Array.isArray(annual.value) || !annual.value.length) return '';
+    const a = annual.value[0];
+    return `<div class="annual-banner">
+        <div>
+            <strong>${a.typeDecisionLibelleAr || a.typeDecisionLibelleFr || ''}</strong>
+            <span>النتيجة السنوية — ${cardLabel}</span>
+        </div>
+        <div class="annual-stats">
+            <span class="avg-badge ${a.moyenne >= 10 ? 'pass' : 'fail'}">${a.moyenne != null ? Number(a.moyenne).toFixed(2) : '--'}</span>
+            <span class="annual-credit">${a.creditAcquis ?? 0} رصيد</span>
+        </div>
+    </div>`;
+}
+
+function renderStudentId(card) {
+    if (!card) return '';
+    const row = (label, value) => value ? `<div class="idc-row"><span>${label}</span><strong>${value}</strong></div>` : '';
+    return `<h4 class="grades-section-title"><i class="fas fa-id-card"></i> بطاقة الطالب</h4>
+        <div class="student-id-card">
+            <div class="idc-header">
+                <span>${card.llEtablissementArabe || card.llEtablissementLatin || ''}</span>
+                <span>${card.anneeAcademiqueCode || ''}</span>
+            </div>
+            <div class="idc-name">
+                <strong>${card.individuNomArabe || card.individuNomLatin || ''} ${card.individuPrenomArabe || card.individuPrenomLatin || ''}</strong>
+                <span>${card.niveauLibelleLongAr || card.niveauLibelleLongLt || ''}</span>
+            </div>
+            ${row('الشعبة', card.ofLlFiliereArabe || card.ofLlFiliere)}
+            ${row('تاريخ الميلاد', card.individuDateNaissance)}
+            ${row('مكان الميلاد', card.individuLieuNaissanceArabe || card.individuLieuNaissance)}
+            ${row('رقم التسجيل', card.numeroInscription)}
+        </div>`;
+}
+
 async function loadProgresGrades() {
     const content = document.getElementById('grades-content');
     if (!content) return;
@@ -1449,69 +1579,43 @@ async function loadProgresGrades() {
         }
 
         const select = document.getElementById('grades-card-select');
-        select.innerHTML = cards.map((c, i) => {
-            const label = c.libelleLongFr || c.libelleLongAr || c.id || `بطاقة ${i + 1}`;
-            const year = c.anneeUnivId ? ` (${c.anneeUnivId}/${Number(c.anneeUnivId) + 1})` : '';
-            return `<option value="${c.id}">${label}${year}</option>`;
-        }).join('');
-        const savedCard = session.selectedCard;
-        if (savedCard && cards.some(c => String(c.id) === String(savedCard))) {
-            select.value = savedCard;
+        select.innerHTML = cards.map(c => `<option value="${c.id}">${progresCardLabel(c)}</option>`).join('');
+        let cardId = session.selectedCard && cards.some(c => String(c.id) === String(session.selectedCard))
+            ? String(session.selectedCard)
+            : String(cards[0].id);
+
+        let data = await fetchProgresCardData(cardId);
+        let notice = '';
+        if (!progresCardHasData(data)) {
+            for (const other of cards) {
+                if (String(other.id) === String(cardId)) continue;
+                const alt = await fetchProgresCardData(String(other.id));
+                if (progresCardHasData(alt)) {
+                    data = alt;
+                    cardId = String(other.id);
+                    notice = `<div class="grades-notice"><i class="fas fa-circle-info"></i> لا توجد نقاط منشورة لهذه السنة بعد — هذه نقاط <strong>${progresCardLabel(other)}</strong></div>`;
+                    break;
+                }
+            }
         }
-        const cardId = select.value;
+        select.value = cardId;
         session.selectedCard = cardId;
         setProgresSession(session);
 
-        const [transcripts, exams, cc] = await Promise.allSettled([
-            progresFetch(`transcripts/${cardId}`),
-            progresFetch(`exams/${cardId}`),
-            progresFetch(`cc/${cardId}`),
-        ]);
+        const selectedCard = cards.find(c => String(c.id) === String(cardId));
+        const cardLabel = selectedCard ? progresCardLabel(selectedCard) : '';
 
-        let html = '';
-        if (transcripts.status === 'fulfilled' && Array.isArray(transcripts.value) && transcripts.value.length) {
-            html += '<h4 class="grades-section-title"><i class="fas fa-list-check"></i> كشف الأعداد</h4>';
-            html += transcripts.value.map(t => `
-                <div class="transcript-card">
-                    <div class="transcript-header">
-                        <span class="period-name">${t.periodeLibelleAr || t.periodeLibelleFr || ''}</span>
-                        <span class="avg-badge ${t.moyenne >= 10 ? 'pass' : 'fail'}">${t.moyenne != null ? t.moyenne.toFixed(2) : '--'}</span>
-                    </div>
-                    <div class="transcript-meta">
-                        <span>الأرصدة المحصلة: ${t.creditAcquis ?? t.creditObtenu ?? '--'} / ${t.credit ?? '--'}</span>
-                    </div>
-                    ${(t.bilanUes || []).map(ue => `
-                        <div class="ue-row">
-                            <span class="ue-name">${ue.ueLibelleAr || ue.ueLibelleFr || ue.codeUe || ''}</span>
-                            <span class="ue-avg">${ue.moyenne != null ? ue.moyenne.toFixed(2) : '--'}</span>
-                            <span class="ue-credit">رصيد: ${ue.creditAcquis ?? '--'}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            `).join('');
+        content.innerHTML = notice
+            + renderStudentId(selectedCard)
+            + renderAnnual(data.annual, cardLabel)
+            + renderTranscripts(data.transcripts.status === 'fulfilled' ? data.transcripts.value : [])
+            + renderExamTable(data.exams.status === 'fulfilled' ? data.exams.value : [])
+            + renderCcGroups(data.cc.status === 'fulfilled' ? data.cc.value : [])
+            || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط منشورة في أي سنة بعد</p></div>';
+
+        if (!(notice + content.innerHTML).trim()) {
+            content.innerHTML = '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط منشورة بعد</p></div>';
         }
-        if (exams.status === 'fulfilled' && Array.isArray(exams.value) && exams.value.length) {
-            html += '<h4 class="grades-section-title"><i class="fas fa-file-pen"></i> نقاط الامتحانات</h4>';
-            html += '<div class="grades-table-wrap"><table class="exam-table"><thead><tr><th>المادة</th><th>النقطة</th><th>المعامل</th></tr></thead><tbody>' +
-                exams.value.map(g => `
-                    <tr>
-                        <td>${g.mcLibelleAr || g.mcLibelleFr || ''}</td>
-                        <td class="${g.noteExamen != null && g.noteExamen < 10 ? 'grade-fail' : 'grade-pass'}">${g.noteExamen != null ? g.noteExamen : '--'}</td>
-                        <td>${g.rattachementMcCoefficient ?? '--'}</td>
-                    </tr>
-                `).join('') + '</tbody></table></div>';
-        }
-        if (cc.status === 'fulfilled' && Array.isArray(cc.value) && cc.value.length) {
-            html += '<h4 class="grades-section-title"><i class="fas fa-pen-ruler"></i> نقاط التحكم المستمر</h4>';
-            html += '<div class="grades-table-wrap"><table class="exam-table"><thead><tr><th>المادة</th><th>النقطة</th></tr></thead><tbody>' +
-                cc.value.map(g => `
-                    <tr>
-                        <td>${g.mcLibelleAr || g.mcLibelleFr || ''}</td>
-                        <td class="${g.noteCC != null && g.noteCC < 10 ? 'grade-fail' : 'grade-pass'}">${g.noteCC != null ? g.noteCC : '--'}</td>
-                    </tr>
-                `).join('') + '</tbody></table></div>';
-        }
-        content.innerHTML = html || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>النقاط غير منشورة بعد لهذه الفترة</p></div>';
     } catch (e) {
         if (e.message === 'status-401') {
             progresLogout();
@@ -1534,9 +1638,6 @@ function renderGradesSection() {
     }
 }
 
-// ============================================
-// LMD GPA CALCULATOR v2
-// ============================================
 let calcData = JSON.parse(localStorage.getItem('lmd_calc_v2') || '{"sem1":[],"sem2":[]}');
 
 function saveCalc() {

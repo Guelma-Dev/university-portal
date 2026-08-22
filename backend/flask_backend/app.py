@@ -635,6 +635,17 @@ def progres_cc_grades(card_id):
     return _progres_request('GET', f'/api/infos/controleContinue/dia/{card_id}/notesCC', token=token)
 
 
+@app.route('/api/progres/annual/<card_id>', methods=['GET'])
+def progres_annual(card_id):
+    if not rate_limit('progres_fetch', 30, 60):
+        return jsonify({'error': 'طلبات كثيرة، انتظر قليلاً'}), 429
+    token = request.headers.get('Authorization', '')
+    uuid = request.args.get('uuid', '')
+    if not token or len(token) > 2000 or not uuid or not card_id.isdigit():
+        return jsonify({'error': 'طلب غير صالح'}), 400
+    return _progres_request('GET', f'/api/infos/bac/{uuid}/dia/{card_id}/annuel/bilan', token=token)
+
+
 # ============================================
 # SCHEDULE API (public GET, admin POST)
 # ============================================

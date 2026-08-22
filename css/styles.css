@@ -1908,3 +1908,79 @@ input { font-family: inherit; }
 .grade-pass { font-weight: 700; color: #22c55e; }
 .grade-fail { font-weight: 700; color: #ef4444; }
 
+
+/* Progres: nested MCs, notices, annual, ID card */
+.ue-details summary { cursor: pointer; list-style: none; }
+.ue-details summary::-webkit-details-marker { display: none; }
+.mc-list { padding: 4px 12px 8px 0; }
+.mc-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    margin-bottom: 5px;
+    font-size: 0.84rem;
+}
+.mc-name { font-weight: 600; }
+.grades-notice {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background: rgba(59,130,246,0.1);
+    border: 1px solid rgba(59,130,246,0.35);
+    color: var(--text-primary);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+}
+.grades-notice i { color: #3b82f6; }
+.cc-period { font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); margin: 14px 0 8px; }
+.annual-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, rgba(34,197,94,0.12), rgba(59,130,246,0.08));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+.annual-banner strong { display: block; font-size: 0.98rem; }
+.annual-banner span { font-size: 0.78rem; color: var(--text-secondary); }
+.annual-stats { display: flex; align-items: center; gap: 10px; }
+.annual-credit { font-size: 0.82rem !important; font-weight: 700; }
+.student-id-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 22px;
+}
+.idc-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-weight: 700;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--accent);
+    margin-bottom: 12px;
+}
+.idc-name { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.idc-name strong { font-size: 1.05rem; }
+.idc-name span { font-size: 0.8rem; color: var(--text-secondary); }
+.idc-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 0;
+    border-top: 1px dashed var(--border);
+    font-size: 0.84rem;
+}
+.idc-row span { color: var(--text-secondary); }
+.idc-row strong { text-align: left; }
