@@ -849,15 +849,16 @@ input { font-family: inherit; }
     .pdf-viewer-header { padding: 8px 12px; }
     .pdf-viewer-body { padding: 8px; }
     .detail-tabs { overflow-x: auto; }
-    .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
     .admin-container { padding: 0 12px; }
     .admin-header { margin-bottom: 16px; gap: 8px; }
     .admin-header i { font-size: 1.2rem; }
     .admin-header h3 { font-size: 1.05rem; }
-    .stat-card { padding: 10px; gap: 8px; border-radius: var(--radius-sm); }
-    .stat-icon { width: 36px; height: 36px; font-size: 0.9rem; border-radius: var(--radius-sm); }
-    .stat-number { font-size: 1rem; }
-    .stat-label { font-size: 0.65rem; }
+    .stat-card { padding: 8px 10px; gap: 8px; border-radius: var(--radius-sm); align-items: center; min-width: 0; }
+    .stat-icon { width: 32px; height: 32px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0; }
+    .stat-info { min-width: 0; }
+    .stat-number { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stat-label { font-size: 0.62rem; }
     .admin-card { margin-bottom: 10px; border-radius: var(--radius-md); }
     .admin-card-header { padding: 10px 12px; gap: 8px; }
     .admin-card-header i { font-size: 0.9rem; }
@@ -963,11 +964,11 @@ input { font-family: inherit; }
     .topbar-title { display: none; }
 
     /* Admin small mobile */
-    .stats-grid { gap: 6px; margin-bottom: 12px; }
-    .stat-card { padding: 8px; gap: 6px; }
-    .stat-icon { width: 32px; height: 32px; font-size: 0.8rem; }
-    .stat-number { font-size: 0.9rem; }
-    .stat-label { font-size: 0.6rem; }
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .stat-card { padding: 6px 8px; gap: 6px; }
+    .stat-icon { width: 28px; height: 28px; font-size: 0.75rem; }
+    .stat-number { font-size: 0.85rem; }
+    .stat-label { font-size: 0.58rem; }
     .admin-container { padding: 0 8px; }
     .admin-card-header { padding: 8px 10px; }
     .admin-card form, .admin-card .admin-add-subject { padding: 10px; }
