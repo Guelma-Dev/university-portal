@@ -2105,3 +2105,62 @@ input { font-family: inherit; }
     .grades-notice { font-size: 0.8rem; padding: 10px 12px; }
     .grades-section-title { font-size: 0.92rem; }
 }
+
+/* ===== FORCED MOBILE SHRINK — student ID card (user-specified) ===== */
+@media (max-width: 768px) {
+  /* 1. Force main containers never to exceed screen width */
+  #grades-content, 
+  .student-id-card, 
+  .idc-body, 
+  .idc-info {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  /* 2. Single-column inner structure */
+  .idc-body {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 15px !important;
+  }
+
+  /* 3. Photo centered above data */
+  .idc-photo {
+    width: 90px !important;
+    height: 110px !important;
+    margin: 0 auto !important;
+  }
+
+  /* 4. Data list takes full width, one item per line */
+  .idc-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    text-align: right !important;
+  }
+
+  /* 5. No broken or clipped text */
+  .idc-info div, .idc-info p, .idc-info span {
+    white-space: normal !important;
+    word-break: break-word !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* Companion: let the photo wrapper size itself so the img centers freely */
+  .idc-photo-box {
+    width: auto !important;
+    height: auto !important;
+    display: flex !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+  .idc-avatar {
+    position: static !important;
+    width: 90px !important;
+    height: 110px !important;
+  }
+}
