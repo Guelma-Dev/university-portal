@@ -505,7 +505,15 @@ PROGRES_RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2
 _progres_client = httpx.Client(
     timeout=30,
     headers={
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36',
         'Accept': 'application/json',
+    },
+)
+# Separate client for binary endpoints (image/logo) — Progres rejects them
+# when they carry "Accept: application/json".
+_progres_binary_client = httpx.Client(
+    timeout=30,
+    headers={
         'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36',
     },
 )
@@ -644,6 +652,52 @@ def progres_annual(card_id):
     if not token or len(token) > 2000 or not uuid or not card_id.isdigit():
         return jsonify({'error': 'طلب غير صالح'}), 400
     return _progres_request('GET', f'/api/infos/bac/{uuid}/dia/{card_id}/annuel/bilan', token=token)
+
+
+def _progres_binary(path: str, token: str):
+    """Fetch binary content (photo/logo) via relay then direct."""
+    targets = [
+        (PROGRES_RELAY_URL, {'X-Relay-Key': PROGRES_RELAY_KEY}),
+        (PROGRES_DIRECT, {}),
+    ]
+    for base, extra in targets:
+        try:
+            r = _progres_binary_client.get(f'{base}{path}', headers={'authorization': token, **extra})
+            if r.status_code == 200:
+                mt = r.headers.get('Content-Type', 'application/octet-stream').split(';')[0]
+                return Response(r.content, status=200, mimetype=mt)
+            return jsonify({'error': 'غير متوفر'}), 404
+        except Exception as e:
+            app.logger.error('Progres binary %s failed via %s: %s', path, base, type(e).__name__)
+    return jsonify({'error': 'خوادم بروقرس لا تستجيب حالياً'}), 502
+
+
+@app.route('/api/progres/photo', methods=['GET'])
+def progres_photo():
+    if not rate_limit('progres_fetch', 30, 60):
+        return jsonify({'error': 'طلبات كثيرة، انتظر قليلاً'}), 429
+    token = request.headers.get('Authorization', '')
+    uuid = request.args.get('uuid', '')
+    if not token or len(token) > 2000 or not uuid or len(uuid) > 100:
+        return jsonify({'error': 'طلب غير صالح'}), 400
+    return _progres_binary(f'/api/infos/image/{uuid}', token)
+
+
+@app.route('/api/progres/logo/<etab_id>', methods=['GET'])
+def progres_logo(etab_id):
+    if not rate_limit('progres_fetch', 30, 60):
+        return jsonify({'error': 'طلبات كثيرة، انتظر قليلاً'}), 429
+    token = request.headers.get('Authorization', '')
+    if not token or len(token) > 2000 or not etab_id.isdigit():
+        return jsonify({'error': 'طلب غير صالح'}), 400
+    r = _progres_binary(f'/api/infos/logoEtablissement/{etab_id}', token)
+    if isinstance(r, Response) and r.status_code == 200:
+        try:
+            png = base64.b64decode(r.get_data())
+            return Response(png, status=200, mimetype='image/png')
+        except Exception:
+            pass
+    return r
 
 
 # ============================================

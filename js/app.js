@@ -1407,7 +1407,7 @@ async function handleProgresLogin(event) {
             return;
         }
         // Keep ONLY token+uuid in sessionStorage; password is discarded here
-        setProgresSession({ token: data.token, uuid: data.uuid, name: data.userName || username });
+        setProgresSession({ token: data.token, uuid: data.uuid, etab: data.etablissementId, name: data.userName || username });
         document.getElementById('progres-password').value = '';
         renderGradesSection();
         loadProgresGrades();
@@ -1547,18 +1547,59 @@ function renderStudentId(card) {
     return `<h4 class="grades-section-title"><i class="fas fa-id-card"></i> بطاقة الطالب</h4>
         <div class="student-id-card">
             <div class="idc-header">
+                <img id="idc-logo" class="idc-logo" alt="">
                 <span>${card.llEtablissementArabe || card.llEtablissementLatin || ''}</span>
                 <span>${card.anneeAcademiqueCode || ''}</span>
             </div>
-            <div class="idc-name">
-                <strong>${card.individuNomArabe || card.individuNomLatin || ''} ${card.individuPrenomArabe || card.individuPrenomLatin || ''}</strong>
-                <span>${card.niveauLibelleLongAr || card.niveauLibelleLongLt || ''}</span>
+            <div class="idc-body">
+                <div class="idc-info">
+                    <div class="idc-name">
+                        <strong>${card.individuNomArabe || card.individuNomLatin || ''} ${card.individuPrenomArabe || card.individuPrenomLatin || ''}</strong>
+                        <span>${card.niveauLibelleLongAr || card.niveauLibelleLongLt || ''}</span>
+                    </div>
+                    ${row('الشعبة', card.ofLlFiliereArabe || card.ofLlFiliere)}
+                    ${row('تاريخ الميلاد', card.individuDateNaissance)}
+                    ${row('مكان الميلاد', card.individuLieuNaissanceArabe || card.individuLieuNaissance)}
+                    ${row('رقم التسجيل', card.numeroInscription)}
+                </div>
+                <img id="idc-photo" class="idc-photo" alt="صورة الطالب">
             </div>
-            ${row('الشعبة', card.ofLlFiliereArabe || card.ofLlFiliere)}
-            ${row('تاريخ الميلاد', card.individuDateNaissance)}
-            ${row('مكان الميلاد', card.individuLieuNaissanceArabe || card.individuLieuNaissance)}
-            ${row('رقم التسجيل', card.numeroInscription)}
         </div>`;
+}
+
+let progresPhotoUrl = null;
+
+async function loadProgresImages() {
+    const session = getProgresSession();
+    if (!session) return;
+    const photo = document.getElementById('idc-photo');
+    if (photo) {
+        try {
+            const res = await fetch(`${API_BASE}/api/progres/photo?uuid=${encodeURIComponent(session.uuid)}`, {
+                headers: { Authorization: session.token },
+            });
+            if (res.ok) {
+                const blob = await res.blob();
+                if (progresPhotoUrl) URL.revokeObjectURL(progresPhotoUrl);
+                progresPhotoUrl = URL.createObjectURL(blob);
+                photo.src = progresPhotoUrl;
+            } else {
+                photo.closest('.student-id-card')?.classList.add('no-photo');
+            }
+        } catch (e) { /* photo optional */ }
+    }
+    const logo = document.getElementById('idc-logo');
+    if (logo && session.etab && !logo.src) {
+        try {
+            const res = await fetch(`${API_BASE}/api/progres/logo/${session.etab}`, {
+                headers: { Authorization: session.token },
+            });
+            if (res.ok) {
+                const blob = await res.blob();
+                logo.src = URL.createObjectURL(blob);
+            }
+        } catch (e) { /* logo optional */ }
+    }
 }
 
 async function loadProgresGrades() {
@@ -1616,6 +1657,7 @@ async function loadProgresGrades() {
         if (!(notice + content.innerHTML).trim()) {
             content.innerHTML = '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط منشورة بعد</p></div>';
         }
+        loadProgresImages();
     } catch (e) {
         if (e.message === 'status-401') {
             progresLogout();

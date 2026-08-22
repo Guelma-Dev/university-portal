@@ -1984,3 +1984,18 @@ input { font-family: inherit; }
 }
 .idc-row span { color: var(--text-secondary); }
 .idc-row strong { text-align: left; }
+
+/* Student ID card photo + logo */
+.idc-body { display: flex; gap: 16px; align-items: flex-start; }
+.idc-info { flex: 1; min-width: 0; }
+.idc-photo {
+    width: 92px;
+    height: 110px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 2px solid var(--accent);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+.student-id-card.no-photo .idc-photo { display: none; }
+.idc-logo { height: 34px; max-width: 90px; object-fit: contain; }
