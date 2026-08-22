@@ -541,7 +541,128 @@ def _progres_request(method: str, path: str, token: str = None, json_body: dict 
         except Exception as e:
             last_desc = f'{base} {type(e).__name__}'
             app.logger.error('Progres %s %s via %s failed: %s', method, path, base, type(e).__name__)
-    return jsonify({'error': 'خوادم بروقرس لا تستجيب حالياً، حاول لاحقاً'}), 502
+    resp = jsonify({'error': 'خوادم الوزارة غير متاحة حالياً، حاول لاحقاً'})
+    resp.status_code = 502
+    return resp
+
+
+# ---------------------------------------------------------------------------
+# Progres cache + token vault
+# Ministry servers are only reachable through a fragile bridge, so every
+# successful fetch is persisted in Postgres. When the bridge is down we serve
+# the last known good data instead of failing the student's session.
+# Passwords are NEVER stored; only short-lived ministry JWTs (<=24h) are kept.
+# ---------------------------------------------------------------------------
+PROGRES_CACHE_TTL = {
+    'cards': 2 * 3600,
+    'bilans': 6 * 3600,
+    'exams': 6 * 3600,
+    'cc': 6 * 3600,
+    'annual': 6 * 3600,
+    'bac': 24 * 3600,
+    'photo': 7 * 24 * 3600,
+    'logo': 30 * 24 * 3600,
+}
+
+
+def _cache_get(key: str, ttl: int):
+    try:
+        with db.engine.connect() as c:
+            row = c.execute(
+                db.text('SELECT payload, content_type, created_at FROM progres_cache WHERE cache_key = :k'),
+                {'k': key},
+            ).fetchone()
+        if not row:
+            return None
+        created = row[2]
+        if isinstance(created, str):
+            try:
+                created = datetime.fromisoformat(created)
+            except ValueError:
+                return None
+        if datetime.utcnow() - created > timedelta(seconds=ttl):
+            return None
+        return {'payload': row[0], 'content_type': row[1] or 'application/json'}
+    except Exception as e:
+        app.logger.error('cache get %s: %s', key[:48], type(e).__name__)
+        return None
+
+
+def _cache_set(key: str, payload: str, content_type: str):
+    try:
+        with db.engine.connect() as c:
+            c.execute(db.text('''INSERT INTO progres_cache (cache_key, payload, content_type, created_at)
+                VALUES (:k, :p, :ct, :ts)
+                ON CONFLICT (cache_key) DO UPDATE SET payload = :p, content_type = :ct, created_at = :ts'''),
+                {'k': key, 'p': payload, 'ct': content_type, 'ts': datetime.utcnow()})
+            c.commit()
+    except Exception as e:
+        app.logger.error('cache set %s: %s', key[:48], type(e).__name__)
+
+
+def _vault_save(uuid_: str, token: str, expires_iso: str):
+    try:
+        exp = datetime.fromisoformat(expires_iso.replace('Z', '+00:00')).replace(tzinfo=None)
+    except Exception:
+        exp = datetime.utcnow() + timedelta(hours=23)
+    try:
+        with db.engine.connect() as c:
+            c.execute(db.text('''INSERT INTO progres_tokens (uuid, token, expires_at, updated_at)
+                VALUES (:u, :t, :e, :ts)
+                ON CONFLICT (uuid) DO UPDATE SET token = :t, expires_at = :e, updated_at = :ts'''),
+                {'u': uuid_, 't': token, 'e': exp, 'ts': datetime.utcnow()})
+            c.commit()
+    except Exception as e:
+        app.logger.error('token vault save: %s', type(e).__name__)
+
+
+def _vault_has(token: str) -> bool:
+    try:
+        with db.engine.connect() as c:
+            row = c.execute(db.text('SELECT expires_at FROM progres_tokens WHERE token = :t'), {'t': token}).fetchone()
+        if not row:
+            return False
+        exp = row[0]
+        if isinstance(exp, str):
+            exp = datetime.fromisoformat(exp)
+        return exp > datetime.utcnow() + timedelta(minutes=5)
+    except Exception as e:
+        app.logger.error('token vault check: %s', type(e).__name__)
+        return False
+
+
+def _progres_cached_json(kind: str, cache_key: str, path: str, token: str):
+    """Serve ministry JSON through the bridge with DB fallback on outage."""
+    cached = _cache_get(cache_key, PROGRES_CACHE_TTL[kind])
+    resp = _progres_request('GET', path, token=token)
+    if resp.status_code == 200:
+        _cache_set(cache_key, resp.get_data(as_text=True), 'application/json')
+        resp.headers['X-Cache'] = 'miss'
+        return resp
+    if resp.status_code != 401 and cached:
+        r = Response(cached['payload'], status=200, mimetype='application/json')
+        r.headers['X-Cache'] = 'stale'
+        return r
+    return resp
+
+
+def _progres_cached_binary(kind: str, cache_key: str, path: str, token: str):
+    """Same fallback contract for photos/logos (stored base64-encoded)."""
+    cached = _cache_get(cache_key, PROGRES_CACHE_TTL[kind])
+    resp = _progres_binary(path, token)
+    if resp.status_code == 200:
+        _cache_set(cache_key, base64.b64encode(resp.get_data()).decode('ascii'), resp.mimetype or 'image/jpeg')
+        resp.headers['X-Cache'] = 'miss'
+        return resp
+    if resp.status_code != 401 and cached:
+        try:
+            data = base64.b64decode(cached['payload'])
+            r = Response(data, status=200, mimetype=cached['content_type'])
+            r.headers['X-Cache'] = 'stale'
+            return r
+        except Exception:
+            pass
+    return resp
 
 
 @app.route('/api/progres/login', methods=['POST'])
@@ -560,10 +681,20 @@ def progres_login():
         return jsonify({'error': 'أدخل اسم المستخدم وكلمة المرور'}), 400
 
     try:
-        return _progres_request('POST', '/api/authentication/v1/', json_body={'username': username, 'password': password})
+        resp = _progres_request('POST', '/api/authentication/v1/', json_body={'username': username, 'password': password})
+        if resp.status_code == 200:
+            try:
+                d = json.loads(resp.get_data(as_text=True))
+                if d.get('token') and d.get('uuid'):
+                    _vault_save(str(d['uuid'])[:100], str(d['token'])[:2000], d.get('expirationDate', ''))
+            except Exception:
+                pass
+        return resp
     except Exception as e:
         app.logger.error('Progres login failed: %s: %s', type(e).__name__, str(e)[:200])
-        return jsonify({'error': 'خوادم بروقرس لا تستجيب حالياً، حاول لاحقاً'}), 502
+        resp = jsonify({'error': 'خوادم الوزارة غير متاحة حالياً — إن كنت دخلت سابقاً فقد تجد بياناتك محفوظة، وجرّب لاحقاً للتحديث'})
+        resp.status_code = 502
+        return resp
 
 
 @app.route('/api/progres/debug', methods=['GET'])
@@ -598,7 +729,7 @@ def progres_me():
         return jsonify({'error': 'جلسة غير صالحة'}), 401
     if not request.args.get('uuid'):
         return jsonify({'error': 'uuid مطلوب'}), 400
-    return _progres_request('GET', f"/api/infos/bac/{request.args.get('uuid')}/individu", token=token)
+    return _progres_cached_json('bac', f"me:{request.args.get('uuid')}", f"/api/infos/bac/{request.args.get('uuid')}/individu", token)
 
 
 @app.route('/api/progres/cards', methods=['GET'])
@@ -609,7 +740,7 @@ def progres_cards():
     uuid = request.args.get('uuid', '')
     if not token or len(token) > 2000 or not uuid or len(uuid) > 100:
         return jsonify({'error': 'جلسة غير صالحة'}), 401
-    return _progres_request('GET', f'/api/infos/bac/{uuid}/dias', token=token)
+    return _progres_cached_json('cards', f'cards:{uuid}', f'/api/infos/bac/{uuid}/dias', token)
 
 
 @app.route('/api/progres/transcripts/<card_id>', methods=['GET'])
@@ -620,7 +751,7 @@ def progres_transcripts(card_id):
     uuid = request.args.get('uuid', '')
     if not token or len(token) > 2000 or not uuid or not card_id.isdigit():
         return jsonify({'error': 'طلب غير صالح'}), 400
-    return _progres_request('GET', f'/api/infos/bac/{uuid}/dias/{card_id}/periode/bilans', token=token)
+    return _progres_cached_json('bilans', f'bilans:{uuid}:{card_id}', f'/api/infos/bac/{uuid}/dias/{card_id}/periode/bilans', token)
 
 
 @app.route('/api/progres/exams/<card_id>', methods=['GET'])
@@ -630,7 +761,7 @@ def progres_exam_grades(card_id):
     token = request.headers.get('Authorization', '')
     if not token or len(token) > 2000 or not card_id.isdigit():
         return jsonify({'error': 'طلب غير صالح'}), 400
-    return _progres_request('GET', f'/api/infos/planningSession/dia/{card_id}/noteExamens', token=token)
+    return _progres_cached_json('exams', f'exams:{card_id}', f'/api/infos/planningSession/dia/{card_id}/noteExamens', token)
 
 
 @app.route('/api/progres/cc/<card_id>', methods=['GET'])
@@ -640,7 +771,7 @@ def progres_cc_grades(card_id):
     token = request.headers.get('Authorization', '')
     if not token or len(token) > 2000 or not card_id.isdigit():
         return jsonify({'error': 'طلب غير صالح'}), 400
-    return _progres_request('GET', f'/api/infos/controleContinue/dia/{card_id}/notesCC', token=token)
+    return _progres_cached_json('cc', f'cc:{card_id}', f'/api/infos/controleContinue/dia/{card_id}/notesCC', token)
 
 
 @app.route('/api/progres/annual/<card_id>', methods=['GET'])
@@ -651,7 +782,7 @@ def progres_annual(card_id):
     uuid = request.args.get('uuid', '')
     if not token or len(token) > 2000 or not uuid or not card_id.isdigit():
         return jsonify({'error': 'طلب غير صالح'}), 400
-    return _progres_request('GET', f'/api/infos/bac/{uuid}/dia/{card_id}/annuel/bilan', token=token)
+    return _progres_cached_json('annual', f'annual:{uuid}:{card_id}', f'/api/infos/bac/{uuid}/dia/{card_id}/annuel/bilan', token)
 
 
 def _decode_possible_base64_image(data: bytes):
@@ -690,13 +821,19 @@ def _progres_binary(path: str, token: str):
                 decoded = _decode_possible_base64_image(data)
                 if decoded:
                     return Response(decoded[0], status=200, mimetype=decoded[1])
-                return jsonify({'error': 'غير متوفر'}), 404
+                resp = jsonify({'error': 'غير متوفر'})
+                resp.status_code = 404
+                return resp
             last_status = r.status_code
             if r.status_code == 404:
-                return jsonify({'error': 'غير متوفر'}), 404
+                resp = jsonify({'error': 'غير متوفر'})
+                resp.status_code = 404
+                return resp
         except Exception as e:
             app.logger.error('Progres binary %s failed via %s: %s', path, base, type(e).__name__)
-    return jsonify({'error': 'خوادم بروقرس لا تستجيب حالياً'}), 502
+    resp = jsonify({'error': 'خوادم الوزارة غير متاحة حالياً'})
+    resp.status_code = 502
+    return resp
 
 
 @app.route('/api/progres/photo', methods=['GET'])
@@ -707,7 +844,7 @@ def progres_photo():
     uuid = request.args.get('uuid', '')
     if not token or len(token) > 2000 or not uuid or len(uuid) > 100:
         return jsonify({'error': 'طلب غير صالح'}), 400
-    return _progres_binary(f'/api/infos/image/{uuid}', token)
+    return _progres_cached_binary('photo', f'photo:{uuid}', f'/api/infos/image/{uuid}', token)
 
 
 @app.route('/api/progres/logo/<etab_id>', methods=['GET'])
@@ -717,7 +854,7 @@ def progres_logo(etab_id):
     token = request.headers.get('Authorization', '')
     if not token or len(token) > 2000 or not etab_id.isdigit():
         return jsonify({'error': 'طلب غير صالح'}), 400
-    r = _progres_binary(f'/api/infos/logoEtablissement/{etab_id}', token)
+    r = _progres_cached_binary('logo', f'logo:{etab_id}', f'/api/infos/logoEtablissement/{etab_id}', token)
     if isinstance(r, Response) and r.status_code == 200:
         try:
             png = base64.b64decode(r.get_data())
@@ -1333,6 +1470,21 @@ def start_bot_thread():
 # ============================================
 with app.app_context():
     db.create_all()
+    try:
+        with db.engine.connect() as _c:
+            _c.execute(db.text('''CREATE TABLE IF NOT EXISTS progres_cache (
+                cache_key TEXT PRIMARY KEY,
+                payload TEXT NOT NULL,
+                content_type TEXT,
+                created_at TIMESTAMP)'''))
+            _c.execute(db.text('''CREATE TABLE IF NOT EXISTS progres_tokens (
+                uuid TEXT PRIMARY KEY,
+                token TEXT NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                updated_at TIMESTAMP)'''))
+            _c.commit()
+    except Exception as e:
+        app.logger.error('progres cache tables init: %s', e)
     if Subject.query.count() == 0:
         default_subjects = [
             Subject(name='المحاسبة المالية', icon='fa-calculator'),
