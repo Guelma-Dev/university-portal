@@ -776,6 +776,7 @@ input { font-family: inherit; }
 .admin-add-subject input { flex: 1; min-width: 200px; }
 
 /* Schedule Editor (Admin) — same look as schedule-table */
+.sched-desktop-only-note { display: none; }
 .sched-edit-table td {
     padding: 10px 6px;
 }
@@ -861,9 +862,12 @@ input { font-family: inherit; }
     .admin-card form, .admin-card .admin-add-subject { padding: 12px; }
     .admin-add-subject { flex-direction: column; }
     .admin-add-subject input { min-width: 100%; }
-    .sched-edit-table td { padding: 6px 4px; }
-    .sched-edit-input { padding: 5px 6px; font-size: 0.75rem; }
-    .sched-edit-select { padding: 3px 4px; font-size: 0.68rem; }
+    .sched-editor-wrapper { display: none; }
+    .sched-save-wrap { display: none; }
+    .sched-desktop-only-note {
+        display: block; padding: 12px; text-align: center;
+        font-size: 0.82rem; color: var(--text-tertiary);
+    }
 
     /* Schedule mobile - day picker */
     .schedule-desktop { display: none; }
