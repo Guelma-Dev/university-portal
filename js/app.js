@@ -1566,41 +1566,73 @@ function renderStudentId(card) {
                     ${row('مكان الميلاد', card.individuLieuNaissanceArabe || card.individuLieuNaissance)}
                     ${row('رقم التسجيل', card.numeroInscription)}
                 </div>
-                <img id="idc-photo" class="idc-photo" alt="صورة الطالب">
+                <div class="idc-photo-box">
+                    <span class="idc-avatar">${(card.individuPrenomArabe || card.individuPrenomLatin || '?').trim().charAt(0)}</span>
+                    <img id="idc-photo" class="idc-photo" alt="">
+                </div>
             </div>
         </div>`;
 }
 
 let progresPhotoUrl = null;
 
-async function loadProgresImages() {
-    const session = getProgresSession();
-    if (!session) return;
-    const photo = document.getElementById('idc-photo');
-    if (photo) {
+async function fetchProgresPhotoWithRetry(session, attempts = 3) {
+    for (let i = 0; i < attempts; i++) {
         try {
             const res = await fetch(`${API_BASE}/api/progres/photo?uuid=${encodeURIComponent(session.uuid)}`, {
                 headers: { Authorization: session.token },
             });
-            if (res.ok) {
-                const blob = await res.blob();
-                if (progresPhotoUrl) URL.revokeObjectURL(progresPhotoUrl);
-                progresPhotoUrl = URL.createObjectURL(blob);
-                photo.src = progresPhotoUrl;
+            if (!res.ok) {
+                console.error('[progres-photo] فشل الطلب، الكود:', res.status);
+                try { console.error('[progres-photo] نص الخطأ:', (await res.text()).slice(0, 120)); } catch (e) {}
             } else {
-                photo.closest('.student-id-card')?.classList.add('no-photo');
+                const buf = await res.arrayBuffer();
+                const b = new Uint8Array(buf);
+                // Sniff real format from magic bytes — headers can lie
+                let mime = '';
+                if (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) mime = 'image/jpeg';
+                else if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) mime = 'image/png';
+                console.log(`[progres-photo] محاولة ${i + 1}: ${res.status} | ${buf.byteLength} بايت | نوع مكتشف: ${mime || 'غير معروف'}`);
+                if (mime && buf.byteLength >= 500) {
+                    return new Blob([buf], { type: mime });
+                }
             }
-        } catch (e) { /* photo optional */ }
+        } catch (e) {
+            console.error('[progres-photo] استثناء:', e.message);
+        }
+        await new Promise(r => setTimeout(r, 1200 * (i + 1)));
+    }
+    return null;
+}
+
+async function loadProgresImages() {
+    const session = getProgresSession();
+    if (!session) return;
+    if (document.getElementById('idc-photo')) {
+        const blob = await fetchProgresPhotoWithRetry(session);
+        const live = document.getElementById('idc-photo');
+        if (!live) return;
+        const box = live.closest('.idc-photo-box');
+        if (blob) {
+            if (progresPhotoUrl) URL.revokeObjectURL(progresPhotoUrl);
+            progresPhotoUrl = URL.createObjectURL(blob);
+            live.onload = () => box?.classList.remove('photo-failed');
+            live.onerror = () => box?.classList.add('photo-failed');
+            live.src = progresPhotoUrl;
+        } else {
+            box?.classList.add('photo-failed');
+        }
     }
     const logo = document.getElementById('idc-logo');
-    if (logo && session.etab && !logo.src) {
+    if (logo && session.etab && !logo.dataset.tried) {
+        logo.dataset.tried = '1';
         try {
             const res = await fetch(`${API_BASE}/api/progres/logo/${session.etab}`, {
                 headers: { Authorization: session.token },
             });
             if (res.ok) {
                 const blob = await res.blob();
-                logo.src = URL.createObjectURL(blob);
+                if (blob.type.startsWith('image/')) logo.src = URL.createObjectURL(blob);
             }
         } catch (e) { /* logo optional */ }
     }
