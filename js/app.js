@@ -602,23 +602,19 @@ function showGuestRestriction() {
     modal.className = 'modal-overlay';
     modal.id = 'guest-restriction-modal';
     modal.innerHTML = `
-        <div class="modal-card" style="max-width: 420px;">
-            <div class="modal-header">
-                <i class="fas fa-lock" style="color: var(--accent); font-size: 2rem;"></i>
-                <h3>هذا القسم مخصص للطلبة المسجلين</h3>
-                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">يرجى تسجيل الدخول أو إنشاء حساب للوصول إلى المحاضرات وملفات الـ TD/TP</p>
+        <div class="modal-card guest-restriction-card" style="max-width: 380px; text-align: center;">
+            <div style="width: 72px; height: 72px; border-radius: 50%; background: var(--accent-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                <i class="fas fa-lock" style="font-size: 1.8rem; color: var(--accent);"></i>
             </div>
-            <div style="display: flex; gap: 12px; padding: 0 24px 24px;">
-                <button class="btn btn-primary" style="flex: 1;" onclick="document.getElementById('guest-restriction-modal').remove(); showStudentLogin();">
-                    <i class="fas fa-right-to-bracket"></i> تسجيل الدخول
-                </button>
-                <button class="btn btn-register" style="flex: 1;" onclick="document.getElementById('guest-restriction-modal').remove(); showStudentRegister();">
-                    <i class="fas fa-user-plus"></i> إنشاء حساب
-                </button>
-            </div>
-            <div style="text-align: center; padding: 0 24px 16px;">
-                <button class="btn btn-ghost btn-full" onclick="document.getElementById('guest-restriction-modal').remove()">إلغاء</button>
-            </div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 8px;">مخصص للطلبة المسجلين</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 24px; line-height: 1.5;">سجّل دخولك للوصول إلى المحاضرات وملفات الـ TD/TP</p>
+            <button class="btn btn-primary btn-full" style="margin-bottom: 10px;" onclick="document.getElementById('guest-restriction-modal').remove(); showStudentLogin();">
+                <i class="fas fa-right-to-bracket"></i> تسجيل الدخول
+            </button>
+            <button class="btn btn-register btn-full" style="margin-bottom: 10px;" onclick="document.getElementById('guest-restriction-modal').remove(); showStudentRegister();">
+                <i class="fas fa-user-plus"></i> إنشاء حساب جديد
+            </button>
+            <button class="btn btn-ghost btn-full" onclick="document.getElementById('guest-restriction-modal').remove()">إلغاء</button>
         </div>
     `;
     document.body.appendChild(modal);

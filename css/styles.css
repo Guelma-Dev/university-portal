@@ -848,16 +848,21 @@ input { font-family: inherit; }
     .detail-tabs { overflow-x: auto; }
     .stats-grid { grid-template-columns: 1fr 1fr; }
     .admin-container { padding: 0 8px; }
-    .stat-card { padding: 14px 16px; gap: 12px; }
-    .admin-card { margin-bottom: 16px; }
-    .admin-card-header { padding: 14px 16px; }
+    .stat-card { padding: 10px 12px; gap: 10px; }
+    .stat-icon { width: 40px; height: 40px; font-size: 1rem; }
+    .stat-number { font-size: 1.1rem; }
+    .stat-label { font-size: 0.7rem; }
+    .admin-card { margin-bottom: 12px; }
+    .admin-card-header { padding: 10px 14px; gap: 8px; }
+    .admin-card-header i { font-size: 0.95rem; }
+    .admin-card-header h4 { font-size: 0.88rem; }
     .admin-card form, .admin-card .admin-add-subject { padding: 12px; }
     .admin-add-subject { flex-direction: column; }
     .admin-add-subject input { min-width: 100%; }
-    .sched-editor-table { font-size: 0.8rem; }
-    .sched-editor-table th { padding: 8px 4px; font-size: 0.72rem; }
-    .sched-editor-table td { padding: 4px 3px; }
-    .sched-input { padding: 6px 6px; font-size: 0.75rem; }
+    .sched-editor-table { font-size: 0.75rem; }
+    .sched-editor-table th { padding: 6px 4px; font-size: 0.7rem; }
+    .sched-editor-table td { padding: 3px 2px; }
+    .sched-input { padding: 5px 5px; font-size: 0.72rem; }
 
     /* Schedule mobile - day picker */
     .schedule-desktop { display: none; }
@@ -1672,11 +1677,7 @@ input { font-family: inherit; }
 }
 
 /* Guest Restriction Modal */
-.guest-restriction-modal .modal-card {
-    text-align: center;
-}
-.guest-restriction-modal .modal-card .modal-header h3 {
-    font-size: 1.1rem;
-    margin-top: 12px;
-    color: var(--text-primary);
+.guest-restriction-card .btn { padding: 12px 20px; font-size: 0.9rem; }
+@media (max-width: 480px) {
+    .guest-restriction-card { padding: 24px 20px !important; max-width: 90vw !important; }
 }
