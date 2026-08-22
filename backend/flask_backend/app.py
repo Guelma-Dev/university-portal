@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import json
 import os
+import random
 import secrets
 import string
 import threading
@@ -44,7 +45,19 @@ JWT_EXP_SECONDS = 30 * 24 * 60 * 60  # tokens expire after 30 days
 ADMIN_PASS_HASH = hashlib.sha256(ADMIN_PASS.encode()).hexdigest()
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
-CORS(app)
+SITE_ORIGIN = os.environ.get('SITE_ORIGIN', 'https://university-portal-gv78.onrender.com')
+CORS(app, origins=[SITE_ORIGIN], supports_credentials=False)
+
+
+@app.after_request
+def set_security_headers(resp):
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['X-Frame-Options'] = 'DENY'
+    resp.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    resp.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+    if request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https':
+        resp.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return resp
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -122,33 +135,48 @@ def admin_required(f):
 
 
 # ============================================
-# SIMPLE RATE LIMITER (per-IP, in-memory)
+# RATE LIMITER (DB-backed — works across workers)
 # ============================================
-_rate_limit_buckets = {}
-_rate_limit_lock = threading.Lock()
+class RateLimitHit(db.Model):
+    __tablename__ = 'rate_limit_hits'
+    id = db.Column(db.Integer, primary_key=True)
+    bucket = db.Column(db.String(200), index=True)
+    ts = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
-def rate_limit(key_prefix: str, max_attempts: int, window_seconds: int):
-    """Return True if allowed, False if limit exceeded."""
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
-    now = time.time()
+
+def get_client_ip() -> str:
+    """Prefer CF-Connecting-IP (set by Cloudflare, cannot be spoofed)."""
+    cf_ip = request.headers.get('CF-Connecting-IP')
+    if cf_ip:
+        return cf_ip.strip()
+    xff = request.headers.get('X-Forwarded-For', '')
+    if xff:
+        return xff.split(',')[0].strip()
+    return request.remote_addr or 'unknown'
+
+
+def rate_limit(key_prefix: str, max_attempts: int, window_seconds: int) -> bool:
+    """Return True if allowed, False if limit exceeded. Shared across workers via DB."""
+    ip = get_client_ip()
+    now = datetime.utcnow()
+    cutoff = now - timedelta(seconds=window_seconds)
     key = f'{key_prefix}:{ip}'
-    with _rate_limit_lock:
-        bucket = _rate_limit_buckets.get(key)
-        if not bucket:
-            _rate_limit_buckets[key] = [now]
-            # occasional cleanup
-            if len(_rate_limit_buckets) > 10000:
-                cutoff = now - window_seconds * 5
-                for k in list(_rate_limit_buckets.keys()):
-                    _rate_limit_buckets[k] = [t for t in _rate_limit_buckets[k] if t > cutoff]
-                    if not _rate_limit_buckets[k]:
-                        del _rate_limit_buckets[k]
-            return True
-        bucket[:] = [t for t in bucket if t > now - window_seconds]
-        if len(bucket) >= max_attempts:
+    try:
+        hits = RateLimitHit.query.filter(
+            RateLimitHit.bucket == key,
+            RateLimitHit.ts > cutoff,
+        ).count()
+        if hits >= max_attempts:
             return False
-        bucket.append(now)
+        db.session.add(RateLimitHit(bucket=key))
+        # occasional cleanup of old rows
+        if random.random() < 0.05:
+            RateLimitHit.query.filter(RateLimitHit.ts < now - timedelta(hours=2)).delete()
+        db.session.commit()
         return True
+    except Exception:
+        db.session.rollback()
+        return True  # fail open rather than block legitimate users
 
 
 # ============================================
@@ -497,16 +525,20 @@ def save_schedule():
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.get_json(silent=True) or {}
-    email = (data.get('email') or '').strip().lower()
-    username = (data.get('username') or '').strip()
+    email = data.get('email')
+    username = data.get('username')
     password = data.get('password', '')
 
+    if not all(isinstance(x, str) for x in (email, username, password)):
+        return jsonify({'error': 'بيانات غير صحيحة'}), 400
+    email = email.strip().lower()
+    username = username.strip()
     if not email or not username or not password:
         return jsonify({'error': 'جميع الحقول مطلوبة'}), 400
     if len(password) < 6:
         return jsonify({'error': 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'}), 400
-    if '@' not in email:
-        return jsonify({'error': 'بريد إلكتروني غير صالح'}), 400
+    if '@' not in email or len(email) > 200 or len(username) > 50:
+        return jsonify({'error': 'بيانات غير صالحة'}), 400
 
     existing_user = User.query.filter_by(email=email).first()
     if existing_user and existing_user.is_verified:
@@ -558,11 +590,15 @@ def register():
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     data = request.get_json(silent=True) or {}
-    login_id = (data.get('email') or data.get('username') or '').strip()
+    raw_login = data.get('email') or data.get('username') or ''
     password = data.get('password', '')
 
-    if not login_id or not password:
-        return jsonify({'error': 'أدخل البريد الإلكتروني وكلمة المرور'}), 400
+    # Strict type validation — reject non-string payloads with 400, never 500
+    if not isinstance(raw_login, str) or not isinstance(password, str):
+        return jsonify({'error': 'بيانات غير صحيحة'}), 400
+    login_id = raw_login.strip()
+    if not login_id or not password or len(login_id) > 200 or len(password) > 200:
+        return jsonify({'error': 'أدخل بيانات صحيحة'}), 400
 
     # Rate limit: 5 login attempts per minute per IP
     if not rate_limit('login', 5, 60):
@@ -604,9 +640,12 @@ def forgot_password():
         return jsonify({'error': 'محاولات كثيرة جداً، انتظر 10 دقائق وأعد المحاولة'}), 429
 
     data = request.get_json(silent=True) or {}
-    email = (data.get('email') or '').strip().lower()
+    email = data.get('email')
 
-    if not email:
+    if not isinstance(email, str):
+        return jsonify({'error': 'بيانات غير صحيحة'}), 400
+    email = email.strip().lower()
+    if not email or len(email) > 200:
         return jsonify({'error': 'أدخل البريد الإلكتروني'}), 400
 
     user = User.query.filter_by(email=email).first()
@@ -639,9 +678,13 @@ def verify_otp():
         return jsonify({'error': 'محاولات كثيرة جداً، انتظر 15 دقيقة وأعد المحاولة'}), 429
 
     data = request.get_json(silent=True) or {}
-    email = (data.get('email') or '').strip().lower()
-    otp_code = (data.get('otp') or '').strip()
+    email = data.get('email')
+    otp_code = data.get('otp')
 
+    if not isinstance(email, str) or not isinstance(otp_code, str):
+        return jsonify({'error': 'بيانات غير صحيحة'}), 400
+    email = email.strip().lower()
+    otp_code = otp_code.strip()
     if not email or not otp_code:
         return jsonify({'error': 'أدخل البريد الإلكتروني وكود التحقق'}), 400
 
@@ -649,14 +692,27 @@ def verify_otp():
     if not user:
         return jsonify({'error': 'بريد غير مسجل'}), 404
 
+    # Count recent failed OTP attempts for this email (cross-worker, DB-backed).
+    now = datetime.utcnow()
+    fail_key = f'otp_fail:{email}'
+    recent_fails = RateLimitHit.query.filter(
+        RateLimitHit.bucket == fail_key,
+        RateLimitHit.ts > now - timedelta(minutes=15),
+    ).count()
+
     token = PasswordResetToken.query.filter_by(
         user_id=user.id, otp_code=otp_code, used=False
     ).order_by(PasswordResetToken.id.desc()).first()
 
-    if not token:
+    if not token or token.expires_at < now:
+        db.session.add(RateLimitHit(bucket=fail_key))
+        # After 5 wrong codes, invalidate all active tokens for this email
+        if recent_fails + 1 >= 5:
+            PasswordResetToken.query.filter_by(user_id=user.id, used=False).update({'used': True})
+            db.session.commit()
+            return jsonify({'error': 'محاولات كثيرة خاطئة، اطلب كوداً جديداً'}), 429
+        db.session.commit()
         return jsonify({'error': 'كود التحقق غير صحيح'}), 400
-    if token.expires_at < datetime.utcnow():
-        return jsonify({'error': 'انتهت صلاحية الكود، اطلب كوداً جديداً'}), 400
 
     # Mark as used
     token.used = True
