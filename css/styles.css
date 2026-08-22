@@ -1999,3 +1999,109 @@ input { font-family: inherit; }
 }
 .student-id-card.no-photo .idc-photo { display: none; }
 .idc-logo { height: 34px; max-width: 90px; object-fit: contain; }
+
+/* ===== MOBILE COMPACT CARD UI — My Grades & Student ID ===== */
+@media (max-width: 768px) {
+    /* Toolbar: stack selector + logout vertically */
+    .grades-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .grades-toolbar .card-select { width: 100%; }
+    .grades-toolbar .btn { width: 100%; justify-content: center; }
+
+    /* Student ID card: compact vertical layout */
+    .student-id-card {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 14px 12px;
+    }
+    .idc-header {
+        flex-wrap: wrap;
+        gap: 6px;
+        font-size: 0.72rem;
+    }
+    .idc-header span:first-of-type { flex: 1 1 auto; min-width: 0; }
+    .idc-body {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    /* Name + specialty stacked neatly beside the photo */
+    .idc-info {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .idc-name {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 3px;
+        margin-bottom: 4px;
+    }
+    .idc-name strong { font-size: 0.95rem; word-break: break-word; }
+    .idc-name span { font-size: 0.78rem; }
+    /* Each data row stretches across full width */
+    .idc-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        padding: 6px 0;
+        border-bottom: 1px dashed var(--border);
+        font-size: 0.85rem;
+        gap: 8px;
+    }
+    .idc-row:last-child { border-bottom: none; }
+    .idc-row span { white-space: nowrap; }
+    .idc-row strong {
+        text-align: left;
+        word-break: break-word;
+        max-width: 62%;
+        font-weight: 600;
+    }
+    /* Photo sized for phones */
+    .idc-photo-box,
+    .idc-photo-box .idc-photo {
+        width: 75px !important;
+        height: 90px !important;
+        flex-shrink: 0;
+    }
+
+    /* Transcripts & annual result cards */
+    .transcript-card,
+    .annual-banner {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 12px;
+    }
+    .transcript-header { flex-wrap: wrap; gap: 8px; }
+    .period-name { font-size: 0.88rem; }
+    .avg-badge { min-width: 48px; padding: 5px 9px; font-size: 0.84rem; }
+    .ue-row { flex-wrap: wrap; font-size: 0.82rem; padding: 8px 0; }
+    .ue-name { min-width: 0; word-break: break-word; }
+    .mc-row {
+        grid-template-columns: minmax(0, 1fr) auto auto auto;
+        gap: 6px;
+        font-size: 0.8rem;
+        padding: 7px 8px;
+    }
+    .mc-name { word-break: break-word; }
+    .annual-banner strong { font-size: 0.9rem; }
+    .annual-stats { flex-shrink: 0; }
+
+    /* Tables stay inside their cards */
+    .grades-table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .exam-table th, .exam-table td { padding: 9px 10px; font-size: 0.8rem; }
+    .grades-notice { font-size: 0.8rem; padding: 10px 12px; }
+    .grades-section-title { font-size: 0.92rem; }
+}
