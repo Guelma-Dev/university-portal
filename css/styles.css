@@ -709,7 +709,10 @@ input { font-family: inherit; }
 /* ============================================
    ADMIN DASHBOARD
    ============================================ */
-.admin-container { max-width: 1000px; margin: 0 auto; }
+.admin-container {
+    width: 100%; max-width: 100%; box-sizing: border-box;
+    overflow-x: hidden; padding: 0 24px;
+}
 .admin-header {
     display: flex; align-items: center; gap: 12px;
     margin-bottom: 28px;
@@ -836,7 +839,7 @@ input { font-family: inherit; }
     .hamburger { display: flex; }
     .topbar { padding: 0 16px; }
     .search-box { min-width: 160px; }
-    .section { padding: 20px 16px; }
+    .section { padding: 20px 16px; overflow-x: hidden; }
     .subjects-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
     .subject-card { padding: 20px 16px; }
     .landing-title { font-size: 1.6rem; }
@@ -850,7 +853,9 @@ input { font-family: inherit; }
     .pdf-viewer-body { padding: 8px; }
     .detail-tabs { overflow-x: auto; }
     .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-    .admin-container { padding: 0 12px; }
+    .admin-container { width: 100%; max-width: 100%; box-sizing: border-box; overflow-x: hidden; padding: 0 12px; }
+    .admin-container * { box-sizing: border-box; }
+    .admin-container input, .admin-container select { width: 100%; min-width: 0; box-sizing: border-box; }
     .admin-header { margin-bottom: 16px; gap: 8px; }
     .admin-header i { font-size: 1.2rem; }
     .admin-header h3 { font-size: 1.05rem; }
@@ -859,7 +864,8 @@ input { font-family: inherit; }
     .stat-info { min-width: 0; }
     .stat-number { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stat-label { font-size: 0.62rem; }
-    .admin-card { margin-bottom: 10px; border-radius: var(--radius-md); }
+    .admin-card { margin-bottom: 10px; border-radius: var(--radius-md); overflow: hidden; width: 100%; }
+    .admin-card * { word-wrap: break-word; overflow-wrap: break-word; }
     .admin-card-header { padding: 10px 12px; gap: 8px; }
     .admin-card-header i { font-size: 0.9rem; }
     .admin-card-header h4 { font-size: 0.85rem; }
@@ -964,12 +970,11 @@ input { font-family: inherit; }
     .topbar-title { display: none; }
 
     /* Admin small mobile */
-    .stats-grid { grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .admin-container { width: 100%; max-width: 100%; padding: 0 8px; overflow-x: hidden; }
     .stat-card { padding: 6px 8px; gap: 6px; }
     .stat-icon { width: 28px; height: 28px; font-size: 0.75rem; }
     .stat-number { font-size: 0.85rem; }
     .stat-label { font-size: 0.58rem; }
-    .admin-container { padding: 0 8px; }
     .admin-card-header { padding: 8px 10px; }
     .admin-card form, .admin-card .admin-add-subject { padding: 10px; }
 
