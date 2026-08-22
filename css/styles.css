@@ -1954,52 +1954,6 @@ input { font-family: inherit; }
 .annual-banner span { font-size: 0.78rem; color: var(--text-secondary); }
 .annual-stats { display: flex; align-items: center; gap: 10px; }
 .annual-credit { font-size: 0.82rem !important; font-weight: 700; }
-.student-id-card {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 22px;
-}
-.idc-header {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: var(--accent);
-    font-weight: 700;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--accent);
-    margin-bottom: 12px;
-}
-.idc-name { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-.idc-name strong { font-size: 1.05rem; }
-.idc-name span { font-size: 0.8rem; color: var(--text-secondary); }
-.idc-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 7px 0;
-    border-top: 1px dashed var(--border);
-    font-size: 0.84rem;
-}
-.idc-row span { color: var(--text-secondary); }
-.idc-row strong { text-align: left; }
-
-/* Student ID card photo + logo */
-.idc-body { display: flex; gap: 16px; align-items: flex-start; }
-.idc-info { flex: 1; min-width: 0; }
-.idc-photo {
-    width: 92px;
-    height: 110px;
-    object-fit: cover;
-    border-radius: 10px;
-    border: 2px solid var(--accent);
-    background: var(--bg-secondary);
-    flex-shrink: 0;
-}
-.student-id-card.no-photo .idc-photo { display: none; }
-.idc-logo { height: 34px; max-width: 90px; object-fit: contain; }
-
 /* ============================================================
    WEBETU-STYLE GRADES UI — badge cards (works on all screens)
    ============================================================ */
@@ -2050,97 +2004,6 @@ input { font-family: inherit; }
    Flexbox only. No absolute. No float.
    ============================================================ */
 @media (max-width: 768px) {
-    /* ---- Student card: official app look ---- */
-    .student-id-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 100% !important;
-        max-width: 100vw !important;
-        min-width: 0 !important;
-        padding: 20px !important;
-        border-radius: 15px !important;
-        box-sizing: border-box !important;
-        overflow: hidden !important;
-    }
-    .idc-header {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        font-size: 0.72rem;
-    }
-    .idc-logo { height: 30px; max-width: 80px; object-fit: contain; position: static; float: none; }
-    .idc-body {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 15px;
-        width: 100%;
-        position: static; float: none;
-    }
-    /* Photo centered at top */
-    .idc-photo-box {
-        position: static !important;
-        float: none !important;
-        width: auto !important;
-        height: auto !important;
-        margin: 0 auto !important;
-        flex-shrink: 0;
-    }
-    .idc-photo {
-        position: static !important;
-        float: none !important;
-        display: block !important;
-        width: 100px !important;
-        height: 120px !important;
-        object-fit: cover !important;
-        border-radius: 12px !important;
-        margin: 0 auto !important;
-    }
-    .idc-avatar {
-        position: static !important;
-        float: none !important;
-        width: 100px !important;
-        height: 120px !important;
-        font-size: 2.2rem !important;
-    }
-    /* Data under photo, full width, one flexible line per item */
-    .idc-info {
-        display: block !important;
-        width: 100% !important;
-        min-width: 0 !important;
-        margin-top: 5px !important;
-        position: static; float: none;
-    }
-    .idc-name {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        gap: 3px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid var(--border);
-    }
-    .idc-name strong { font-size: 1rem; word-break: break-word; }
-    .idc-name span { font-size: 0.8rem; color: var(--text-secondary); }
-    .idc-row {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        width: 100% !important;
-        padding: 9px 0 !important;
-        border-bottom: 1px solid var(--border) !important;
-        font-size: 0.85rem !important;
-        position: static !important;
-        white-space: normal !important;
-        gap: 8px;
-    }
-    .idc-row:last-child { border-bottom: none; }
-    .idc-row span { color: var(--text-secondary); white-space: nowrap; }
-    .idc-row strong { text-align: left; word-break: break-word; max-width: 60%; }
-
     /* ---- Grades cards on phones ---- */
     #grades-content { width: 100%; min-width: 0; overflow-x: hidden; }
     .pcard, .transcript-card, .annual-banner, .grades-container {
@@ -2156,4 +2019,195 @@ input { font-family: inherit; }
     .pbadge { font-size: 0.7rem; padding: 3px 8px; }
     .ue-row { flex-wrap: wrap; }
     body, html { overflow-x: hidden !important; max-width: 100vw !important; }
+}
+
+/* ============================================================
+   PROGRES HOME — services grid (official app style)
+   ============================================================ */
+.progres-home { text-align: center; padding: 6px 0 14px; }
+.ph-welcome {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.ph-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    padding: 20px 8px;
+}
+.ph-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: linear-gradient(160deg, var(--primary, #2e7d32), #1b5e20);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 28px 12px;
+    font-size: 0.98rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(27, 94, 32, 0.30);
+    transition: transform .16s ease, box-shadow .16s ease;
+}
+.ph-tile i { font-size: 2rem; }
+.ph-tile:active { transform: scale(.95); }
+@media (hover: hover) {
+    .ph-tile:hover { transform: translateY(-3px); box-shadow: 0 9px 22px rgba(27, 94, 32, 0.42); }
+}
+.ph-back { margin-bottom: 12px; }
+
+/* ============================================================
+   PHYSICAL ALGERIAN STUDENT CARD (landscape printed replica)
+   Scales with clamp() so it shrinks proportionally on phones
+   ============================================================ */
+.real-student-card {
+    --zz: clamp(5px, 1.6vw, 9px);
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    margin: 14px auto 18px;
+    background: linear-gradient(155deg, #fdfdfb 0%, #edece7 100%);
+    border: 1px solid #d3d2ca;
+    border-radius: clamp(10px, 3vw, 16px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.20), inset 0 0 46px rgba(255, 255, 255, 0.65);
+    overflow: hidden;
+    color: #101010;
+}
+.rsc-logo {
+    position: absolute;
+    top: clamp(5px, 1.6vw, 9px);
+    right: clamp(7px, 2vw, 12px);
+    height: clamp(26px, 7.5vw, 40px);
+    max-width: clamp(52px, 15vw, 84px);
+    object-fit: contain;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 6px;
+    padding: 2px;
+}
+.rsc-header {
+    text-align: center;
+    padding: clamp(9px, 2.6vw, 14px) clamp(50px, 17vw, 96px) clamp(4px, 1.2vw, 7px);
+}
+.rsc-state {
+    font-size: clamp(7.5px, 2.1vw, 11px);
+    font-weight: 800;
+    letter-spacing: .2px;
+}
+.rsc-ministry {
+    font-size: clamp(6.5px, 1.85vw, 9.5px);
+    color: #3a3a36;
+    margin-top: 2px;
+    font-weight: 600;
+}
+.rsc-title {
+    display: inline-block;
+    font-size: clamp(11.5px, 3.3vw, 17px);
+    font-weight: 900;
+    color: #0d5c2d;
+    letter-spacing: 1px;
+    margin-top: clamp(3px, 1vw, 6px);
+    border-top: 1.5px solid #0d5c2d;
+    border-bottom: 1.5px solid #0d5c2d;
+    padding: 1px 10px;
+}
+.rsc-body {
+    display: flex;
+    align-items: stretch;
+    gap: clamp(8px, 2.6vw, 15px);
+    padding: clamp(8px, 2.4vw, 13px) clamp(10px, 3vw, 16px) calc(var(--zz) + clamp(6px, 2vw, 12px));
+}
+.rsc-photo-side { flex: 0 0 auto; display: flex; align-items: center; }
+.rsc-photo-box {
+    width: clamp(58px, 16.5vw, 88px);
+    height: clamp(74px, 21vw, 112px);
+    border-radius: clamp(5px, 1.5vw, 8px);
+    overflow: hidden;
+    background: #dde3da;
+    border: 1.5px solid #97a497;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.rsc-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rsc-avatar { font-size: clamp(1.4rem, 6vw, 2.3rem); color: #5c6e5f; font-weight: 800; }
+.rsc-photo-box.photo-failed .rsc-photo { display: none; }
+.rsc-data {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(4px, 1.5vw, 8px);
+}
+.rsc-row { display: flex; flex-direction: column; }
+.rsc-label {
+    font-size: clamp(6px, 1.75vw, 8.5px);
+    color: #5a5a54;
+    font-weight: 700;
+}
+.rsc-value {
+    font-size: clamp(8px, 2.35vw, 12.5px);
+    font-weight: 800;
+    line-height: 1.4;
+    word-break: break-word;
+}
+.rsc-qr-side {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(4px, 1.5vw, 8px);
+}
+.rsc-qr {
+    width: clamp(46px, 13.5vw, 70px);
+    height: auto;
+    image-rendering: pixelated;
+    background: #fff;
+    border: 1px solid #c9c9c2;
+    border-radius: 4px;
+    padding: 2px;
+}
+.rsc-bus {
+    color: #f2b705;
+    font-size: clamp(15px, 4.8vw, 26px);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .25));
+}
+/* Green zigzag ribbon footer */
+.rsc-footer {
+    position: relative;
+    background: linear-gradient(180deg, #128a44, #0b5c2b);
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: calc(var(--zz) * 0.55) clamp(10px, 3vw, 16px) clamp(4px, 1.4vw, 8px);
+    font-size: clamp(7px, 2vw, 11px);
+    font-weight: 800;
+}
+.rsc-footer::before {
+    content: '';
+    position: absolute;
+    top: calc(var(--zz) * -1 + 1px);
+    left: 0;
+    right: 0;
+    height: var(--zz);
+    background-image:
+        linear-gradient(135deg, #128a44 25%, transparent 25%),
+        linear-gradient(225deg, #128a44 25%, transparent 25%);
+    background-size: calc(var(--zz) * 1.8) 100%;
+    background-repeat: repeat-x;
+    background-position: 0 bottom;
+}
+
+@media (max-width: 400px) {
+    .rsc-header { padding-inline: 46px; }
+    .real-student-card { margin-inline: 2px; }
 }

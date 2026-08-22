@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css?v=20260822n">
+    <link rel="stylesheet" href="css/styles.css?v=20260822o">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -616,8 +616,8 @@
                         <h3 id="grades-student-name">نقاطي</h3>
                     </div>
                     <div style="padding: 16px;">
-                        <div class="grades-toolbar">
-                            <select id="grades-card-select" class="card-select" onchange="loadProgresGrades()"></select>
+                        <div class="grades-toolbar hidden" id="grades-toolbar-wrap">
+                            <select id="grades-card-select" class="card-select" onchange="onProgresCardChange(this.value)"></select>
                             <button class="btn btn-ghost btn-sm" onclick="progresLogout()">
                                 <i class="fas fa-right-from-bracket"></i> خروج
                             </button>
@@ -761,7 +761,7 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/app.js?v=20260822n"></script>
+    <script src="js/app.js?v=20260822o"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});

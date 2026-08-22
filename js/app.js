@@ -1581,33 +1581,49 @@ function renderAnnual(annual, cardLabel) {
     </div>`;
 }
 
-function renderStudentId(card) {
+function renderRealStudentId(card) {
     if (!card) return '';
-    const row = (label, value) => value ? `<div class="idc-row"><span>${label}</span><strong>${value}</strong></div>` : '';
-    return `<h4 class="grades-section-title"><i class="fas fa-id-card"></i> بطاقة الطالب</h4>
-        <div class="student-id-card">
-            <div class="idc-header">
-                <img id="idc-logo" class="idc-logo" alt="">
-                <span>${card.llEtablissementArabe || card.llEtablissementLatin || ''}</span>
-                <span>${card.anneeAcademiqueCode || ''}</span>
-            </div>
-            <div class="idc-body">
-                <div class="idc-info">
-                    <div class="idc-name">
-                        <strong>${card.individuNomArabe || card.individuNomLatin || ''} ${card.individuPrenomArabe || card.individuPrenomLatin || ''}</strong>
-                        <span>${card.niveauLibelleLongAr || card.niveauLibelleLongLt || ''}</span>
-                    </div>
-                    ${row('الشعبة', card.ofLlFiliereArabe || card.ofLlFiliere)}
-                    ${row('تاريخ الميلاد', card.individuDateNaissance)}
-                    ${row('مكان الميلاد', card.individuLieuNaissanceArabe || card.individuLieuNaissance)}
-                    ${row('رقم التسجيل', card.numeroInscription)}
+    const esc = s => String(s ?? '').trim();
+    const nom = esc(card.individuNomArabe || card.individuNomLatin);
+    const prenom = esc(card.individuPrenomArabe || card.individuPrenomLatin);
+    const birth = [esc(card.individuLieuNaissanceArabe || card.individuLieuNaissance), esc(card.individuDateNaissance)].filter(Boolean).join(' / ');
+    const rows = [
+        ['اللقب', esc(card.individuNomArabe || card.individuNomLatin)],
+        ['الاسم', prenom],
+        ['تاريخ ومكان الميلاد', birth],
+        ['الميدان / مسار التكوين', esc(card.niveauLibelleLongAr || card.niveauLibelleLongLt)],
+        ['الفرع', esc(card.ofLlFiliereArabe || card.ofLlFiliere)],
+    ].filter(r => r[1]);
+    const qrData = encodeURIComponent(`${esc(card.numeroInscription)}|${nom} ${prenom}`);
+    const initial = (prenom || nom || '?').charAt(0);
+    return `
+    <div class="real-student-card">
+        <img id="rsc-logo" class="rsc-logo" alt="">
+        <div class="rsc-header">
+            <div class="rsc-state">الجمهورية الجزائرية الديمقراطية الشعبية</div>
+            <div class="rsc-ministry">وزارة التعليم العالي والبحث العلمي</div>
+            <div class="rsc-title">بطاقة الطالب</div>
+        </div>
+        <div class="rsc-body">
+            <div class="rsc-photo-side">
+                <div class="rsc-photo-box" id="rsc-photo-box">
+                    <span class="rsc-avatar">${initial}</span>
+                    <img id="rsc-photo" class="rsc-photo" alt="">
                 </div>
-                <div class="idc-photo-box">
-                    <span class="idc-avatar">${(card.individuPrenomArabe || card.individuPrenomLatin || '?').trim().charAt(0)}</span>
-                    <img id="idc-photo" class="idc-photo" alt="">
-                </div>
             </div>
-        </div>`;
+            <div class="rsc-data">
+                ${rows.map(r => `<div class="rsc-row"><span class="rsc-label">${r[0]}</span><span class="rsc-value">${r[1]}</span></div>`).join('')}
+            </div>
+            <div class="rsc-qr-side">
+                <img class="rsc-qr" alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${qrData}" onerror="this.style.display='none'">
+                <i class="fas fa-bus rsc-bus"></i>
+            </div>
+        </div>
+        <div class="rsc-footer">
+            <span>السنة الجامعية ${esc(card.anneeAcademiqueCode)}</span>
+            <span>${esc(card.numeroInscription)}</span>
+        </div>
+    </div>`;
 }
 
 let progresPhotoUrl = null;
@@ -1644,11 +1660,11 @@ async function fetchProgresPhotoWithRetry(session, attempts = 3) {
 async function loadProgresImages() {
     const session = getProgresSession();
     if (!session) return;
-    if (document.getElementById('idc-photo')) {
+    if (document.getElementById('rsc-photo')) {
         const blob = await fetchProgresPhotoWithRetry(session);
-        const live = document.getElementById('idc-photo');
+        const live = document.getElementById('rsc-photo');
         if (!live) return;
-        const box = live.closest('.idc-photo-box');
+        const box = live.closest('.rsc-photo-box');
         if (blob) {
             if (progresPhotoUrl) URL.revokeObjectURL(progresPhotoUrl);
             progresPhotoUrl = URL.createObjectURL(blob);
@@ -1659,7 +1675,7 @@ async function loadProgresImages() {
             box?.classList.add('photo-failed');
         }
     }
-    const logo = document.getElementById('idc-logo');
+    const logo = document.getElementById('rsc-logo');
     if (logo && session.etab && !logo.dataset.tried) {
         logo.dataset.tried = '1';
         try {
@@ -1674,70 +1690,122 @@ async function loadProgresImages() {
     }
 }
 
-async function loadProgresGrades() {
-    const content = document.getElementById('grades-content');
-    if (!content) return;
-    content.innerHTML = '<div class="mobile-empty"><i class="fas fa-spinner fa-spin"></i><p>جاري جلب النقاط من الوزارة...</p></div>';
-    try {
-        let session = getProgresSession();
-        let cards = session.cards;
-        if (!cards) {
-            cards = await progresFetch('cards');
-            session.cards = cards;
-            setProgresSession(session);
-        }
-        if (!Array.isArray(cards) || cards.length === 0) {
-            content.innerHTML = '<div class="mobile-empty"><i class="fas fa-folder-open"></i><p>لا توجد بطاقات تسجيل متاحة</p></div>';
-            return;
-        }
+// ---------------------------------------------------------------------------
+// Progres sub-views: home grid -> one screen per service, data cached once
+// ---------------------------------------------------------------------------
+let progresCache = null;
+let progresCurrentView = null;
 
-        const select = document.getElementById('grades-card-select');
-        select.innerHTML = cards.map(c => `<option value="${c.id}">${progresCardLabel(c)}</option>`).join('');
-        let cardId = session.selectedCard && cards.some(c => String(c.id) === String(session.selectedCard))
-            ? String(session.selectedCard)
-            : String(cards[0].id);
-
-        let data = await fetchProgresCardData(cardId);
-        let notice = '';
-        if (!progresCardHasData(data)) {
-            for (const other of cards) {
-                if (String(other.id) === String(cardId)) continue;
-                const alt = await fetchProgresCardData(String(other.id));
-                if (progresCardHasData(alt)) {
-                    data = alt;
-                    cardId = String(other.id);
-                    notice = `<div class="grades-notice"><i class="fas fa-circle-info"></i> لا توجد نقاط منشورة لهذه السنة بعد — هذه نقاط <strong>${progresCardLabel(other)}</strong></div>`;
-                    break;
-                }
+async function ensureProgresData() {
+    const session = getProgresSession();
+    if (!session) throw new Error('no-session');
+    if (progresCache && String(progresCache.cardId) === String(session.selectedCard || '')) return progresCache;
+    let cards = session.cards;
+    if (!cards) {
+        cards = await progresFetch('cards');
+        session.cards = cards;
+        setProgresSession(session);
+    }
+    if (!Array.isArray(cards) || cards.length === 0) throw new Error('no-cards');
+    const select = document.getElementById('grades-card-select');
+    if (select) select.innerHTML = cards.map(c => `<option value="${c.id}">${progresCardLabel(c)}</option>`).join('');
+    let cardId = session.selectedCard && cards.some(c => String(c.id) === String(session.selectedCard))
+        ? String(session.selectedCard)
+        : String(cards[0].id);
+    let data = await fetchProgresCardData(cardId);
+    let notice = '';
+    if (!progresCardHasData(data)) {
+        for (const other of cards) {
+            if (String(other.id) === String(cardId)) continue;
+            const alt = await fetchProgresCardData(String(other.id));
+            if (progresCardHasData(alt)) {
+                data = alt;
+                cardId = String(other.id);
+                notice = `<div class="grades-notice"><i class="fas fa-circle-info"></i> لا توجد نقاط منشورة لهذه السنة بعد — هذه نقاط <strong>${progresCardLabel(other)}</strong></div>`;
+                break;
             }
         }
-        select.value = cardId;
-        session.selectedCard = cardId;
-        setProgresSession(session);
+    }
+    if (select) select.value = cardId;
+    session.selectedCard = cardId;
+    setProgresSession(session);
+    const selectedCard = cards.find(c => String(c.id) === String(cardId));
+    progresCache = { cards, cardId, cardLabel: selectedCard ? progresCardLabel(selectedCard) : '', selectedCard, data, notice };
+    return progresCache;
+}
 
-        const selectedCard = cards.find(c => String(c.id) === String(cardId));
-        const cardLabel = selectedCard ? progresCardLabel(selectedCard) : '';
+const PROGRES_TILES = [
+    ['transcripts', 'fa-file-lines', 'كشف النقاط'],
+    ['card', 'fa-id-card', 'بطاقة الطالب'],
+    ['exams', 'fa-calendar-days', 'جدول الامتحانات'],
+    ['cc', 'fa-pen-ruler', 'التقييم المستمر'],
+];
 
-        content.innerHTML = notice
-            + renderStudentId(selectedCard)
-            + renderAnnual(data.annual, cardLabel)
-            + renderTranscripts(data.transcripts.status === 'fulfilled' ? data.transcripts.value : [])
-            + renderExamList(data.exams.status === 'fulfilled' ? data.exams.value : [])
-            + renderCcGroups(data.cc.status === 'fulfilled' ? data.cc.value : [])
-            || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط منشورة في أي سنة بعد</p></div>';
+function renderProgresHome() {
+    return `<div class="progres-home">
+        <p class="ph-welcome">اختر الخدمة</p>
+        <div class="ph-grid">
+            ${PROGRES_TILES.map(([v, i, t]) => `
+                <button class="ph-tile" onclick="openProgresView('${v}')">
+                    <i class="fas ${i}"></i><span>${t}</span>
+                </button>`).join('')}
+        </div>
+    </div>`;
+}
 
-        if (!(notice + content.innerHTML).trim()) {
-            content.innerHTML = '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط منشورة بعد</p></div>';
+function showProgresHome() {
+    progresCurrentView = null;
+    document.getElementById('grades-toolbar-wrap')?.classList.add('hidden');
+    const content = document.getElementById('grades-content');
+    if (content) content.innerHTML = renderProgresHome();
+}
+
+async function openProgresView(view) {
+    const content = document.getElementById('grades-content');
+    if (!content) return;
+    progresCurrentView = view;
+    document.getElementById('grades-toolbar-wrap')?.classList.remove('hidden');
+    content.innerHTML = '<div class="mobile-empty"><i class="fas fa-spinner fa-spin"></i><p>جاري جلب البيانات من الوزارة...</p></div>';
+    try {
+        const c = await ensureProgresData();
+        const back = `<button class="btn btn-ghost btn-sm ph-back" onclick="showProgresHome()"><i class="fas fa-arrow-right"></i> رجوع للخدمات</button>`;
+        let html = '';
+        if (view === 'card') {
+            html = back + renderRealStudentId(c.selectedCard);
+        } else if (view === 'exams') {
+            html = back + (renderExamList(c.data.exams.status === 'fulfilled' ? c.data.exams.value : []) || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط امتحانات بعد</p></div>');
+        } else if (view === 'cc') {
+            html = back + (renderCcGroups(c.data.cc.status === 'fulfilled' ? c.data.cc.value : []) || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط تحكم مستمر بعد</p></div>');
+        } else {
+            const body = c.notice
+                + renderAnnual(c.data.annual, c.cardLabel)
+                + renderTranscripts(c.data.transcripts.status === 'fulfilled' ? c.data.transcripts.value : []);
+            html = back + (body.trim() ? body : '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط منشورة بعد</p></div>');
         }
-        loadProgresImages();
+        content.innerHTML = html;
+        if (view === 'card') loadProgresImages();
     } catch (e) {
         if (e.message === 'status-401') {
             progresLogout();
             showToast('انتهت جلسة بروقرس، سجل دخول من جديد', 'error');
         } else {
-            content.innerHTML = '<div class="mobile-empty"><i class="fas fa-triangle-exclamation"></i><p>تعذر جلب النقاط حالياً</p></div>';
+            content.innerHTML = '<div class="mobile-empty"><i class="fas fa-triangle-exclamation"></i><p>تعذر جلب البيانات حالياً، حاول من جديد</p></div>';
         }
     }
+}
+
+async function onProgresCardChange(value) {
+    const s = getProgresSession();
+    if (!s) return;
+    s.selectedCard = value;
+    setProgresSession(s);
+    progresCache = null;
+    if (progresCurrentView) await openProgresView(progresCurrentView);
+}
+
+// Kept as the navigation entry point: entering the section opens the services grid
+async function loadProgresGrades() {
+    showProgresHome();
 }
 
 function renderGradesSection() {
