@@ -571,7 +571,7 @@ function handleLogout() {
 // ============================================
 // NAVIGATION - SPA HASH ROUTING
 // ============================================
-const VALID_SECTIONS = ['library', 'schedule', 'calculator', 'exams', 'admin'];
+const VALID_SECTIONS = ['library', 'schedule', 'calculator', 'exams', 'grades', 'admin'];
 
 const GUEST_SECTIONS = ['schedule', 'exams'];
 
@@ -661,6 +661,7 @@ function navigateToSection(section) {
         schedule: 'الرزنامة الأسبوعية',
         calculator: 'حاسبة المعدل',
         exams: 'تواريخ الامتحانات',
+        grades: 'نقاطي (بروقرس)',
         admin: 'لوحة التحكم',
     };
     document.getElementById('topbar-title').textContent = titles[section] || '';
