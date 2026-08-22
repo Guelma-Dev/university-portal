@@ -104,6 +104,53 @@ def auth_required(f):
     return wrapper
 
 
+def admin_required(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Missing bearer token'}), 401
+        payload = decode_token(auth_header[len('Bearer '):])
+        if not payload:
+            return jsonify({'error': 'Invalid or expired token'}), 401
+        username = payload.get('sub')
+        if username != ADMIN_USER:
+            return jsonify({'error': 'Admin access required'}), 403
+        request.user = username
+        return f(*args, **kwargs)
+    return wrapper
+
+
+# ============================================
+# SIMPLE RATE LIMITER (per-IP, in-memory)
+# ============================================
+_rate_limit_buckets = {}
+_rate_limit_lock = threading.Lock()
+
+def rate_limit(key_prefix: str, max_attempts: int, window_seconds: int):
+    """Return True if allowed, False if limit exceeded."""
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
+    now = time.time()
+    key = f'{key_prefix}:{ip}'
+    with _rate_limit_lock:
+        bucket = _rate_limit_buckets.get(key)
+        if not bucket:
+            _rate_limit_buckets[key] = [now]
+            # occasional cleanup
+            if len(_rate_limit_buckets) > 10000:
+                cutoff = now - window_seconds * 5
+                for k in list(_rate_limit_buckets.keys()):
+                    _rate_limit_buckets[k] = [t for t in _rate_limit_buckets[k] if t > cutoff]
+                    if not _rate_limit_buckets[k]:
+                        del _rate_limit_buckets[k]
+            return True
+        bucket[:] = [t for t in bucket if t > now - window_seconds]
+        if len(bucket) >= max_attempts:
+            return False
+        bucket.append(now)
+        return True
+
+
 # ============================================
 # PASSWORD HASHING HELPERS
 # ============================================
@@ -426,6 +473,7 @@ def get_schedule():
 
 
 @app.route('/api/schedule', methods=['POST'])
+@admin_required
 def save_schedule():
     data = request.get_json(silent=True) or {}
     schedule_data = data.get('schedule', {})
@@ -516,8 +564,14 @@ def login():
     if not login_id or not password:
         return jsonify({'error': 'أدخل البريد الإلكتروني وكلمة المرور'}), 400
 
-    # Check admin first
-    if login_id == ADMIN_USER and password == ADMIN_PASS:
+    # Rate limit: 5 login attempts per minute per IP
+    if not rate_limit('login', 5, 60):
+        return jsonify({'error': 'محاولات كثيرة جداً، انتظر دقيقة وأعد المحاولة'}), 429
+
+    # Check admin first (constant-time comparison to prevent timing attacks)
+    admin_user_match = hmac.compare_digest(login_id.encode(), ADMIN_USER.encode())
+    admin_pass_match = hmac.compare_digest(password.encode(), ADMIN_PASS.encode())
+    if admin_user_match and admin_pass_match:
         return jsonify({
             'token': make_token(ADMIN_USER),
             'username': ADMIN_USER,
@@ -545,6 +599,10 @@ def login():
 
 @app.route('/api/auth/forgot-password', methods=['POST'])
 def forgot_password():
+    # Rate limit: 3 requests per 10 minutes per IP
+    if not rate_limit('forgot_pw', 3, 600):
+        return jsonify({'error': 'محاولات كثيرة جداً، انتظر 10 دقائق وأعد المحاولة'}), 429
+
     data = request.get_json(silent=True) or {}
     email = (data.get('email') or '').strip().lower()
 
@@ -576,6 +634,10 @@ def forgot_password():
 
 @app.route('/api/auth/verify-otp', methods=['POST'])
 def verify_otp():
+    # Rate limit: 10 verification attempts per 15 minutes per IP
+    if not rate_limit('otp_verify', 10, 900):
+        return jsonify({'error': 'محاولات كثيرة جداً، انتظر 15 دقيقة وأعد المحاولة'}), 429
+
     data = request.get_json(silent=True) or {}
     email = (data.get('email') or '').strip().lower()
     otp_code = (data.get('otp') or '').strip()

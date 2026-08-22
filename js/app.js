@@ -168,7 +168,7 @@ async function saveScheduleToAPI() {
     try {
         const res = await fetch(`${API_BASE}/api/schedule`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ schedule }),
         });
         return res.ok;
