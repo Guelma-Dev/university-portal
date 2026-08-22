@@ -499,7 +499,7 @@ def get_public_exams():
 # an Algerian relay first; direct connection is the fallback.
 # ============================================
 PROGRES_DIRECT = 'https://progres.mesrs.dz'
-PROGRES_RELAY_URL = os.environ.get('PROGRES_RELAY_URL') or 'https://communist-charms-galleries-revenue.trycloudflare.com'
+PROGRES_RELAY_URL = os.environ.get('PROGRES_RELAY_URL') or 'https://catering-endless-biology-response.trycloudflare.com'
 PROGRES_RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
 
 _progres_client = httpx.Client(
