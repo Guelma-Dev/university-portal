@@ -655,18 +655,22 @@ def progres_annual(card_id):
 
 
 def _progres_binary(path: str, token: str):
-    """Fetch binary content (photo/logo) via relay then direct."""
+    """Fetch binary content (photo/logo) via relay then direct. Retries once on failure."""
     targets = [
         (PROGRES_RELAY_URL, {'X-Relay-Key': PROGRES_RELAY_KEY}),
+        (PROGRES_RELAY_URL, {'X-Relay-Key': PROGRES_RELAY_KEY}),  # retry — relay may hiccup
         (PROGRES_DIRECT, {}),
     ]
+    last_status = 0
     for base, extra in targets:
         try:
             r = _progres_binary_client.get(f'{base}{path}', headers={'authorization': token, **extra})
             if r.status_code == 200:
                 mt = r.headers.get('Content-Type', 'application/octet-stream').split(';')[0]
                 return Response(r.content, status=200, mimetype=mt)
-            return jsonify({'error': 'غير متوفر'}), 404
+            last_status = r.status_code
+            if r.status_code == 404:
+                return jsonify({'error': 'غير متوفر'}), 404
         except Exception as e:
             app.logger.error('Progres binary %s failed via %s: %s', path, base, type(e).__name__)
     return jsonify({'error': 'خوادم بروقرس لا تستجيب حالياً'}), 502

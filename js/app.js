@@ -667,6 +667,10 @@ function navigateToSection(section) {
     document.getElementById('topbar-title').textContent = titles[section] || '';
     // Close sidebar on mobile
     closeSidebar();
+    // Auto-refresh grades data when entering the section with an active session
+    if (section === 'grades' && getProgresSession()) {
+        loadProgresGrades();
+    }
 }
 
 window.addEventListener('hashchange', () => {
