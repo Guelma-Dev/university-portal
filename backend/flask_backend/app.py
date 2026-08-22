@@ -496,7 +496,13 @@ def get_public_exams():
 # discarded. Only the session token lives in the student's own browser.
 # ============================================
 PROGRES_BASE = 'https://progres.mesrs.dz'
-_progres_client = httpx.Client(timeout=30, headers={'Accept': 'application/json'})
+_progres_client = httpx.Client(
+    timeout=30,
+    headers={
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36',
+    },
+)
 
 
 def _progres_get(path: str, token: str):
@@ -504,7 +510,8 @@ def _progres_get(path: str, token: str):
     try:
         r = _progres_client.get(f'{PROGRES_BASE}{path}', headers={'authorization': token})
         return Response(r.content, status=r.status_code, mimetype='application/json')
-    except httpx.HTTPError:
+    except Exception as e:
+        app.logger.error('Progres GET %s failed: %s: %s', path, type(e).__name__, str(e)[:200])
         return jsonify({'error': 'خوادم بروقرس لا تستجيب حالياً، حاول لاحقاً'}), 502
 
 
@@ -530,8 +537,31 @@ def progres_login():
         )
         # Pass through response as-is (token+uuid go to the student's browser only)
         return Response(r.content, status=r.status_code, mimetype='application/json')
-    except httpx.HTTPError:
+    except Exception as e:
+        app.logger.error('Progres login failed: %s: %s', type(e).__name__, str(e)[:200])
         return jsonify({'error': 'خوادم بروقرس لا تستجيب حالياً، حاول لاحقاً'}), 502
+
+
+@app.route('/api/progres/debug', methods=['GET'])
+def progres_debug():
+    """Temporary connectivity diagnostic — remove once Progres access is confirmed."""
+    result = {}
+    t0 = time.time()
+    try:
+        r = _progres_client.post(
+            f'{PROGRES_BASE}/api/authentication/v1/',
+            json={'username': 'probe', 'password': 'probe'},
+        )
+        result['reachable'] = True
+        result['status'] = r.status_code
+        result['elapsed_s'] = round(time.time() - t0, 2)
+        result['body'] = r.text[:150]
+    except Exception as e:
+        result['reachable'] = False
+        result['exception'] = type(e).__name__
+        result['message'] = str(e)[:300]
+        result['elapsed_s'] = round(time.time() - t0, 2)
+    return jsonify(result)
 
 
 @app.route('/api/progres/me', methods=['GET'])
