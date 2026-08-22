@@ -491,6 +491,103 @@ def get_public_exams():
 
 
 # ============================================
+# PROGRES PROXY (pass-through only — NO credential storage)
+# Student credentials are forwarded to progres.mesrs.dz and immediately
+# discarded. Only the session token lives in the student's own browser.
+# ============================================
+PROGRES_BASE = 'https://progres.mesrs.dz'
+_progres_client = httpx.Client(timeout=30, headers={'Accept': 'application/json'})
+
+
+def _progres_get(path: str, token: str):
+    """Forward a GET to Progres with the student's own token. Whitelisted paths only."""
+    try:
+        r = _progres_client.get(f'{PROGRES_BASE}{path}', headers={'authorization': token})
+        return Response(r.content, status=r.status_code, mimetype='application/json')
+    except httpx.HTTPError:
+        return jsonify({'error': 'خوادم بروقرس لا تستجيب حالياً، حاول لاحقاً'}), 502
+
+
+@app.route('/api/progres/login', methods=['POST'])
+def progres_login():
+    # 6 login attempts / 5 min / IP — protects students from brute-force on their accounts
+    if not rate_limit('progres_login', 6, 300):
+        return jsonify({'error': 'محاولات كثيرة جداً، انتظر 5 دقائق'}), 429
+
+    data = request.get_json(silent=True) or {}
+    username = data.get('username')
+    password = data.get('password')
+    if not isinstance(username, str) or not isinstance(password, str):
+        return jsonify({'error': 'بيانات غير صحيحة'}), 400
+    username = username.strip()
+    if not username or not password or len(username) > 50 or len(password) > 100:
+        return jsonify({'error': 'أدخل اسم المستخدم وكلمة المرور'}), 400
+
+    try:
+        r = _progres_client.post(
+            f'{PROGRES_BASE}/api/authentication/v1/',
+            json={'username': username, 'password': password},
+        )
+        # Pass through response as-is (token+uuid go to the student's browser only)
+        return Response(r.content, status=r.status_code, mimetype='application/json')
+    except httpx.HTTPError:
+        return jsonify({'error': 'خوادم بروقرس لا تستجيب حالياً، حاول لاحقاً'}), 502
+
+
+@app.route('/api/progres/me', methods=['GET'])
+def progres_me():
+    if not rate_limit('progres_fetch', 30, 60):
+        return jsonify({'error': 'طلبات كثيرة، انتظر قليلاً'}), 429
+    token = request.headers.get('Authorization', '')
+    if not token or len(token) > 2000:
+        return jsonify({'error': 'جلسة غير صالحة'}), 401
+    return _progres_get('/api/infos/bac/{uuid}/individu'.replace('{uuid}', request.args.get('uuid', '')), token) \
+        if request.args.get('uuid') else (jsonify({'error': 'uuid مطلوب'}), 400)
+
+
+@app.route('/api/progres/cards', methods=['GET'])
+def progres_cards():
+    if not rate_limit('progres_fetch', 30, 60):
+        return jsonify({'error': 'طلبات كثيرة، انتظر قليلاً'}), 429
+    token = request.headers.get('Authorization', '')
+    uuid = request.args.get('uuid', '')
+    if not token or len(token) > 2000 or not uuid or len(uuid) > 100:
+        return jsonify({'error': 'جلسة غير صالحة'}), 401
+    return _progres_get(f'/api/infos/bac/{uuid}/dias', token)
+
+
+@app.route('/api/progres/transcripts/<card_id>', methods=['GET'])
+def progres_transcripts(card_id):
+    if not rate_limit('progres_fetch', 30, 60):
+        return jsonify({'error': 'طلبات كثيرة، انتظر قليلاً'}), 429
+    token = request.headers.get('Authorization', '')
+    uuid = request.args.get('uuid', '')
+    if not token or len(token) > 2000 or not uuid or not card_id.isdigit():
+        return jsonify({'error': 'طلب غير صالح'}), 400
+    return _progres_get(f'/api/infos/bac/{uuid}/dias/{card_id}/periode/bilans', token)
+
+
+@app.route('/api/progres/exams/<card_id>', methods=['GET'])
+def progres_exam_grades(card_id):
+    if not rate_limit('progres_fetch', 30, 60):
+        return jsonify({'error': 'طلبات كثيرة، انتظر قليلاً'}), 429
+    token = request.headers.get('Authorization', '')
+    if not token or len(token) > 2000 or not card_id.isdigit():
+        return jsonify({'error': 'طلب غير صالح'}), 400
+    return _progres_get(f'/api/infos/planningSession/dia/{card_id}/noteExamens', token)
+
+
+@app.route('/api/progres/cc/<card_id>', methods=['GET'])
+def progres_cc_grades(card_id):
+    if not rate_limit('progres_fetch', 30, 60):
+        return jsonify({'error': 'طلبات كثيرة، انتظر قليلاً'}), 429
+    token = request.headers.get('Authorization', '')
+    if not token or len(token) > 2000 or not card_id.isdigit():
+        return jsonify({'error': 'طلب غير صالح'}), 400
+    return _progres_get(f'/api/infos/controleContinue/dia/{card_id}/notesCC', token)
+
+
+# ============================================
 # SCHEDULE API (public GET, admin POST)
 # ============================================
 @app.route('/api/schedule', methods=['GET'])

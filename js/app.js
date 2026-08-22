@@ -216,6 +216,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderCalcModules('sem1');
     renderCalcModules('sem2');
     loadExams();
+    renderGradesSection();
     trackVisit();
 
     const token = localStorage.getItem('admin_token');
@@ -1361,6 +1362,175 @@ function updatePomoUI() {
     const progress = 283 * (1 - pomoState.remaining / total);
     document.getElementById('pomo-ring').style.strokeDashoffset = progress;
     document.querySelector('.pomo-display').classList.toggle('break-mode', pomoState.mode === 'break');
+}
+
+// ============================================
+// PROGRES GRADES (pass-through — password never stored)
+// ============================================
+const PROGRES_SESSION_KEY = 'progres_session';
+
+function getProgresSession() {
+    try {
+        return JSON.parse(sessionStorage.getItem(PROGRES_SESSION_KEY) || 'null');
+    } catch (e) { return null; }
+}
+
+function setProgresSession(session) {
+    sessionStorage.setItem(PROGRES_SESSION_KEY, JSON.stringify(session));
+}
+
+function progresLogout() {
+    sessionStorage.removeItem(PROGRES_SESSION_KEY);
+    renderGradesSection();
+    showToast('تم إنهاء جلسة بروقرس', 'info');
+}
+
+async function handleProgresLogin(event) {
+    event.preventDefault();
+    const btn = document.getElementById('progres-login-btn');
+    const username = document.getElementById('progres-username').value.trim();
+    const password = document.getElementById('progres-password').value;
+    if (!username || !password) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الاتصال بالوزارة...';
+    try {
+        const res = await fetch(`${API_BASE}/api/progres/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            const msg = data && data.error ? data.error : (typeof data === 'string' ? data : 'بيانات الدخول غير صحيحة');
+            showToast(msg, 'error');
+            return;
+        }
+        // Keep ONLY token+uuid in sessionStorage; password is discarded here
+        setProgresSession({ token: data.token, uuid: data.uuid, name: data.userName || username });
+        document.getElementById('progres-password').value = '';
+        renderGradesSection();
+        loadProgresGrades();
+        showToast('مرحباً ' + (data.userName || username), 'success');
+    } catch (e) {
+        showToast('تعذر الاتصال، تحقق من الإنترنت', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> عرض نقاطي';
+    }
+}
+
+async function progresFetch(path, params = '') {
+    const session = getProgresSession();
+    if (!session) throw new Error('no-session');
+    const qs = new URLSearchParams({ uuid: session.uuid, ...Object.fromEntries(new URLSearchParams(params)) }).toString();
+    const res = await fetch(`${API_BASE}/api/progres/${path}?${qs}`, {
+        headers: { Authorization: session.token },
+    });
+    if (!res.ok) throw new Error(`status-${res.status}`);
+    return res.json();
+}
+
+async function loadProgresGrades() {
+    const content = document.getElementById('grades-content');
+    if (!content) return;
+    content.innerHTML = '<div class="mobile-empty"><i class="fas fa-spinner fa-spin"></i><p>جاري جلب النقاط من الوزارة...</p></div>';
+    try {
+        let session = getProgresSession();
+        let cards = session.cards;
+        if (!cards) {
+            cards = await progresFetch('cards');
+            session.cards = cards;
+            setProgresSession(session);
+        }
+        if (!Array.isArray(cards) || cards.length === 0) {
+            content.innerHTML = '<div class="mobile-empty"><i class="fas fa-folder-open"></i><p>لا توجد بطاقات تسجيل متاحة</p></div>';
+            return;
+        }
+
+        const select = document.getElementById('grades-card-select');
+        select.innerHTML = cards.map((c, i) => {
+            const label = c.libelleLongFr || c.libelleLongAr || c.id || `بطاقة ${i + 1}`;
+            const year = c.anneeUnivId ? ` (${c.anneeUnivId}/${Number(c.anneeUnivId) + 1})` : '';
+            return `<option value="${c.id}">${label}${year}</option>`;
+        }).join('');
+        const savedCard = session.selectedCard;
+        if (savedCard && cards.some(c => String(c.id) === String(savedCard))) {
+            select.value = savedCard;
+        }
+        const cardId = select.value;
+        session.selectedCard = cardId;
+        setProgresSession(session);
+
+        const [transcripts, exams, cc] = await Promise.allSettled([
+            progresFetch(`transcripts/${cardId}`),
+            progresFetch(`exams/${cardId}`),
+            progresFetch(`cc/${cardId}`),
+        ]);
+
+        let html = '';
+        if (transcripts.status === 'fulfilled' && Array.isArray(transcripts.value) && transcripts.value.length) {
+            html += '<h4 class="grades-section-title"><i class="fas fa-list-check"></i> كشف الأعداد</h4>';
+            html += transcripts.value.map(t => `
+                <div class="transcript-card">
+                    <div class="transcript-header">
+                        <span class="period-name">${t.periodeLibelleAr || t.periodeLibelleFr || ''}</span>
+                        <span class="avg-badge ${t.moyenne >= 10 ? 'pass' : 'fail'}">${t.moyenne != null ? t.moyenne.toFixed(2) : '--'}</span>
+                    </div>
+                    <div class="transcript-meta">
+                        <span>الأرصدة المحصلة: ${t.creditAcquis ?? t.creditObtenu ?? '--'} / ${t.credit ?? '--'}</span>
+                    </div>
+                    ${(t.bilanUes || []).map(ue => `
+                        <div class="ue-row">
+                            <span class="ue-name">${ue.ueLibelleAr || ue.ueLibelleFr || ue.codeUe || ''}</span>
+                            <span class="ue-avg">${ue.moyenne != null ? ue.moyenne.toFixed(2) : '--'}</span>
+                            <span class="ue-credit">رصيد: ${ue.creditAcquis ?? '--'}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+        if (exams.status === 'fulfilled' && Array.isArray(exams.value) && exams.value.length) {
+            html += '<h4 class="grades-section-title"><i class="fas fa-file-pen"></i> نقاط الامتحانات</h4>';
+            html += '<div class="grades-table-wrap"><table class="exam-table"><thead><tr><th>المادة</th><th>النقطة</th><th>المعامل</th></tr></thead><tbody>' +
+                exams.value.map(g => `
+                    <tr>
+                        <td>${g.mcLibelleAr || g.mcLibelleFr || ''}</td>
+                        <td class="${g.noteExamen != null && g.noteExamen < 10 ? 'grade-fail' : 'grade-pass'}">${g.noteExamen != null ? g.noteExamen : '--'}</td>
+                        <td>${g.rattachementMcCoefficient ?? '--'}</td>
+                    </tr>
+                `).join('') + '</tbody></table></div>';
+        }
+        if (cc.status === 'fulfilled' && Array.isArray(cc.value) && cc.value.length) {
+            html += '<h4 class="grades-section-title"><i class="fas fa-pen-ruler"></i> نقاط التحكم المستمر</h4>';
+            html += '<div class="grades-table-wrap"><table class="exam-table"><thead><tr><th>المادة</th><th>النقطة</th></tr></thead><tbody>' +
+                cc.value.map(g => `
+                    <tr>
+                        <td>${g.mcLibelleAr || g.mcLibelleFr || ''}</td>
+                        <td class="${g.noteCC != null && g.noteCC < 10 ? 'grade-fail' : 'grade-pass'}">${g.noteCC != null ? g.noteCC : '--'}</td>
+                    </tr>
+                `).join('') + '</tbody></table></div>';
+        }
+        content.innerHTML = html || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>النقاط غير منشورة بعد لهذه الفترة</p></div>';
+    } catch (e) {
+        if (e.message === 'status-401') {
+            progresLogout();
+            showToast('انتهت جلسة بروقرس، سجل دخول من جديد', 'error');
+        } else {
+            content.innerHTML = '<div class="mobile-empty"><i class="fas fa-triangle-exclamation"></i><p>تعذر جلب النقاط حالياً</p></div>';
+        }
+    }
+}
+
+function renderGradesSection() {
+    const loginView = document.getElementById('grades-login-view');
+    const dataView = document.getElementById('grades-data-view');
+    if (!loginView || !dataView) return;
+    const session = getProgresSession();
+    loginView.classList.toggle('hidden', !!session);
+    dataView.classList.toggle('hidden', !session);
+    if (session) {
+        document.getElementById('grades-student-name').textContent = 'نقاطي — ' + (session.name || '');
+    }
 }
 
 // ============================================

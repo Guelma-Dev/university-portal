@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css?v=20260822">
+    <link rel="stylesheet" href="css/styles.css?v=20260822b">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -275,6 +275,10 @@
                 <a class="nav-item" data-section="exams" onclick="switchSection('exams')">
                     <i class="fas fa-file-lines"></i>
                     <span>تواريخ الامتحانات</span>
+                </a>
+                <a class="nav-item" data-section="grades" onclick="switchSection('grades')">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>نقاطي (بروقرس)</span>
                 </a>
                 <a class="nav-item nav-admin" data-section="admin" onclick="switchSection('admin')" id="admin-nav-item" style="display:none;">
                     <i class="fas fa-cog"></i>
@@ -573,6 +577,56 @@
                 </div>
             </section>
 
+            <!-- ===== MY GRADES (PROGRES) SECTION ===== -->
+            <section id="section-grades" class="section">
+                <!-- Login form -->
+                <div class="grades-container" id="grades-login-view">
+                    <div class="calculator-header">
+                        <i class="fas fa-graduation-cap"></i>
+                        <h3>نقاطي من بروقرس</h3>
+                    </div>
+                    <div style="padding: 24px;">
+                        <div class="progres-notice">
+                            <i class="fas fa-shield-halved"></i>
+                            <div>
+                                <strong>كلمة السر لا تُخزَّن أبداً</strong>
+                                <p>تُرسل مباشرة إلى خوادم الوزارة وتُنسى فوراً. الجلسة تنتهي بإغلاق المتصفح.</p>
+                            </div>
+                        </div>
+                        <form id="progres-login-form" onsubmit="handleProgresLogin(event)">
+                            <div class="input-group">
+                                <label>رقم التسجيل / اسم المستخدم</label>
+                                <input type="text" id="progres-username" autocomplete="username" required>
+                            </div>
+                            <div class="input-group">
+                                <label>كلمة المرور</label>
+                                <input type="password" id="progres-password" autocomplete="current-password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-full" id="progres-login-btn">
+                                <i class="fas fa-right-to-bracket"></i> عرض نقاطي
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Data view -->
+                <div class="grades-container hidden" id="grades-data-view">
+                    <div class="calculator-header">
+                        <i class="fas fa-user-graduate"></i>
+                        <h3 id="grades-student-name">نقاطي</h3>
+                    </div>
+                    <div style="padding: 16px;">
+                        <div class="grades-toolbar">
+                            <select id="grades-card-select" class="card-select" onchange="loadProgresGrades()"></select>
+                            <button class="btn btn-ghost btn-sm" onclick="progresLogout()">
+                                <i class="fas fa-right-from-bracket"></i> خروج
+                            </button>
+                        </div>
+                        <div id="grades-content"><div class="mobile-empty"><i class="fas fa-spinner fa-spin"></i><p>جاري التحميل...</p></div></div>
+                    </div>
+                </div>
+            </section>
+
             <!-- ===== ADMIN SECTION ===== -->
             <section id="section-admin" class="section">
                 <div class="admin-container">
@@ -707,7 +761,7 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/app.js?v=20260822"></script>
+    <script src="js/app.js?v=20260822b"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});
