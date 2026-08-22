@@ -1391,6 +1391,16 @@ function progresLogout() {
     showToast('تم إنهاء جلسة بروقرس', 'info');
 }
 
+function progresLoginErrorMessage(res, data) {
+    if (res.status === 401 || res.status === 400) {
+        const msg = typeof data === 'string' ? data : '';
+        if (msg.toLowerCase().includes('incorrect')) return 'رقم التسجيل أو كلمة المرور غير صحيحة';
+        return msg || 'رقم التسجيل أو كلمة المرور غير صحيحة';
+    }
+    if ([502, 503, 504].includes(res.status)) return null; // server waking up — retried by caller
+    return 'تعذر الاتصال بخوادم الوزارة حالياً، حاول بعد قليل';
+}
+
 async function handleProgresLogin(event) {
     event.preventDefault();
     const btn = document.getElementById('progres-login-btn');
@@ -1398,31 +1408,47 @@ async function handleProgresLogin(event) {
     const password = document.getElementById('progres-password').value;
     if (!username || !password) return;
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الاتصال بالوزارة...';
-    try {
-        const res = await fetch(`${API_BASE}/api/progres/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-            const msg = data && data.error ? data.error : (typeof data === 'string' ? data : 'بيانات الدخول غير صحيحة');
-            showToast(msg, 'error');
+
+    // Up to 3 attempts: free-tier servers sleep and the first try often wakes them
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        btn.innerHTML = attempt === 1
+            ? '<i class="fas fa-spinner fa-spin"></i> جاري الاتصال بالوزارة...'
+            : `<i class="fas fa-spinner fa-spin"></i> السيرفر يستيقظ... محاولة ${attempt}/3`;
+        try {
+            const res = await fetch(`${API_BASE}/api/progres/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            });
+            let data = {};
+            try { data = await res.json(); } catch (e) { /* waking server returns HTML */ }
+            if (!res.ok) {
+                const msg = progresLoginErrorMessage(res, data);
+                if (msg === null && attempt < 3) {
+                    await new Promise(r => setTimeout(r, 8000));
+                    continue;
+                }
+                showToast(msg || 'تعذر الاتصال، حاول بعد قليل', 'error');
+                return;
+            }
+            // Keep ONLY token+uuid in sessionStorage; password is discarded here
+            setProgresSession({ token: data.token, uuid: data.uuid, etab: data.etablissementId, name: data.userName || username });
+            document.getElementById('progres-password').value = '';
+            renderGradesSection();
+            loadProgresGrades();
+            showToast('مرحباً ' + (data.userName || username), 'success');
             return;
+        } catch (e) {
+            if (attempt < 3) {
+                await new Promise(r => setTimeout(r, 8000));
+                continue;
+            }
+            showToast('تعذر الاتصال، تحقق من إنترنت هاتفك', 'error');
+            break;
         }
-        // Keep ONLY token+uuid in sessionStorage; password is discarded here
-        setProgresSession({ token: data.token, uuid: data.uuid, etab: data.etablissementId, name: data.userName || username });
-        document.getElementById('progres-password').value = '';
-        renderGradesSection();
-        loadProgresGrades();
-        showToast('مرحباً ' + (data.userName || username), 'success');
-    } catch (e) {
-        showToast('تعذر الاتصال، تحقق من الإنترنت', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> عرض نقاطي';
     }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> عرض نقاطي';
 }
 
 async function progresFetch(path, params = '') {
