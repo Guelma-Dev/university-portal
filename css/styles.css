@@ -2000,157 +2000,160 @@ input { font-family: inherit; }
 .student-id-card.no-photo .idc-photo { display: none; }
 .idc-logo { height: 34px; max-width: 90px; object-fit: contain; }
 
-/* ===== MOBILE (≤768px): student ID card clean layout + grades cards ===== */
-@media (max-width: 768px) {
-  /* 1. Reset positioning of everything inside the card to prevent drift */
-  .student-id-card, 
-  .student-id-card * {
-    position: static !important;
-    float: none !important;
-    box-sizing: border-box !important;
-  }
-
-  /* 2. Main card container */
-  .student-id-card {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 15px !important;
-    margin: 10px 0 !important;
-    overflow: hidden !important;
-  }
-
-  /* 3. Vertical card layout: photo on top, data below */
-  .idc-body {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 15px !important;
-    width: 100% !important;
-  }
-
-  /* 4. Fixed photo size at top */
-  .idc-photo {
-    width: 85px !important;
-    height: 105px !important;
-    object-fit: cover !important;
-    border-radius: 8px !important;
-    display: block !important;
-    margin: 0 auto !important;
-  }
-  .idc-photo-box {
-    width: auto !important;
-    height: auto !important;
-    margin: 0 auto !important;
-  }
-  .idc-avatar {
-    width: 85px !important;
-    height: 105px !important;
-    font-size: 2rem !important;
-  }
-
-  /* 5. Data list: label right, value left */
-  .idc-info {
-    width: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 6px !important;
-  }
-
-  .idc-info > div, 
-  .idc-info > p {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    width: 100% !important;
-    padding: 6px 0 !important;
-    border-bottom: 1px dashed var(--border) !important;
-    font-size: 0.82rem !important;
-    white-space: normal !important;
-  }
-  .idc-name { border-bottom: none !important; gap: 3px; }
-  .idc-logo { height: 30px !important; max-width: 80px !important; }
-
-  /* Toolbar: selector + logout stacked full-width */
-  .grades-toolbar {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 8px !important;
-  }
-  .grades-toolbar .card-select,
-  .grades-toolbar .btn { width: 100% !important; justify-content: center; }
-
-  /* Transcript & annual cards constrained */
-  .transcript-card,
-  .annual-banner {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    padding: 12px !important;
-  }
-  .transcript-header { flex-wrap: wrap; gap: 8px; }
-  .ue-row { flex-wrap: wrap; }
-  .mc-row {
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
-    gap: 6px;
-    font-size: 0.8rem;
-    padding: 7px 8px;
-  }
-  .grades-table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .exam-table th, .exam-table td { padding: 9px 10px; font-size: 0.8rem; }
+/* ============================================================
+   WEBETU-STYLE GRADES UI — badge cards (works on all screens)
+   ============================================================ */
+.pcard {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 14px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
+.sub-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+}
+.sub-row:last-child { border-bottom: none; padding-bottom: 2px; }
+.sub-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    min-width: 0;
+    word-break: break-word;
+}
+.sub-badges { display: flex; align-items: center; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.pbadge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.pb-pass { background: rgba(34,197,94,0.16); color: #22c55e; }
+.pb-fail { background: rgba(239,68,68,0.16); color: #ef4444; }
+.pb-info { background: rgba(59,130,246,0.14); color: #3b82f6; }
+.pb-dim  { background: rgba(128,128,128,0.14); color: var(--text-secondary); }
 
-/* ===== MOBILE OVERFLOW HARD-FIX: tables scroll inside, card vertical ===== */
+/* Global overflow guard */
+#main-app { max-width: 100vw; overflow-x: hidden; }
+
+/* ============================================================
+   MOBILE-FIRST REDESIGN — student card + grades (≤768px)
+   Flexbox only. No absolute. No float.
+   ============================================================ */
 @media (max-width: 768px) {
-  /* 1. Stop base screen stretching caused by wide tables */
-  body, html, #grades-content {
-    overflow-x: hidden !important;
-    max-width: 100vw !important;
-  }
+    /* ---- Student card: official app look ---- */
+    .student-id-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100% !important;
+        max-width: 100vw !important;
+        min-width: 0 !important;
+        padding: 20px !important;
+        border-radius: 15px !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+    .idc-header {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 0.72rem;
+    }
+    .idc-logo { height: 30px; max-width: 80px; object-fit: contain; position: static; float: none; }
+    .idc-body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        width: 100%;
+        position: static; float: none;
+    }
+    /* Photo centered at top */
+    .idc-photo-box {
+        position: static !important;
+        float: none !important;
+        width: auto !important;
+        height: auto !important;
+        margin: 0 auto !important;
+        flex-shrink: 0;
+    }
+    .idc-photo {
+        position: static !important;
+        float: none !important;
+        display: block !important;
+        width: 100px !important;
+        height: 120px !important;
+        object-fit: cover !important;
+        border-radius: 12px !important;
+        margin: 0 auto !important;
+    }
+    .idc-avatar {
+        position: static !important;
+        float: none !important;
+        width: 100px !important;
+        height: 120px !important;
+        font-size: 2.2rem !important;
+    }
+    /* Data under photo, full width, one flexible line per item */
+    .idc-info {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        margin-top: 5px !important;
+        position: static; float: none;
+    }
+    .idc-name {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 3px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border);
+    }
+    .idc-name strong { font-size: 1rem; word-break: break-word; }
+    .idc-name span { font-size: 0.8rem; color: var(--text-secondary); }
+    .idc-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        width: 100% !important;
+        padding: 9px 0 !important;
+        border-bottom: 1px solid var(--border) !important;
+        font-size: 0.85rem !important;
+        position: static !important;
+        white-space: normal !important;
+        gap: 8px;
+    }
+    .idc-row:last-child { border-bottom: none; }
+    .idc-row span { color: var(--text-secondary); white-space: nowrap; }
+    .idc-row strong { text-align: left; word-break: break-word; max-width: 60%; }
 
-  /* 2. Tables: horizontal scroll inside their own container */
-  table, .grades-table, .table-container, .table-responsive {
-    display: block !important;
-    width: 100% !important;
-    overflow-x: auto !important;
-    white-space: nowrap !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  /* 3. Student card structure forced */
-  .student-id-card {
-    display: block !important;
-    width: 100% !important;
-    padding: 15px !important;
-    height: auto !important;
-    position: relative !important;
-  }
-
-  /* 4. Card order: single column (photo then data) */
-  .idc-body {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    width: 100% !important;
-  }
-
-  /* 5. Data area contained */
-  .idc-info {
-    display: block !important;
-    width: 100% !important;
-    margin-top: 15px !important;
-  }
-
-  /* 6. Each data row separate line */
-  .idc-info > div, .idc-info > p {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    width: 100% !important;
-    padding: 10px 0 !important;
-    border-bottom: 1px solid var(--border) !important;
-    margin: 0 !important;
-    position: static !important;
-    font-size: 0.85rem !important;
-    white-space: normal !important;
-  }
+    /* ---- Grades cards on phones ---- */
+    #grades-content { width: 100%; min-width: 0; overflow-x: hidden; }
+    .pcard, .transcript-card, .annual-banner, .grades-container {
+        max-width: 100vw !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .grades-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+    .grades-toolbar .card-select,
+    .grades-toolbar .btn { width: 100%; }
+    .sub-row { padding: 9px 0; }
+    .sub-name { font-size: 0.86rem; }
+    .pbadge { font-size: 0.7rem; padding: 3px 8px; }
+    .ue-row { flex-wrap: wrap; }
+    body, html { overflow-x: hidden !important; max-width: 100vw !important; }
 }

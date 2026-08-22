@@ -1481,14 +1481,12 @@ function renderTranscripts(bilans) {
                         <span class="ue-credit">${ue.creditAcquis ?? 0}/${ue.credit ?? '--'}</span>
                     </summary>
                     <div class="mc-list">
-                        ${mcs.map(mc => `
-                            <div class="mc-row">
-                                <span class="mc-name">${mc.mcLibelleAr || mc.mcLibelleFr || ''}</span>
-                                <span>معامل ${mc.coefficient ?? '-'}</span>
-                                <span class="${mc.moyenneGenerale >= 10 ? 'grade-pass' : 'grade-fail'}">${mc.moyenneGenerale != null ? mc.moyenneGenerale : '--'}</span>
-                                <span class="ue-credit">رصيد ${mc.creditObtenu ?? 0}</span>
-                            </div>
-                        `).join('') || '<div class="mc-row"><span class="ue-name">لا توجد مواد</span></div>'}
+                        ${(mcs || []).map(mc => badgeRow(
+                            mc.mcLibelleAr || mc.mcLibelleFr || '',
+                            gradeBadge(mc.moyenneGenerale, mc.moyenneGenerale != null && mc.moyenneGenerale >= 10),
+                            `<span class="pbadge pb-info">معامل ${mc.coefficient ?? '-'}</span>` +
+                            `<span class="pbadge pb-dim">رصيد ${mc.creditObtenu ?? 0}</span>`
+                        )).join('') || '<div class="sub-row"><span class="sub-name">لا توجد مواد</span></div>'}
                     </div>
                 </details>`;
             }).join('')}
@@ -1497,18 +1495,28 @@ function renderTranscripts(bilans) {
     return html;
 }
 
-function renderExamTable(exams) {
+function badgeRow(name, gradeHtml, extraBadges = '') {
+    return `<div class="sub-row">
+        <span class="sub-name">${name}</span>
+        <div class="sub-badges">${extraBadges}${gradeHtml}</div>
+    </div>`;
+}
+
+function gradeBadge(val, isPass, suffix = '') {
+    if (val == null) return '<span class="pbadge pb-dim">--</span>';
+    return `<span class="pbadge ${isPass ? 'pb-pass' : 'pb-fail'}">${val}${suffix}</span>`;
+}
+
+function renderExamList(exams) {
     if (!Array.isArray(exams) || !exams.length) return '';
+    const rows = exams.map(g => badgeRow(
+        g.mcLibelleAr || g.mcLibelleFr || '',
+        gradeBadge(g.noteExamen, g.noteExamen == null || g.noteExamen >= 10),
+        `${g.planningSessionIntitule ? `<span class="pbadge pb-dim">${g.planningSessionIntitule}</span>` : ''}` +
+        `<span class="pbadge pb-info">معامل ${g.rattachementMcCoefficient ?? '-'}</span>`
+    )).join('');
     return `<h4 class="grades-section-title"><i class="fas fa-file-pen"></i> نقاط الامتحانات</h4>
-        <div class="grades-table-wrap"><table class="exam-table"><thead><tr><th>المادة</th><th>الدورة</th><th>النقطة</th><th>المعامل</th></tr></thead><tbody>
-        ${exams.map(g => `
-            <tr>
-                <td>${g.mcLibelleAr || g.mcLibelleFr || ''}</td>
-                <td>${g.planningSessionIntitule || '-'}</td>
-                <td class="${g.noteExamen != null && g.noteExamen < 10 ? 'grade-fail' : 'grade-pass'}">${g.noteExamen ?? '--'}</td>
-                <td>${g.rattachementMcCoefficient ?? '--'}</td>
-            </tr>`).join('')}
-        </tbody></table></div>`;
+        <div class="pcard">${rows}</div>`;
 }
 
 function renderCcGroups(cc) {
@@ -1518,17 +1526,18 @@ function renderCcGroups(cc) {
         const p = g.llPeriodeAr || g.llPeriode || '-';
         (byPeriod[p] = byPeriod[p] || []).push(g);
     });
-    return `<h4 class="grades-section-title"><i class="fas fa-pen-ruler"></i> نقاط التحكم المستمر (TD/TP)</h4>` +
+    return `<h4 class="grades-section-title"><i class="fas fa-pen-ruler"></i> التحكم المستمر (TD/TP)</h4>` +
         Object.entries(byPeriod).map(([period, grades]) => `
             <p class="cc-period">${period}</p>
-            <div class="grades-table-wrap"><table class="exam-table"><thead><tr><th>المادة</th><th>النوع</th><th>النقطة</th></tr></thead><tbody>
-            ${grades.map(g => `
-                <tr>
-                    <td>${g.rattachementMcMcLibelleAr || g.rattachementMcMcLibelleFr || ''}</td>
-                    <td>${g.apCode || '-'}</td>
-                    <td class="${g.absent ? 'grade-fail' : (g.note != null && g.note < 10 ? 'grade-fail' : 'grade-pass')}">${g.absent ? 'غائب' : (g.note ?? '--')}</td>
-                </tr>`).join('')}
-            </tbody></table></div>`).join('');
+            <div class="pcard">
+                ${grades.map(g => badgeRow(
+                    g.rattachementMcMcLibelleAr || g.rattachementMcMcLibelleFr || '',
+                    g.absent
+                        ? '<span class="pbadge pb-fail">غائب</span>'
+                        : gradeBadge(g.note, g.note == null || g.note >= 10),
+                    `<span class="pbadge pb-dim">${g.apCode || '-'}</span>`
+                )).join('')}
+            </div>`).join('');
 }
 
 function renderAnnual(annual, cardLabel) {
@@ -1687,7 +1696,7 @@ async function loadProgresGrades() {
             + renderStudentId(selectedCard)
             + renderAnnual(data.annual, cardLabel)
             + renderTranscripts(data.transcripts.status === 'fulfilled' ? data.transcripts.value : [])
-            + renderExamTable(data.exams.status === 'fulfilled' ? data.exams.value : [])
+            + renderExamList(data.exams.status === 'fulfilled' ? data.exams.value : [])
             + renderCcGroups(data.cc.status === 'fulfilled' ? data.cc.value : [])
             || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط منشورة في أي سنة بعد</p></div>';
 
