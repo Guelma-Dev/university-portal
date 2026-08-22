@@ -1713,6 +1713,9 @@ async function ensureProgresData() {
         ? String(session.selectedCard)
         : String(cards[0].id);
     let data = await fetchProgresCardData(cardId);
+    // اختيار المستخدم للسنة محترم دائماً؛ لو كانت بلا نقاط نعرض نقاط أحدث سنة
+    // متوفرة مع تنبيه، لكن دون تغيير اختياره المحفوظ ولا قيمة القائمة.
+    let gradesCardId = cardId;
     let notice = '';
     if (!progresCardHasData(data)) {
         for (const other of cards) {
@@ -1720,7 +1723,7 @@ async function ensureProgresData() {
             const alt = await fetchProgresCardData(String(other.id));
             if (progresCardHasData(alt)) {
                 data = alt;
-                cardId = String(other.id);
+                gradesCardId = String(other.id);
                 notice = `<div class="grades-notice"><i class="fas fa-circle-info"></i> لا توجد نقاط منشورة لهذه السنة بعد — هذه نقاط <strong>${progresCardLabel(other)}</strong></div>`;
                 break;
             }
@@ -1729,8 +1732,16 @@ async function ensureProgresData() {
     if (select) select.value = cardId;
     session.selectedCard = cardId;
     setProgresSession(session);
+    const gradesCard = cards.find(c => String(c.id) === String(gradesCardId));
     const selectedCard = cards.find(c => String(c.id) === String(cardId));
-    progresCache = { cards, cardId, cardLabel: selectedCard ? progresCardLabel(selectedCard) : '', selectedCard, data, notice };
+    progresCache = {
+        cards,
+        cardId,
+        cardLabel: gradesCard ? progresCardLabel(gradesCard) : '',
+        selectedCard,
+        data,
+        notice,
+    };
     return progresCache;
 }
 
