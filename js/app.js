@@ -669,6 +669,7 @@ function navigateToSection(section) {
     closeSidebar();
     // Auto-refresh grades data when entering the section with an active session
     if (section === 'grades' && getProgresSession()) {
+        renderGradesSection();
         loadProgresGrades();
     }
 }
