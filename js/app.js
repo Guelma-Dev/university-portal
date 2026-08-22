@@ -1181,7 +1181,7 @@ const SCHED_TYPES = [
 function renderScheduleEditor() {
     const grid = document.getElementById('schedule-editor-grid');
     if (!grid) return;
-    let html = '<div class="sched-editor-wrapper"><table class="sched-editor-table"><thead><tr><th>الوقت</th>';
+    let html = '<div class="sched-editor-wrapper"><table class="schedule-table sched-edit-table"><thead><tr><th class="time-col">الوقت</th>';
     DAY_LABELS.forEach(l => html += `<th>${l}</th>`);
     html += '</tr></thead><tbody>';
     TIME_SLOTS.forEach((time, ti) => {
@@ -1190,8 +1190,8 @@ function renderScheduleEditor() {
             const key = `${day}_${ti}`;
             const cell = schedule[key] || { text: '', type: '' };
             html += `<td>
-                <input type="text" class="sched-input sched-text" data-key="${key}" value="${(cell.text || '').replace(/"/g, '&quot;')}" placeholder="المادة...">
-                <select class="sched-input sched-type" data-key="${key}">
+                <input type="text" class="sched-edit-input sched-text" data-key="${key}" value="${(cell.text || '').replace(/"/g, '&quot;')}" placeholder="المادة...">
+                <select class="sched-edit-select sched-type" data-key="${key}">
                     ${SCHED_TYPES.map(t => `<option value="${t.value}" ${cell.type === t.value ? 'selected' : ''}>${t.label}</option>`).join('')}
                 </select>
             </td>`;

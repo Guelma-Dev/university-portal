@@ -775,22 +775,24 @@ input { font-family: inherit; }
 }
 .admin-add-subject input { flex: 1; min-width: 200px; }
 
-/* Schedule Editor */
-.sched-editor-table { width: 100%; border-collapse: collapse; }
-.sched-editor-table th {
-    background: var(--accent); color: #fff; padding: 12px 8px;
-    font-size: 0.85rem; font-weight: 700; text-align: center;
+/* Schedule Editor (Admin) — same look as schedule-table */
+.sched-edit-table td {
+    padding: 10px 6px;
 }
-.sched-editor-table td { padding: 8px 6px; border: 1px solid var(--border); vertical-align: top; }
-.sched-editor-table .time-col { background: var(--bg-tertiary); font-weight: 700; font-size: 0.8rem; text-align: center; white-space: nowrap; }
-.sched-input {
-    width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+.sched-edit-input {
+    width: 100%; padding: 6px 8px; border: 1px solid var(--border);
     border-radius: var(--radius-sm); font-size: 0.82rem;
     background: var(--bg-primary); color: var(--text-primary);
     font-family: inherit; margin-bottom: 4px; box-sizing: border-box;
 }
-.sched-input:focus { border-color: var(--accent); outline: none; }
-.sched-type { font-size: 0.75rem; }
+.sched-edit-input:focus { border-color: var(--accent); outline: none; }
+.sched-edit-select {
+    width: 100%; padding: 4px 6px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 0.72rem;
+    background: var(--bg-primary); color: var(--text-primary);
+    font-family: inherit; box-sizing: border-box; cursor: pointer;
+}
+.sched-edit-select:focus { border-color: var(--accent); outline: none; }
 .sched-editor-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* ============================================
@@ -859,10 +861,9 @@ input { font-family: inherit; }
     .admin-card form, .admin-card .admin-add-subject { padding: 12px; }
     .admin-add-subject { flex-direction: column; }
     .admin-add-subject input { min-width: 100%; }
-    .sched-editor-table { font-size: 0.75rem; }
-    .sched-editor-table th { padding: 6px 4px; font-size: 0.7rem; }
-    .sched-editor-table td { padding: 3px 2px; }
-    .sched-input { padding: 5px 5px; font-size: 0.72rem; }
+    .sched-edit-table td { padding: 6px 4px; }
+    .sched-edit-input { padding: 5px 6px; font-size: 0.75rem; }
+    .sched-edit-select { padding: 3px 4px; font-size: 0.68rem; }
 
     /* Schedule mobile - day picker */
     .schedule-desktop { display: none; }
