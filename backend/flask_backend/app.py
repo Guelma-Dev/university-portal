@@ -494,8 +494,14 @@ def get_public_exams():
 # PROGRES PROXY (pass-through only — NO credential storage)
 # Student credentials are forwarded to progres.mesrs.dz and immediately
 # discarded. Only the session token lives in the student's own browser.
+#
+# The ministry blocks non-Algerian datacenter IPs, so requests go through
+# an Algerian relay first; direct connection is the fallback.
 # ============================================
-PROGRES_BASE = 'https://progres.mesrs.dz'
+PROGRES_DIRECT = 'https://progres.mesrs.dz'
+PROGRES_RELAY_URL = os.environ.get('PROGRES_RELAY_URL') or 'https://communist-charms-galleries-revenue.trycloudflare.com'
+PROGRES_RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
+
 _progres_client = httpx.Client(
     timeout=30,
     headers={
@@ -505,14 +511,29 @@ _progres_client = httpx.Client(
 )
 
 
-def _progres_get(path: str, token: str):
-    """Forward a GET to Progres with the student's own token. Whitelisted paths only."""
-    try:
-        r = _progres_client.get(f'{PROGRES_BASE}{path}', headers={'authorization': token})
-        return Response(r.content, status=r.status_code, mimetype='application/json')
-    except Exception as e:
-        app.logger.error('Progres GET %s failed: %s: %s', path, type(e).__name__, str(e)[:200])
-        return jsonify({'error': 'خوادم بروقرس لا تستجيب حالياً، حاول لاحقاً'}), 502
+def _progres_request(method: str, path: str, token: str = None, json_body: dict = None):
+    """Forward to Progres via relay, falling back to direct. Whitelisted paths only."""
+    targets = [
+        (PROGRES_RELAY_URL, {'X-Relay-Key': PROGRES_RELAY_KEY}),
+        (PROGRES_DIRECT, {}),
+    ]
+    last_desc = 'unknown'
+    for base, extra_headers in targets:
+        headers = {'User-Agent': _progres_client.headers['User-Agent']}
+        if token:
+            headers['authorization'] = token
+        content = None
+        if json_body is not None:
+            headers['Content-Type'] = 'application/json'
+            content = json.dumps(json_body)
+        headers.update(extra_headers)
+        try:
+            r = _progres_client.request(method, f'{base}{path}', headers=headers, content=content)
+            return Response(r.content, status=r.status_code, mimetype='application/json')
+        except Exception as e:
+            last_desc = f'{base} {type(e).__name__}'
+            app.logger.error('Progres %s %s via %s failed: %s', method, path, base, type(e).__name__)
+    return jsonify({'error': 'خوادم بروقرس لا تستجيب حالياً، حاول لاحقاً'}), 502
 
 
 @app.route('/api/progres/login', methods=['POST'])
@@ -531,12 +552,7 @@ def progres_login():
         return jsonify({'error': 'أدخل اسم المستخدم وكلمة المرور'}), 400
 
     try:
-        r = _progres_client.post(
-            f'{PROGRES_BASE}/api/authentication/v1/',
-            json={'username': username, 'password': password},
-        )
-        # Pass through response as-is (token+uuid go to the student's browser only)
-        return Response(r.content, status=r.status_code, mimetype='application/json')
+        return _progres_request('POST', '/api/authentication/v1/', json_body={'username': username, 'password': password})
     except Exception as e:
         app.logger.error('Progres login failed: %s: %s', type(e).__name__, str(e)[:200])
         return jsonify({'error': 'خوادم بروقرس لا تستجيب حالياً، حاول لاحقاً'}), 502
@@ -545,22 +561,23 @@ def progres_login():
 @app.route('/api/progres/debug', methods=['GET'])
 def progres_debug():
     """Temporary connectivity diagnostic — remove once Progres access is confirmed."""
-    result = {}
-    t0 = time.time()
-    try:
-        r = _progres_client.post(
-            f'{PROGRES_BASE}/api/authentication/v1/',
-            json={'username': 'probe', 'password': 'probe'},
-        )
-        result['reachable'] = True
-        result['status'] = r.status_code
-        result['elapsed_s'] = round(time.time() - t0, 2)
-        result['body'] = r.text[:150]
-    except Exception as e:
-        result['reachable'] = False
-        result['exception'] = type(e).__name__
-        result['message'] = str(e)[:300]
-        result['elapsed_s'] = round(time.time() - t0, 2)
+    result = {'relay_url': PROGRES_RELAY_URL}
+    for name, base, extra in (
+        ('direct', PROGRES_DIRECT, {}),
+        ('relay', PROGRES_RELAY_URL, {'X-Relay-Key': PROGRES_RELAY_KEY}),
+    ):
+        t0 = time.time()
+        try:
+            r = _progres_client.post(
+                f'{base}/api/authentication/v1/',
+                content=json.dumps({'username': 'probe', 'password': 'probe'}),
+                headers={'Content-Type': 'application/json', 'User-Agent': _progres_client.headers['User-Agent'], **extra},
+            )
+            result[name] = {'reachable': True, 'status': r.status_code,
+                            'elapsed_s': round(time.time() - t0, 2), 'body': r.text[:100]}
+        except Exception as e:
+            result[name] = {'reachable': False, 'exception': type(e).__name__,
+                            'message': str(e)[:150], 'elapsed_s': round(time.time() - t0, 2)}
     return jsonify(result)
 
 
@@ -571,8 +588,9 @@ def progres_me():
     token = request.headers.get('Authorization', '')
     if not token or len(token) > 2000:
         return jsonify({'error': 'جلسة غير صالحة'}), 401
-    return _progres_get('/api/infos/bac/{uuid}/individu'.replace('{uuid}', request.args.get('uuid', '')), token) \
-        if request.args.get('uuid') else (jsonify({'error': 'uuid مطلوب'}), 400)
+    if not request.args.get('uuid'):
+        return jsonify({'error': 'uuid مطلوب'}), 400
+    return _progres_request('GET', f"/api/infos/bac/{request.args.get('uuid')}/individu", token=token)
 
 
 @app.route('/api/progres/cards', methods=['GET'])
@@ -583,7 +601,7 @@ def progres_cards():
     uuid = request.args.get('uuid', '')
     if not token or len(token) > 2000 or not uuid or len(uuid) > 100:
         return jsonify({'error': 'جلسة غير صالحة'}), 401
-    return _progres_get(f'/api/infos/bac/{uuid}/dias', token)
+    return _progres_request('GET', f'/api/infos/bac/{uuid}/dias', token=token)
 
 
 @app.route('/api/progres/transcripts/<card_id>', methods=['GET'])
@@ -594,7 +612,7 @@ def progres_transcripts(card_id):
     uuid = request.args.get('uuid', '')
     if not token or len(token) > 2000 or not uuid or not card_id.isdigit():
         return jsonify({'error': 'طلب غير صالح'}), 400
-    return _progres_get(f'/api/infos/bac/{uuid}/dias/{card_id}/periode/bilans', token)
+    return _progres_request('GET', f'/api/infos/bac/{uuid}/dias/{card_id}/periode/bilans', token=token)
 
 
 @app.route('/api/progres/exams/<card_id>', methods=['GET'])
@@ -604,7 +622,7 @@ def progres_exam_grades(card_id):
     token = request.headers.get('Authorization', '')
     if not token or len(token) > 2000 or not card_id.isdigit():
         return jsonify({'error': 'طلب غير صالح'}), 400
-    return _progres_get(f'/api/infos/planningSession/dia/{card_id}/noteExamens', token)
+    return _progres_request('GET', f'/api/infos/planningSession/dia/{card_id}/noteExamens', token=token)
 
 
 @app.route('/api/progres/cc/<card_id>', methods=['GET'])
@@ -614,7 +632,7 @@ def progres_cc_grades(card_id):
     token = request.headers.get('Authorization', '')
     if not token or len(token) > 2000 or not card_id.isdigit():
         return jsonify({'error': 'طلب غير صالح'}), 400
-    return _progres_get(f'/api/infos/controleContinue/dia/{card_id}/notesCC', token)
+    return _progres_request('GET', f'/api/infos/controleContinue/dia/{card_id}/notesCC', token=token)
 
 
 # ============================================
