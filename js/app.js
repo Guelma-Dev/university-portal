@@ -1758,6 +1758,12 @@ function showProgresHome() {
     document.getElementById('grades-toolbar-wrap')?.classList.add('hidden');
     const content = document.getElementById('grades-content');
     if (content) content.innerHTML = renderProgresHome();
+    const session = getProgresSession();
+    const select = document.getElementById('grades-card-select');
+    if (session && Array.isArray(session.cards) && session.cards.length && select && !select.options.length) {
+        select.innerHTML = session.cards.map(c => `<option value="${c.id}">${progresCardLabel(c)}</option>`).join('');
+        select.value = session.idCardYear || session.selectedCard || String(session.cards[0].id);
+    }
 }
 
 async function openProgresView(view) {
@@ -1771,7 +1777,16 @@ async function openProgresView(view) {
         const back = `<button class="btn btn-ghost btn-sm ph-back" onclick="showProgresHome()"><i class="fas fa-arrow-right"></i> رجوع للخدمات</button>`;
         let html = '';
         if (view === 'card') {
-            html = back + renderRealStudentId(c.selectedCard);
+            // بطاقة الطالب تابعة للسنة المختارة، لا علاقة لها بتوفر النقاط
+            const s0 = getProgresSession();
+            const sel0 = document.getElementById('grades-card-select');
+            const wanted = (sel0 && sel0.value) || (s0 && s0.idCardYear) || (s0 && s0.selectedCard) || '';
+            const cardObj = (wanted && c.cards.find(x => String(x.id) === String(wanted))) || c.cards[0] || c.selectedCard;
+            if (s0 && cardObj) {
+                s0.idCardYear = String(cardObj.id);
+                setProgresSession(s0);
+            }
+            html = back + renderRealStudentId(cardObj);
         } else if (view === 'exams') {
             html = back + (renderExamList(c.data.exams.status === 'fulfilled' ? c.data.exams.value : []) || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط امتحانات بعد</p></div>');
         } else if (view === 'cc') {
@@ -1798,6 +1813,7 @@ async function onProgresCardChange(value) {
     const s = getProgresSession();
     if (!s) return;
     s.selectedCard = value;
+    s.idCardYear = value;
     setProgresSession(s);
     progresCache = null;
     if (progresCurrentView) await openProgresView(progresCurrentView);
