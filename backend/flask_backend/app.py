@@ -654,6 +654,20 @@ def progres_annual(card_id):
     return _progres_request('GET', f'/api/infos/bac/{uuid}/dia/{card_id}/annuel/bilan', token=token)
 
 
+def _decode_possible_base64_image(data: bytes):
+    """Progres serves photos/logos as base64 text with image/* content-type.
+    Decode and return (raw_bytes, mime) when the payload is a base64 image."""
+    try:
+        decoded = base64.b64decode(data.strip(), validate=True)
+    except Exception:
+        return None
+    if decoded[:3] == b'\xff\xd8\xff':
+        return decoded, 'image/jpeg'
+    if decoded[:4] == b'\x89PNG':
+        return decoded, 'image/png'
+    return None
+
+
 def _progres_binary(path: str, token: str):
     """Fetch binary content (photo/logo) via relay then direct. Retries once on failure."""
     targets = [
@@ -666,8 +680,17 @@ def _progres_binary(path: str, token: str):
         try:
             r = _progres_binary_client.get(f'{base}{path}', headers={'authorization': token, **extra})
             if r.status_code == 200:
-                mt = r.headers.get('Content-Type', 'application/octet-stream').split(';')[0]
-                return Response(r.content, status=200, mimetype=mt)
+                data = r.content
+                # Already a real image?
+                if data[:3] == b'\xff\xd8\xff':
+                    return Response(data, status=200, mimetype='image/jpeg')
+                if data[:4] == b'\x89PNG':
+                    return Response(data, status=200, mimetype='image/png')
+                # Otherwise try base64-wrapped image (Progres quirk)
+                decoded = _decode_possible_base64_image(data)
+                if decoded:
+                    return Response(decoded[0], status=200, mimetype=decoded[1])
+                return jsonify({'error': 'غير متوفر'}), 404
             last_status = r.status_code
             if r.status_code == 404:
                 return jsonify({'error': 'غير متوفر'}), 404
