@@ -756,6 +756,11 @@ function switchDetailTab(tab) {
     document.getElementById('files-tdtp').classList.toggle('hidden', tab !== 'tdtp');
 }
 
+const FILE_BADGES = {
+    lectures: { label: 'محاضرة', cls: 'badge-lecture' },
+    tdtp: { label: 'TD / TP', cls: 'badge-tdtp' },
+};
+
 function renderFiles(type, filter = '') {
     const subject = APP_STATE.currentSubject;
     if (!subject) return;
@@ -770,6 +775,7 @@ function renderFiles(type, filter = '') {
             </div>`;
         return;
     }
+    const badge = FILE_BADGES[type] || null;
     container.innerHTML = filtered.map(file => `
         <div class="file-card">
             <div class="file-icon pdf">
@@ -777,7 +783,10 @@ function renderFiles(type, filter = '') {
             </div>
             <div class="file-info">
                 <div class="file-name">${file.name}</div>
-                <div class="file-meta">${file.size}</div>
+                <div class="file-meta">
+                    ${badge ? `<span class="file-badge ${badge.cls}">${badge.label}</span>` : ''}
+                    <span>${file.size}</span>
+                </div>
             </div>
             <div class="file-actions">
                 <button class="btn-icon" onclick="openPdfViewer('${file.file}')" title="عرض">
