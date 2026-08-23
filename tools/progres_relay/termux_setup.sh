@@ -11,7 +11,7 @@ DIR="$HOME/progres-relay"
 
 echo "[1/5] تجهيز الحزم..."
 pkg update -y >/dev/null 2>&1 || true
-pkg install -y python cloudflared >/dev/null 2>&1 || {
+pkg install -y python cloudflared curl >/dev/null 2>&1 || {
   # بعض النسخ لا تحتوي cloudflared في المستودع — نجلب الثنائي مباشرة
   pkg install -y python curl >/dev/null 2>&1
   curl -sL -o "$HOME/cloudflared" https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64
