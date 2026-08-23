@@ -752,7 +752,7 @@ def progres_debug():
     result = {'relay_url': _relay_url(), 'env_default': PROGRES_RELAY_URL}
     for name, base, extra in (
         ('direct', PROGRES_DIRECT, {}),
-        ('relay', PROGRES_RELAY_URL, {'X-Relay-Key': PROGRES_RELAY_KEY}),
+        ('relay', _relay_url(), {'X-Relay-Key': PROGRES_RELAY_KEY}),
     ):
         t0 = time.time()
         try:
