@@ -4,7 +4,7 @@
 const APP_STATE = {
     role: null, // 'guest', 'student', or 'admin'
     theme: localStorage.getItem('theme') || 'light',
-    currentSection: 'library',
+    currentSection: 'home',
     currentSubject: null,
     currentDetailTab: 'lectures',
     searchQuery: '',
@@ -53,8 +53,8 @@ async function verifyAuth() {
 function handleAuthError() {
     localStorage.removeItem('admin_token');
     APP_STATE.role = 'student';
-    document.getElementById('admin-nav-item').style.display = 'none';
-    document.getElementById('user-badge').innerHTML = '<i class="fas fa-user-graduate"></i><span>طالب</span>';
+    hideEl('admin-menu-item'); hideEl('admin-tile');
+    setNameEverywhere((String('<i class="fas fa-user-graduate"></i><span>طالب</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     showToast('انتهت الجلسة، يرجى تسجيل الدخول مجدداً', 'error');
 }
 
@@ -234,14 +234,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('user_name', data.username || localStorage.getItem('user_name') || '');
                 document.getElementById('landing-page').classList.add('hidden');
                 document.getElementById('main-app').classList.remove('hidden');
-                document.getElementById('logout-btn').style.display = 'flex';
+                showEl('logout-btn-account'); showEl('logout-btn');
                 if (APP_STATE.role === 'admin') {
-                    document.getElementById('admin-nav-item').style.display = 'flex';
-                    document.getElementById('user-badge').innerHTML = '<i class="fas fa-shield-halved"></i><span>مسؤول</span>';
+                    showEl('admin-menu-item'); showEl('admin-tile');
+                    setNameEverywhere((String('<i class="fas fa-shield-halved"></i><span>مسؤول</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
                 } else {
-                    document.getElementById('admin-nav-item').style.display = 'none';
+                    hideEl('admin-menu-item'); hideEl('admin-tile');
                     const uname = localStorage.getItem('user_name') || 'طالب';
-                    document.getElementById('user-badge').innerHTML = `<i class="fas fa-user-graduate"></i><span>${uname}</span>`;
+                    setNameEverywhere((String(`<i class="fas fa-user-graduate"></i><span>${uname}</span>`).match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
                 }
                 applyInitialRoute();
                 return;
@@ -267,6 +267,8 @@ function applyTheme(theme) {
     localStorage.setItem('theme', theme);
     const icon = document.getElementById('theme-icon');
     const text = document.getElementById('theme-text');
+    const iconTop = document.getElementById('theme-icon-top');
+    const applyIcon = (el, cls, txt) => { if (!el) return; if (cls !== undefined) el.className = cls; if (txt !== undefined) el.textContent = txt; };
     if (icon && text) {
         if (theme === 'dark') {
             icon.className = 'fas fa-sun';
@@ -276,6 +278,7 @@ function applyTheme(theme) {
             text.textContent = 'الوضع الليلي';
         }
     }
+    applyIcon(iconTop, theme === 'dark' ? 'fas fa-sun' : 'fas fa-circle-half-stroke');
 }
 
 function toggleTheme() {
@@ -291,9 +294,9 @@ function enterAsStudent() {
     localStorage.setItem('user_role', 'guest');
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
-    document.getElementById('admin-nav-item').style.display = 'none';
-    document.getElementById('logout-btn').style.display = 'none';
-    document.getElementById('user-badge').innerHTML = '<i class="fas fa-eye"></i><span>ضيف</span>';
+    hideEl('admin-menu-item'); hideEl('admin-tile');
+    hideEl('logout-btn-account'); hideEl('logout-btn');
+    setNameEverywhere((String('<i class="fas fa-eye"></i><span>ضيف</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     showToast('مرحباً بك في المنصة (وضع الضيف)', 'info');
     applyInitialRoute();
 }
@@ -382,9 +385,9 @@ function enterStudentSession(username) {
     localStorage.setItem('user_role', 'student');
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
-    document.getElementById('admin-nav-item').style.display = 'none';
-    document.getElementById('logout-btn').style.display = 'flex';
-    document.getElementById('user-badge').innerHTML = `<i class="fas fa-user-graduate"></i><span>${username || 'طالب'}</span>`;
+    hideEl('admin-menu-item'); hideEl('admin-tile');
+    showEl('logout-btn-account'); showEl('logout-btn');
+    setNameEverywhere((String(`<i class="fas fa-user-graduate"></i><span>${username || 'طالب'}</span>`).match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     showToast(`مرحباً بك ${username || ''}`, 'success');
     loadSubjectsFromAPI().then(() => { renderSubjects(); updateStats(); });
     applyInitialRoute();
@@ -542,9 +545,9 @@ function enterAdminSession(restored = false) {
     localStorage.setItem('user_role', 'admin');
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
-    document.getElementById('admin-nav-item').style.display = 'flex';
-    document.getElementById('logout-btn').style.display = 'flex';
-    document.getElementById('user-badge').innerHTML = '<i class="fas fa-shield-halved"></i><span>مسؤول</span>';
+    showEl('admin-menu-item'); showEl('admin-tile');
+    showEl('logout-btn-account'); showEl('logout-btn');
+    setNameEverywhere((String('<i class="fas fa-shield-halved"></i><span>مسؤول</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     updateStats();
     prefillTelegramConfig();
     loadSubjectsFromAPI().then(() => { renderSubjects(); renderAdminSubjects(); updateStats(); });
@@ -561,9 +564,9 @@ function handleLogout() {
     localStorage.removeItem('user_role');
     localStorage.removeItem('user_name');
     APP_STATE.role = 'guest';
-    document.getElementById('admin-nav-item').style.display = 'none';
-    document.getElementById('logout-btn').style.display = 'none';
-    document.getElementById('user-badge').innerHTML = '<i class="fas fa-eye"></i><span>ضيف</span>';
+    hideEl('admin-menu-item'); hideEl('admin-tile');
+    hideEl('logout-btn-account'); hideEl('logout-btn');
+    setNameEverywhere((String('<i class="fas fa-eye"></i><span>ضيف</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     showToast('تم تسجيل الخروج', 'info');
     switchSection('schedule');
 }
@@ -571,9 +574,17 @@ function handleLogout() {
 // ============================================
 // NAVIGATION - SPA HASH ROUTING
 // ============================================
-const VALID_SECTIONS = ['library', 'schedule', 'calculator', 'exams', 'grades', 'admin'];
+const VALID_SECTIONS = ['home', 'library', 'schedule', 'calculator', 'exams', 'grades', 'admin', 'account'];
+// ==== Native-app shell helpers (new UI) ====
+const $id = (i) => document.getElementById(i);
+function showEl(id, disp = 'flex') { const e = $id(id); if (e) e.style.display = disp; }
+function hideEl(id) { const e = $id(id); if (e) e.style.display = 'none'; }
+function setNameEverywhere(name) {
+    ['acc-name', 'hero-name'].forEach((i) => { const e = $id(i); if (e) e.textContent = name || 'طالب'; });
+}
 
-const GUEST_SECTIONS = ['schedule', 'exams'];
+
+const GUEST_SECTIONS = ['home', 'schedule', 'exams', 'account'];
 
 function getSectionFromHash() {
     const h = window.location.hash.replace(/^#\/?/, '').trim();
@@ -586,7 +597,7 @@ function applyInitialRoute() {
         navigateToSection(section);
     } else {
         history.replaceState(null, '', '#/library');
-        navigateToSection('library');
+        navigateToSection('home');
     }
 }
 
@@ -622,10 +633,10 @@ function showGuestRestriction() {
 }
 
 function switchSection(section) {
-    let target = VALID_SECTIONS.includes(section) ? section : 'library';
+    let target = VALID_SECTIONS.includes(section) ? section : 'home';
     if (target === 'admin' && APP_STATE.role !== 'admin') {
         showToast('هذه الصفحة متاحة للمسؤول فقط', 'error');
-        target = 'library';
+        target = 'home';
     }
     if (!canAccessSection(target)) {
         showGuestRestriction();
@@ -639,9 +650,9 @@ function switchSection(section) {
 }
 
 function navigateToSection(section) {
-    if (!VALID_SECTIONS.includes(section)) section = 'library';
-    if (section === 'admin' && APP_STATE.role !== 'admin') section = 'library';
-    if (!canAccessSection(section)) section = GUEST_SECTIONS[0] || 'schedule';
+    if (!VALID_SECTIONS.includes(section)) section = 'home';
+    if (section === 'admin' && APP_STATE.role !== 'admin') section = 'home';
+    if (!canAccessSection(section)) section = GUEST_SECTIONS[0] || 'home';
     APP_STATE.currentSection = section;
     // Update nav items
     document.querySelectorAll('.nav-item').forEach(item => {
@@ -661,10 +672,16 @@ function navigateToSection(section) {
         schedule: 'الرزنامة الأسبوعية',
         calculator: 'حاسبة المعدل',
         exams: 'تواريخ الامتحانات',
-        grades: 'نقاطي (بروقرس)',
+        grades: 'نقاطي — بروقرس',
         admin: 'لوحة التحكم',
+        home: 'الرئيسية',
+        account: 'حسابي',
     };
-    document.getElementById('topbar-title').textContent = titles[section] || '';
+    const sub = $id('appbar-subtitle');
+    if (sub) sub.textContent = titles[section] || '';
+    const navKey = { home: 'home', grades: 'grades', account: 'account' }[section] || '';
+    document.querySelectorAll('.bn-btn').forEach((b) => b.classList.toggle('active', b.dataset.nav === navKey));
+    const menu = $id('app-menu'); if (menu) menu.classList.add('hidden');
     // Close sidebar on mobile
     closeSidebar();
     // Auto-refresh grades data when entering the section with an active session
@@ -687,23 +704,17 @@ window.addEventListener('hashchange', () => {
 // ============================================
 let sidebarOverlay = null;
 
-function initSidebarOverlay() {
-    sidebarOverlay = document.createElement('div');
-    sidebarOverlay.className = 'sidebar-overlay';
-    sidebarOverlay.onclick = closeSidebar;
-    document.body.appendChild(sidebarOverlay);
-}
+function initSidebarOverlay() { /* legacy: replaced by native shell */ }
 
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    sidebar.classList.toggle('open');
-    sidebarOverlay.classList.toggle('active');
-}
+function toggleSidebar() { /* legacy */ }
 
-function closeSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    sidebar.classList.remove('open');
-    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+function closeSidebar() { /* legacy */ }
+
+function toggleAppMenu() { const m = $id('app-menu'); if (m) m.classList.toggle('hidden'); }
+
+function goStudentCard() {
+    switchSection('grades');
+    setTimeout(() => { if (getProgresSession()) openProgresView('card'); }, 250);
 }
 
 // ============================================

@@ -13,7 +13,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css?v=20260822r">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Preflight معطّل لحماية الأنماط القديمة؛ Tailwind للتخطيط فقط
+        tailwind.config = {
+            corePlugins: { preflight: false },
+            theme: { extend: { fontFamily: { sans: ['Tajawal', 'sans-serif'] } } },
+        };
+    </script>
+    <link rel="stylesheet" href="css/styles.css?v=20260823a">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -248,77 +258,97 @@
 
     <!-- ===== MAIN APP ===== -->
     <div id="main-app" class="main-app hidden">
-        <!-- Sidebar -->
-        <aside id="sidebar" class="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-logo">
-                    <i class="fas fa-graduation-cap"></i>
-                </div>
-                <span class="sidebar-title">المالية والمحاسبة</span>
-                <button class="sidebar-close" onclick="toggleSidebar()">
-                    <i class="fas fa-times"></i>
-                </button>
+            <!-- ===== شريط تنبيه عدم الاتصال ===== -->
+            <div id="offline-banner" class="offline-banner hidden">
+                <i class="fas fa-triangle-exclamation"></i>
+                أنت الآن في وضع عدم الاتصال. يتم عرض آخر بيانات محفوظة.
             </div>
-            <nav class="sidebar-nav">
-                <a class="nav-item active" data-section="library" onclick="switchSection('library')">
-                    <i class="fas fa-book-open"></i>
-                    <span>مكتبة المواد</span>
-                </a>
-                <a class="nav-item" data-section="schedule" onclick="switchSection('schedule')">
-                    <i class="fas fa-calendar-week"></i>
-                    <span>الرزنامة الأسبوعية</span>
-                </a>
-                <a class="nav-item" data-section="calculator" onclick="switchSection('calculator')">
-                    <i class="fas fa-calculator"></i>
-                    <span>حاسبة المعدل</span>
-                </a>
-                <a class="nav-item" data-section="exams" onclick="switchSection('exams')">
-                    <i class="fas fa-file-lines"></i>
-                    <span>تواريخ الامتحانات</span>
-                </a>
-                <a class="nav-item" data-section="grades" onclick="switchSection('grades')">
-                    <i class="fas fa-graduation-cap"></i>
-                    <span>نقاطي (بروقرس)</span>
-                </a>
-                <a class="nav-item nav-admin" data-section="admin" onclick="switchSection('admin')" id="admin-nav-item" style="display:none;">
-                    <i class="fas fa-cog"></i>
-                    <span>لوحة التحكم</span>
-                </a>
-            </nav>
-            <div class="sidebar-footer">
-                <button class="theme-toggle" onclick="toggleTheme()">
-                    <i class="fas fa-moon" id="theme-icon"></i>
-                    <span id="theme-text">الوضع الليلي</span>
-                </button>
-                <div class="user-badge" id="user-badge">
-                    <i class="fas fa-user-graduate"></i>
-                    <span>طالب</span>
-                </div>
-                <button class="theme-toggle" id="logout-btn" onclick="handleLogout()" style="display:none; width: 100%; justify-content: center; color: var(--danger, #ef4444);">
-                    <i class="fas fa-right-from-bracket"></i>
-                    <span>تسجيل الخروج</span>
-                </button>
-            </div>
-        </aside>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Top Bar -->
-            <header class="topbar">
-                <button class="hamburger" onclick="toggleSidebar()">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <h2 class="topbar-title" id="topbar-title">مكتبة المواد</h2>
-                <div class="topbar-actions">
-                    <div class="search-box" id="global-search-box">
+            <!-- ===== APP BAR ثابت ===== -->
+            <header class="app-bar">
+                <div class="appbar-right">
+                    <div class="appbar-logo"><i class="fas fa-graduation-cap"></i></div>
+                    <div class="appbar-titles">
+                        <h1>بوابة الطالب</h1>
+                        <span id="appbar-subtitle">الرئيسية</span>
+                    </div>
+                </div>
+                <div class="appbar-left">
+                    <button class="appbar-btn" onclick="toggleTheme()" title="الوضع الليلي">
+                        <i class="fas fa-circle-half-stroke" id="theme-icon-top"></i>
+                    </button>
+                    <button class="appbar-btn" onclick="toggleAppMenu()" title="القائمة">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+                <!-- قائمة منسدلة -->
+                <div class="app-menu hidden" id="app-menu">
+                    <div class="app-menu-search">
                         <i class="fas fa-search"></i>
                         <input type="text" id="global-search" placeholder="ابحث عن مادة أو درس..." oninput="handleSearch(this.value)">
                     </div>
-                    <button class="btn-icon" onclick="toggleTheme()" title="تبديل الوضع">
-                        <i class="fas fa-circle-half-stroke"></i>
-                    </button>
+                    <button onclick="toggleTheme(); toggleAppMenu();"><i class="fas fa-moon"></i><span id="theme-text">الوضع الليلي</span></button>
+                    <button onclick="switchSection('admin'); toggleAppMenu();" style="display:none;" id="admin-menu-item"><i class="fas fa-cog"></i>لوحة التحكم</button>
+                    <button onclick="handleLogout()" style="display:none;" id="logout-btn"><i class="fas fa-right-from-bracket"></i>تسجيل الخروج</button>
                 </div>
             </header>
+
+            <!-- ===== MAIN CONTENT قابل للتمرير ===== -->
+            <main class="main-content" id="app-main">
+
+            <!-- ========== الشاشة الرئيسية (Dashboard) ========== -->
+            <section id="section-home" class="section active">
+                <div class="home-hero">
+                    <i class="fas fa-circle-user"></i>
+                    <div>
+                        <p class="hh-welcome">مرحباً بك</p>
+                        <p class="hh-name" id="hero-name">طالب مالية ومحاسبة 2</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 px-4 pb-4">
+                    <button class="tile pressable" onclick="switchSection('grades')">
+                        <i class="fas fa-file-lines"></i><span>كشف النقاط</span>
+                    </button>
+                    <button class="tile pressable" onclick="goStudentCard()">
+                        <i class="fas fa-id-card"></i><span>بطاقة الطالب</span>
+                    </button>
+                    <button class="tile pressable" onclick="switchSection('schedule')">
+                        <i class="fas fa-calendar-week"></i><span>الرزنامة</span>
+                    </button>
+                    <button class="tile pressable" onclick="switchSection('exams')">
+                        <i class="fas fa-calendar-days"></i><span>الامتحانات</span>
+                    </button>
+                    <button class="tile pressable" onclick="switchSection('calculator')">
+                        <i class="fas fa-calculator"></i><span>حاسبة المعدل</span>
+                    </button>
+                    <button class="tile pressable" onclick="switchSection('library')">
+                        <i class="fas fa-book-open"></i><span>المكتبة</span>
+                    </button>
+                    <button class="tile pressable col-span-2" onclick="switchSection('admin')" id="admin-tile" style="display:none;">
+                        <i class="fas fa-cog"></i><span>لوحة التحكم</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ========== حسابي ========== -->
+            <section id="section-account" class="section">
+                <div class="account-wrap">
+                    <div class="account-card">
+                        <div class="account-avatar"><i class="fas fa-user-graduate"></i></div>
+                        <div>
+                            <p class="acc-name" id="acc-name">طالب</p>
+                            <p class="acc-sub">مالية ومحاسبة — السنة الثانية</p>
+                        </div>
+                    </div>
+                    <div class="account-list">
+                        <button onclick="switchSection('library')"><span><i class="fas fa-book-open"></i>مكتبة المواد</span><i class="fas fa-chevron-left dim"></i></button>
+                        <button onclick="goStudentCard()"><span><i class="fas fa-id-card"></i>بطاقة الطالب الرسمية</span><i class="fas fa-chevron-left dim"></i></button>
+                        <button onclick="toggleTheme()"><span><i class="fas fa-circle-half-stroke"></i>تبديل المظهر</span><i class="fas fa-chevron-left dim"></i></button>
+                        <button onclick="handleLogout()" style="display:none;" id="logout-btn-account" class="danger"><span><i class="fas fa-right-from-bracket"></i>تسجيل الخروج</span></button>
+                    </div>
+                </div>
+            </section>
+
 
             <!-- ===== LIBRARY SECTION ===== -->
             <section id="section-library" class="section active">
@@ -724,6 +754,24 @@
                 </div>
             </section>
         </main>
+
+        <!-- ===== BOTTOM NAVIGATION ثابت ===== -->
+        <nav class="bottom-nav">
+            <div class="bn-inner">
+                <button class="bn-btn active" data-nav="home" onclick="switchSection('home')">
+                    <i class="fas fa-house"></i><span>الرئيسية</span>
+                </button>
+                <button class="bn-btn" data-nav="grades" onclick="switchSection('grades')">
+                    <i class="fas fa-file-lines"></i><span>كشف النقاط</span>
+                </button>
+                <button class="bn-btn" data-nav="card" onclick="goStudentCard()">
+                    <i class="fas fa-id-card"></i><span>بطاقة الطالب</span>
+                </button>
+                <button class="bn-btn" data-nav="account" onclick="switchSection('account')">
+                    <i class="fas fa-circle-user"></i><span>حسابي</span>
+                </button>
+            </div>
+        </nav>
     </div>
 
     <!-- Pomodoro Timer Widget -->
@@ -761,7 +809,7 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/app.js?v=20260822r"></script>
+    <script src="js/app.js?v=20260823a"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});
