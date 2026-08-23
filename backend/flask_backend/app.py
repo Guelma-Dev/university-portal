@@ -635,16 +635,31 @@ def _vault_has(token: str) -> bool:
 _RELAY_REGISTER_KEY = os.environ.get('RELAY_REGISTER_KEY') or PROGRES_RELAY_KEY
 
 
+_RELAY_URL_MEM = None
+
+
 def _relay_url() -> str:
-    """Current bridge URL: phone-registered (DB) wins over env default."""
+    """Current bridge URL: phone-registered (DB) wins over env default.
+    Survives Neon cold-start stale connections: retry once on a fresh pool,
+    then fall back to the last known good value kept in process memory."""
+    global _RELAY_URL_MEM
     row = None
-    try:
-        with db.engine.connect() as c:
-            r = c.execute(db.text("SELECT payload FROM progres_cache WHERE cache_key = '_relay_url'")).fetchone()
-            row = r[0] if r else None
-    except Exception:
-        pass
-    return row or PROGRES_RELAY_URL
+    for attempt in (1, 2):
+        try:
+            with db.engine.connect() as c:
+                r = c.execute(db.text("SELECT payload FROM progres_cache WHERE cache_key = '_relay_url'")).fetchone()
+                row = r[0] if r else None
+            break
+        except Exception:
+            if attempt == 1:
+                try:
+                    db.engine.dispose()
+                except Exception:
+                    pass
+    if row:
+        _RELAY_URL_MEM = row
+        return row
+    return _RELAY_URL_MEM or PROGRES_RELAY_URL
 
 
 @app.route('/api/progres/relay-register', methods=['POST'])
