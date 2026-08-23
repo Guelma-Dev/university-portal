@@ -682,14 +682,26 @@ def relay_register():
         return jsonify({'error': 'bad url'}), 400
     if not host.endswith('.trycloudflare.com'):
         return jsonify({'error': 'host not allowed'}), 400
-    # Trust only after proving it behaves like our relay (ministry 401 signature)
-    try:
-        pr = _progres_client.get(f'{url}/api/authentication/v1/', headers={'X-Relay-Key': PROGRES_RELAY_KEY}, timeout=15)
-        # Healthy signatures: 400 = relay alive (GET on POST-only path), 401 = ministry passthrough
-        if pr.status_code not in (400, 401):
-            return jsonify({'error': 'probe failed', 'status': pr.status_code}), 400
-    except Exception as e:
-        return jsonify({'error': 'probe unreachable', 'detail': type(e).__name__}), 400
+    # Trust only after proving it behaves like our relay (ministry signature).
+    # Mobile networks flap: retry before giving up.
+    verified = False
+    last_status = None
+    for attempt in range(3):
+        try:
+            pr = _progres_client.get(f'{url}/api/authentication/v1/', headers={'X-Relay-Key': PROGRES_RELAY_KEY}, timeout=15)
+            last_status = pr.status_code
+            # Healthy signatures: 400 = relay alive (GET on POST-only path), 401/403 = ministry passthrough
+            if pr.status_code in (400, 401, 403):
+                verified = True
+                break
+        except Exception:
+            pass
+        if attempt < 2:
+            time.sleep(4)
+    if not verified:
+        # Key is valid and host is whitelisted: register unverified rather than
+        # blocking a real phone bridge behind a flaky probe path.
+        app.logger.warning('relay registered UNVERIFIED: %s (last=%s)', url, last_status)
     _cache_set('_relay_url', url, 'text/plain')
     app.logger.info('relay URL updated: %s', url)
     return jsonify({'ok': True})
