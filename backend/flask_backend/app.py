@@ -522,7 +522,8 @@ _progres_binary_client = httpx.Client(
 def _progres_request(method: str, path: str, token: str = None, json_body: dict = None):
     """Forward to Progres via relay, falling back to direct. Whitelisted paths only."""
     targets = [
-        (PROGRES_RELAY_URL, {'X-Relay-Key': PROGRES_RELAY_KEY}),
+        (_relay_url(), {'X-Relay-Key': PROGRES_RELAY_KEY}),
+        (_relay_url(), {'X-Relay-Key': PROGRES_RELAY_KEY}),  # retry — tunnel may hiccup
         (PROGRES_DIRECT, {}),
     ]
     last_desc = 'unknown'
@@ -631,6 +632,54 @@ def _vault_has(token: str) -> bool:
         return False
 
 
+_RELAY_REGISTER_KEY = os.environ.get('RELAY_REGISTER_KEY') or PROGRES_RELAY_KEY
+
+
+def _relay_url() -> str:
+    """Current bridge URL: phone-registered (DB) wins over env default."""
+    row = None
+    try:
+        with db.engine.connect() as c:
+            r = c.execute(db.text("SELECT payload FROM progres_cache WHERE cache_key = '_relay_url'")).fetchone()
+            row = r[0] if r else None
+    except Exception:
+        pass
+    return row or PROGRES_RELAY_URL
+
+
+@app.route('/api/progres/relay-register', methods=['POST'])
+def relay_register():
+    """The Algerian-side bridge announces its fresh trycloudflare URL here.
+    Strictly validated (https + *.trycloudflare.com) AND probed live before trust,
+    otherwise this endpoint would be an SSRF toy."""
+    data = request.get_json(silent=True) or {}
+    if data.get('key') != _RELAY_REGISTER_KEY:
+        return jsonify({'error': 'forbidden'}), 403
+    url = str(data.get('url') or '').strip()
+    host = ''
+    try:
+        from urllib.parse import urlparse
+        u = urlparse(url)
+        if u.scheme != 'https' or u.port:
+            raise ValueError
+        host = u.hostname or ''
+    except Exception:
+        return jsonify({'error': 'bad url'}), 400
+    if not host.endswith('.trycloudflare.com'):
+        return jsonify({'error': 'host not allowed'}), 400
+    # Trust only after proving it behaves like our relay (ministry 401 signature)
+    try:
+        pr = _progres_client.get(f'{url}/api/authentication/v1/', headers={'X-Relay-Key': PROGRES_RELAY_KEY}, timeout=15)
+        # Healthy signatures: 400 = relay alive (GET on POST-only path), 401 = ministry passthrough
+        if pr.status_code not in (400, 401):
+            return jsonify({'error': 'probe failed', 'status': pr.status_code}), 400
+    except Exception as e:
+        return jsonify({'error': 'probe unreachable', 'detail': type(e).__name__}), 400
+    _cache_set('_relay_url', url, 'text/plain')
+    app.logger.info('relay URL updated: %s', url)
+    return jsonify({'ok': True})
+
+
 def _progres_cached_json(kind: str, cache_key: str, path: str, token: str):
     """Serve ministry JSON through the bridge with DB fallback on outage."""
     cached = _cache_get(cache_key, PROGRES_CACHE_TTL[kind])
@@ -700,7 +749,7 @@ def progres_login():
 @app.route('/api/progres/debug', methods=['GET'])
 def progres_debug():
     """Temporary connectivity diagnostic — remove once Progres access is confirmed."""
-    result = {'relay_url': PROGRES_RELAY_URL}
+    result = {'relay_url': _relay_url(), 'env_default': PROGRES_RELAY_URL}
     for name, base, extra in (
         ('direct', PROGRES_DIRECT, {}),
         ('relay', PROGRES_RELAY_URL, {'X-Relay-Key': PROGRES_RELAY_KEY}),
@@ -802,8 +851,8 @@ def _decode_possible_base64_image(data: bytes):
 def _progres_binary(path: str, token: str):
     """Fetch binary content (photo/logo) via relay then direct. Retries once on failure."""
     targets = [
-        (PROGRES_RELAY_URL, {'X-Relay-Key': PROGRES_RELAY_KEY}),
-        (PROGRES_RELAY_URL, {'X-Relay-Key': PROGRES_RELAY_KEY}),  # retry — relay may hiccup
+        (_relay_url(), {'X-Relay-Key': PROGRES_RELAY_KEY}),
+        (_relay_url(), {'X-Relay-Key': PROGRES_RELAY_KEY}),  # retry — relay may hiccup
         (PROGRES_DIRECT, {}),
     ]
     last_status = 0
