@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0e7a3d">
+<title>بوابة الطالب — جامعة 8 ماي 1945 قالمة</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: { sans: ['Tajawal', 'sans-serif'] },
+                colors: {
+                    primary: { DEFAULT: '#0e7a3d', dark: '#0b5c2e', light: '#e7f3ec' },
+                },
+            },
+        },
+    };
+</script>
+<style>
+    /* منع التحديد والسحب لإحساس تطبيق أصلي */
+    * { -webkit-tap-highlight-color: transparent; user-select: none; }
+    input, textarea { user-select: text; }
+    body { overscroll-behavior-y: none; }
+    /* احترام النوتش والشريط العلوي داخل WebView */
+    .safe-top { padding-top: env(safe-area-inset-top); }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+    /* إخفاء شريط التمرير لإحساس Native */
+    ::-webkit-scrollbar { display: none; }
+    #main { scrollbar-width: none; }
+    /* انتقالات الشاشات */
+    .screen { display: none; animation: fadeIn .18s ease; }
+    .screen.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    /* ضغطة زر */
+    .pressable:active { transform: scale(.96); }
+    .pressable { transition: transform .12s ease; }
+</style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- ==================== 1) APP BAR ثابت ==================== -->
+    <header class="fixed top-0 w-full z-50 bg-primary text-white shadow-md safe-top">
+        <div class="h-16 px-4 flex items-center justify-between">
+            <!-- اليمين: الشعار واسم التطبيق -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow">
+                    <i class="fas fa-graduation-cap text-primary text-lg"></i>
+                </div>
+                <div class="leading-tight">
+                    <h1 class="font-bold text-base">بوابة الطالب</h1>
+                    <p class="text-[11px] text-white/80">جامعة 8 ماي 1945 قالمة</p>
+                </div>
+            </div>
+            <!-- اليسار: القائمة -->
+            <button class="pressable w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10" aria-label="القائمة">
+                <i class="fas fa-bars text-xl"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- ============ شريط عدم الاتصال (يظهر تلقائياً عند انقطاع النت) ============ -->
+    <div id="offline-banner" class="hidden fixed top-16 w-full z-40 bg-amber-500 text-white text-center text-sm font-bold py-2 shadow">
+        <i class="fas fa-triangle-exclamation ml-1"></i>
+        أنت الآن في وضع عدم الاتصال. يتم عرض آخر بيانات محفوظة.
+    </div>
+
+    <!-- ==================== 2) MAIN CONTENT قابل للتمرير ==================== -->
+    <main id="main" class="flex-1 overflow-y-auto pb-20 pt-16 mt-0">
+
+        <!-- ========== الشاشة الرئيسية (Dashboard) ========== -->
+        <section id="screen-home" class="screen active p-4">
+            <!-- ترحيب -->
+            <div class="bg-primary text-white rounded-xl p-4 mb-4 shadow-md flex items-center gap-3">
+                <i class="fas fa-circle-user text-3xl opacity-90"></i>
+                <div>
+                    <p class="text-xs opacity-80">مرحباً بك</p>
+                    <p class="font-bold">براهيمي محمد — مالية ومحاسبة 2</p>
+                </div>
+            </div>
+
+            <!-- شبكة الأزرار المربعة -->
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="go('grades')" class="pressable bg-white rounded-xl shadow-md p-5 flex flex-col items-center gap-2">
+                    <i class="fas fa-file-lines text-primary text-3xl"></i>
+                    <span class="font-bold text-sm">كشف النقاط</span>
+                </button>
+                <button onclick="go('card')" class="pressable bg-white rounded-xl shadow-md p-5 flex flex-col items-center gap-2">
+                    <i class="fas fa-id-card text-primary text-3xl"></i>
+                    <span class="font-bold text-sm">بطاقة الطالب</span>
+                </button>
+                <button class="pressable bg-white rounded-xl shadow-md p-5 flex flex-col items-center gap-2">
+                    <i class="fas fa-pen-ruler text-primary text-3xl"></i>
+                    <span class="font-bold text-sm">التقييم المستمر</span>
+                </button>
+                <button class="pressable bg-white rounded-xl shadow-md p-5 flex flex-col items-center gap-2">
+                    <i class="fas fa-calendar-days text-primary text-3xl"></i>
+                    <span class="font-bold text-sm">جدول الامتحانات</span>
+                </button>
+                <button class="pressable bg-white rounded-xl shadow-md p-5 flex flex-col items-center gap-2">
+                    <i class="fas fa-clock text-primary text-3xl"></i>
+                    <span class="font-bold text-sm">الجدول الزمني</span>
+                </button>
+                <button class="pressable bg-white rounded-xl shadow-md p-5 flex flex-col items-center gap-2">
+                    <i class="fas fa-bullhorn text-primary text-3xl"></i>
+                    <span class="font-bold text-sm">الإعلانات</span>
+                </button>
+                <button class="pressable bg-white rounded-xl shadow-md p-5 flex flex-col items-center gap-2">
+                    <i class="fas fa-calculator text-primary text-3xl"></i>
+                    <span class="font-bold text-sm">حاسبة المعدل</span>
+                </button>
+                <button class="pressable bg-white rounded-xl shadow-md p-5 flex flex-col items-center gap-2">
+                    <i class="fas fa-book-open text-primary text-3xl"></i>
+                    <span class="font-bold text-sm">المكتبة</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ========== كشف النقاط: بطاقات عمودية بلا جداول ========== -->
+        <section id="screen-grades" class="screen p-4">
+            <h2 class="font-bold text-lg mb-1">كشف النقاط</h2>
+            <p class="text-xs text-gray-500 mb-4">السنة الجامعية 2025/2026 — ليسانس مالية ومحاسبة</p>
+
+            <div class="flex flex-col space-y-3">
+                <!-- سداسي 1 -->
+                <div class="bg-white rounded-lg p-4 shadow">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-sm">السداسي الأول</h3>
+                        <span class="bg-primary-light text-primary text-xs font-bold px-3 py-1 rounded-full">المعدل 12.48</span>
+                    </div>
+                    <div class="flex flex-col divide-y divide-gray-100">
+                        <div class="flex items-center justify-between py-2">
+                            <span class="text-sm font-medium">المحاسبة المالية</span>
+                            <span class="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">14.25</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2">
+                            <span class="text-sm font-medium">التمويل الخارجي</span>
+                            <span class="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">12.00</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2">
+                            <span class="text-sm font-medium">القانون التجاري</span>
+                            <span class="text-xs font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">08.50</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2">
+                            <span class="text-sm font-medium">الاقتصاد القياسي</span>
+                            <span class="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">11.75</span>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                        <span><i class="fas fa-coins ml-1 text-amber-500"></i>الرصيد: 28 / 30</span>
+                        <span class="font-bold text-primary">ناجح</span>
+                    </div>
+                </div>
+
+                <!-- سداسي 2 -->
+                <div class="bg-white rounded-lg p-4 shadow">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-sm">السداسي الثاني</h3>
+                        <span class="bg-primary-light text-primary text-xs font-bold px-3 py-1 rounded-full">المعدل 10.27</span>
+                    </div>
+                    <div class="flex flex-col divide-y divide-gray-100">
+                        <div class="flex items-center justify-between py-2">
+                            <span class="text-sm font-medium">المحاسبة التحليلية</span>
+                            <span class="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">11.00</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2">
+                            <span class="text-sm font-medium">النظام الضريبي</span>
+                            <span class="text-xs font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">09.25</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2">
+                            <span class="text-sm font-medium">أساسيات التسويق</span>
+                            <span class="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">10.50</span>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                        <span><i class="fas fa-coins ml-1 text-amber-500"></i>الرصيد: 24 / 30</span>
+                        <span class="font-bold text-primary">ناجح</span>
+                    </div>
+                </div>
+
+                <!-- النتيجة السنوية -->
+                <div class="bg-primary text-white rounded-lg p-4 shadow flex items-center justify-between">
+                    <div>
+                        <p class="text-xs opacity-80">النتيجة السنوية</p>
+                        <p class="font-bold">ناجح — دورة عادية</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-2xl font-extrabold">11.38</p>
+                        <p class="text-[10px] opacity-80">60 رصيد</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== بطاقة الطالب (هيكل placeholder) ========== -->
+        <section id="screen-card" class="screen p-4">
+            <h2 class="font-bold text-lg mb-4">بطاقة الطالب</h2>
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="bg-primary text-white text-center py-3">
+                    <p class="text-[10px]">الجمهورية الجزائرية الديمقراطية الشعبية</p>
+                    <p class="text-[10px] opacity-80">وزارة التعليم العالي والبحث العلمي</p>
+                    <p class="font-extrabold tracking-wide">بطاقة الطالب</p>
+                </div>
+                <div class="p-4 flex gap-3">
+                    <div class="w-20 h-24 rounded-lg bg-gray-200 border border-gray-300 flex items-center justify-center shrink-0">
+                        <i class="fas fa-user text-gray-400 text-2xl"></i>
+                    </div>
+                    <div class="flex flex-col justify-center gap-2 text-sm">
+                        <p><span class="text-gray-500 text-xs">اللقب:</span> <b>براهيمي</b></p>
+                        <p><span class="text-gray-500 text-xs">الاسم:</span> <b>محمد</b></p>
+                        <p><span class="text-gray-500 text-xs">الميلاد:</span> <b>قالمة / 2006</b></p>
+                        <p><span class="text-gray-500 text-xs">التخصص:</span> <b>مالية ومحاسبة</b></p>
+                    </div>
+                </div>
+                <div class="bg-primary-dark text-white text-xs flex justify-between px-4 py-2">
+                    <span>السنة الجامعية 2026/2027</span>
+                    <span>202536255705</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== حسابي ========== -->
+        <section id="screen-account" class="screen p-4">
+            <h2 class="font-bold text-lg mb-4">حسابي</h2>
+            <div class="bg-white rounded-xl shadow p-4 flex items-center gap-3 mb-4">
+                <div class="w-14 h-14 rounded-full bg-primary-light text-primary flex items-center justify-center text-xl font-extrabold">ب</div>
+                <div>
+                    <p class="font-bold text-sm">براهيمي محمد</p>
+                    <p class="text-xs text-gray-500">202536255705 — مالية ومحاسبة 2</p>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow divide-y divide-gray-100">
+                <button class="pressable w-full flex items-center justify-between p-4 text-sm">
+                    <span><i class="fas fa-shield-halved text-primary ml-2"></i>تغيير كلمة المرور</span>
+                    <i class="fas fa-chevron-left text-gray-300"></i>
+                </button>
+                <button class="pressable w-full flex items-center justify-between p-4 text-sm">
+                    <span><i class="fas fa-bell text-primary ml-2"></i>الإشعارات</span>
+                    <i class="fas fa-chevron-left text-gray-300"></i>
+                </button>
+                <button class="pressable w-full flex items-center justify-between p-4 text-sm text-red-600">
+                    <span><i class="fas fa-right-from-bracket ml-2"></i>تسجيل الخروج</span>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== 3) BOTTOM NAVIGATION ثابت ==================== -->
+    <nav class="fixed bottom-0 w-full z-50 bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] safe-bottom">
+        <div class="h-16 flex justify-around items-center" id="bottom-nav">
+            <button data-nav="home" onclick="go('home')" class="nav-btn pressable flex flex-col items-center gap-1 text-primary w-16">
+                <i class="fas fa-house text-lg"></i>
+                <span class="text-[10px] font-bold">الرئيسية</span>
+            </button>
+            <button data-nav="grades" onclick="go('grades')" class="nav-btn pressable flex flex-col items-center gap-1 text-gray-400 w-16">
+                <i class="fas fa-file-lines text-lg"></i>
+                <span class="text-[10px] font-bold">كشف النقاط</span>
+            </button>
+            <button data-nav="card" onclick="go('card')" class="nav-btn pressable flex flex-col items-center gap-1 text-gray-400 w-16">
+                <i class="fas fa-id-card text-lg"></i>
+                <span class="text-[10px] font-bold">بطاقة الطالب</span>
+            </button>
+            <button data-nav="account" onclick="go('account')" class="nav-btn pressable flex flex-col items-center gap-1 text-gray-400 w-16">
+                <i class="fas fa-circle-user text-lg"></i>
+                <span class="text-[10px] font-bold">حسابي</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Font Awesome للأيقونات -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js"></script>
+
+    <script>
+        // ===== تبديل الشاشات + تفعيل زر التنقل =====
+        function go(name) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-' + name)?.classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                const on = b.dataset.nav === name;
+                b.classList.toggle('text-primary', on);
+                b.classList.toggle('text-gray-400', !on);
+            });
+            document.getElementById('main').scrollTo(0, 0);
+        }
+
+        // ===== وضع عدم الاتصال: شريط التنبيه تلقائياً =====
+        const banner = document.getElementById('offline-banner');
+        function syncOnline() { banner.classList.toggle('hidden', navigator.onLine); }
+        window.addEventListener('online', syncOnline);
+        window.addEventListener('offline', syncOnline);
+        syncOnline();
+
+        // ===== WebView في APK: إظهار الشريط عند فشل أي طلب شبكة =====
+        window.dispatchEvent(new Event('online'));
+    </script>
+</body>
+</html>
