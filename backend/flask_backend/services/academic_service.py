@@ -86,6 +86,16 @@ def debug_vault():
             }
     except Exception as e:
         info['query_err'] = f'{type(e).__name__}: {e}'
+    rb = _relay_url()
+    info['relay_seen'] = rb
+    if rb:
+        try:
+            rr = _session.get(rb.rstrip('/') + '/api/infos/bannerInformations',
+                              headers={'X-Relay-Key': RELAY_KEY,
+                                       'Accept': 'application/json'}, timeout=20)
+            info['relay_probe'] = f'HTTP {rr.status_code}: {rr.text[:60]}'
+        except Exception as e:
+            info['relay_probe'] = f'{type(e).__name__}: {e}'
     return jsonify(info)
 
 
