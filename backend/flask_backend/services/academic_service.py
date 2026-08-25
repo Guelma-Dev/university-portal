@@ -220,10 +220,16 @@ def _relay_url():
     return _RELAY_URL_MEM or None
 
 
-def _relay_path(path):
-    # /api/infos/* GETs are mirrored by progres.mesrs.dz — the v2 relay
-    # forwards them bare. Write ops need the v3 '/w' passthrough.
-    return path if path.startswith('/api/infos/') else '/w' + path
+def _relay_path(path, method='GET'):
+    # Route paths are relative to BASE_URL (.../api/infos); the relay speaks
+    # full ministry paths. GETs under /api/infos/* are mirrored by
+    # progres.mesrs.dz so the v2 relay forwards them bare; anything else
+    # (all POSTs included) needs the v3 '/w' passthrough.
+    if not path.startswith('/api/'):
+        path = '/api/infos' + path
+    if method == 'GET' and path.startswith('/api/infos/'):
+        return path
+    return '/w' + path
 
 
 def _upstream_get(path, headers, timeout=TIMEOUT):
