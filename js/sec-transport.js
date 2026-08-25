@@ -153,7 +153,7 @@
         return `<div class="lx-tr-state lx-tr-err">
             <i class="fas fa-tower-broadcast"></i>
             <strong>${esc(msg)}</strong>
-            <p>تحقق من اتصالك بالإنترنت ثم أعد المحاولة</p>
+            <p>خدمة النقل الجامعي غير متاحة حالياً، أعد المحاولة بعد قليل</p>
             <button type="button" class="lx-tr-retry" data-retry><i class="fas fa-rotate-right"></i> إعادة المحاولة</button>
         </div>`;
     }

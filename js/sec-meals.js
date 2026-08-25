@@ -216,7 +216,7 @@
                 <div class="lx-m-wrap-pad" style="margin-top:16px">
                     <div class="lx-m-errcard">
                         <i class="fas fa-triangle-exclamation"></i>
-                        <p>تعذر جلب قائمة المطاعم حالياً</p>
+                        <p>تعذر الوصول لخدمة الوجبات، أعد المحاولة بعد قليل</p>
                         <button type="button" class="lx-m-btn-retry" data-action="retry-ctx"><i class="fas fa-rotate-right"></i> إعادة المحاولة</button>
                     </div>
                 </div>`;
