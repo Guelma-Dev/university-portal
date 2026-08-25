@@ -564,6 +564,10 @@
         if (document.getElementById('lx-tile-transport')) return;
         const grid = document.querySelector('#section-home .grid');
         if (!grid) return;
+        const exists = [...grid.querySelectorAll('.tile')].some(t =>
+            (t.getAttribute('onclick') || '').includes("switchSection('transport')") ||
+            (t.textContent || '').includes('النقل الحي'));
+        if (exists) return;
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'tile pressable';
