@@ -188,8 +188,49 @@ def _first_dia(claims):
 # ============================================
 # WEBETU (raw progres JWT as authorization header)
 # ============================================
+_RELAY_URL_MEM = None
+RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
+
+
+def _relay_url():
+    global _RELAY_URL_MEM
+    if _RELAY_URL_MEM is None:
+        try:
+            with _db.connect() as c:
+                row = c.execute(
+                    text("SELECT payload FROM progres_cache "
+                         "WHERE cache_key = '_relay_url'")).fetchone()
+            u = (row[0] or '').strip() if row else ''
+        except Exception:
+            u = ''
+        _RELAY_URL_MEM = u
+    return _RELAY_URL_MEM or None
+
+
+def _upstream(method, base, path, headers, kwargs):
+    """Direct first; on failure fall back to the Algerian phone relay.
+    base must be GS_BASE ('/onou' prefix) or WEBETU_BASE ('/w' prefix)."""
+    try:
+        r = _session.request(method, base + path, headers=headers, **kwargs)
+        if r.status_code in (502, 503):
+            raise OSError('egress blocked (%d)' % r.status_code)
+        return r
+    except Exception:
+        rb = _relay_url()
+        if not rb:
+            raise
+        h = dict(headers)
+        h['X-Relay-Key'] = RELAY_KEY
+        prefix = '/onou' if base == GS_BASE else '/w'
+        kw = dict(kwargs)
+        kw.pop('verify', None)
+        return _session.request(method, rb.rstrip('/') + prefix + path,
+                                headers=h, **kw)
+
+
 def _webetu_get(path, token):
-    r = _session.get(WEBETU_BASE + path, headers={'authorization': token}, timeout=30)
+    r = _upstream('GET', WEBETU_BASE, path,
+                  {'authorization': token}, {'timeout': 30})
     if r.status_code != 200:
         raise ApiError('خوادم الوزارة غير متاحة حالياً، حاول لاحقاً')
     try:
@@ -271,7 +312,7 @@ def _gs_request(method, path, gs_token=None, body=None, params=None):
     if body is not None:
         headers['Content-Type'] = 'application/json'
         kwargs['data'] = body_str.encode('utf-8')
-    r = _session.request(method, GS_BASE + path, headers=headers, **kwargs)
+    r = _upstream(method, GS_BASE, path, headers, kwargs)
     if r.status_code >= 400:
         raise ApiError(f'خطأ من خدمة الوجبات ({r.status_code})')
     try:

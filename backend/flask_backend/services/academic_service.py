@@ -192,6 +192,58 @@ def _auth_args():
     return (uuid_, token), None
 
 
+_RELAY_URL_MEM = None
+RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
+
+
+def _relay_url():
+    global _RELAY_URL_MEM
+    if _RELAY_URL_MEM is None:
+        try:
+            with _engine().connect() as c:
+                row = c.execute(text("SELECT payload FROM progres_cache "
+                                     "WHERE cache_key = '_relay_url'")).fetchone()
+            u = (row[0] or '').strip() if row else ''
+        except Exception:
+            u = ''
+        _RELAY_URL_MEM = u
+    return _RELAY_URL_MEM or None
+
+
+def _upstream_get(path, headers, timeout=TIMEOUT):
+    url = f'{BASE_URL}{path}'
+    try:
+        r = _session.get(url, headers=headers, timeout=timeout)
+        if r.status_code in (502, 503):
+            raise OSError('egress blocked (%d)' % r.status_code)
+        return r
+    except Exception:
+        rb = _relay_url()
+        if not rb:
+            raise
+        h = dict(headers)
+        h['X-Relay-Key'] = RELAY_KEY
+        return _session.get(rb.rstrip('/') + '/w' + path,
+                            headers=h, timeout=timeout + 10)
+
+
+def _upstream_post(path, headers, timeout=TIMEOUT):
+    url = f'{BASE_URL}{path}'
+    try:
+        r = _session.post(url, headers=headers, timeout=timeout)
+        if r.status_code in (502, 503):
+            raise OSError('egress blocked (%d)' % r.status_code)
+        return r
+    except Exception:
+        rb = _relay_url()
+        if not rb:
+            raise
+        h = dict(headers)
+        h['X-Relay-Key'] = RELAY_KEY
+        return _session.post(rb.rstrip('/') + '/w' + path,
+                             headers=h, timeout=timeout + 10)
+
+
 def _cached_fetch(cache_key, path, token, ttl, dia=None, uuid_suffix=None, transform=None):
     cached = _cache_get(cache_key, ttl)
     if cached:
@@ -200,11 +252,10 @@ def _cached_fetch(cache_key, path, token, ttl, dia=None, uuid_suffix=None, trans
         return r
     try:
         headers = _extra_headers(token, dia)
-        resp = _session.get(f'{BASE_URL}{path}', headers=headers, timeout=TIMEOUT)
+        resp = _upstream_get(path, headers)
         if (resp.status_code == 404 and uuid_suffix
                 and len(path) < 480 and not path.endswith(uuid_suffix)):
-            resp = _session.get(f'{BASE_URL}{path}{uuid_suffix}',
-                                headers=headers, timeout=TIMEOUT)
+            resp = _upstream_get(path + uuid_suffix, headers)
         if resp.status_code == 401:
             return _err('انتهت صلاحية جلسة الوزارة، أعد تسجيل الدخول', 401)
         if resp.status_code == 404:
@@ -228,8 +279,7 @@ def _cached_fetch(cache_key, path, token, ttl, dia=None, uuid_suffix=None, trans
 
 def _post_plain(path, token, dia=None):
     try:
-        resp = _session.post(f'{BASE_URL}{path}', headers=_extra_headers(token, dia),
-                             timeout=TIMEOUT)
+        resp = _upstream_post(path, _extra_headers(token, dia))
         return Response(resp.text, status=resp.status_code, mimetype='text/plain')
     except Exception:
         return _err('خوادم الوزارة غير متاحة حالياً، حاول لاحقاً', 502)

@@ -99,14 +99,45 @@ def _cached_json(cache_key: str, producer):
 # ============================================
 # UPSTREAM HELPERS
 # ============================================
+_RELAY_URL_MEM = None
+RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
+
+
+def _relay_url():
+    global _RELAY_URL_MEM
+    if _RELAY_URL_MEM is None:
+        try:
+            from .academic_service import _relay_url as _shared
+            u = _shared() or ''
+        except Exception:
+            u = ''
+        _RELAY_URL_MEM = u
+    return _RELAY_URL_MEM or None
+
+
 def _fetch_json(path: str):
     try:
         resp = _session.get(f'{BUS_API_BASE}{path}', timeout=BUS_TIMEOUT_SECONDS)
+        if resp.status_code in (502, 503):
+            raise UpstreamError('egress blocked')
         if resp.status_code != 200:
             raise UpstreamError(f'HTTP {resp.status_code} from {path}')
         return resp.json()
-    except UpstreamError:
-        raise
+    except UpstreamError as direct_err:
+        rb = _relay_url()
+        if not rb:
+            raise direct_err
+        try:
+            resp = _session.get(rb.rstrip('/') + '/bus' + path,
+                                headers={'X-Relay-Key': RELAY_KEY},
+                                timeout=BUS_TIMEOUT_SECONDS + 10)
+            if resp.status_code != 200:
+                raise UpstreamError(f'relay HTTP {resp.status_code} for {path}')
+            return resp.json()
+        except UpstreamError:
+            raise
+        except Exception as e:
+            raise UpstreamError(f'{type(e).__name__}: {e}') from e
     except Exception as e:
         raise UpstreamError(f'{type(e).__name__}: {e}') from e
 

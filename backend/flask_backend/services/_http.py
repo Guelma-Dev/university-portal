@@ -21,6 +21,10 @@ class Response:
     def ok(self):
         return 200 <= self.status_code < 300
 
+    @property
+    def content(self):
+        return self.text.encode('utf-8', 'replace')
+
     def json(self):
         return _json.loads(self.text)
 
@@ -85,6 +89,10 @@ class Session:
             h.update(headers)
         return h
 
+    def request(self, method, url, **kw):
+        kw['headers'] = self._merge(kw.get('headers'))
+        return _send(method.upper(), url, **kw)
+
     def get(self, url, **kw):
         kw['headers'] = self._merge(kw.get('headers'))
         return _send('GET', url, **kw)
@@ -104,3 +112,7 @@ class Session:
     def patch(self, url, **kw):
         kw['headers'] = self._merge(kw.get('headers'))
         return _send('PATCH', url, **kw)
+
+
+def request(method, url, **kw):
+    return _send(method.upper(), url, **kw)
