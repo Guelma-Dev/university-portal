@@ -11,7 +11,10 @@ import time
 from collections import OrderedDict
 from urllib.parse import quote
 
-import requests
+try:
+    from . import _http as requests
+except ImportError:
+    import requests
 from flask import Blueprint, jsonify, request
 
 # ============================================

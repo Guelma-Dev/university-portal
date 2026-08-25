@@ -27,7 +27,10 @@ import time
 import uuid as uuidlib
 from datetime import datetime, timedelta
 
-import requests
+try:
+    from . import _http as requests
+except ImportError:
+    import requests
 from flask import Blueprint, jsonify, request
 from sqlalchemy import create_engine, text
 

@@ -9,7 +9,10 @@ import json
 import os
 from datetime import datetime, timedelta
 
-import requests
+try:
+    from . import _http as requests
+except ImportError:
+    import requests
 from flask import Blueprint, Response, jsonify, request
 from sqlalchemy import create_engine, text
 
