@@ -1621,22 +1621,31 @@ def health():
 
 
 # ==== Native services blueprints (bus / academic / ONOU meals) ====
+SERVICES_STATUS = {}
+def _reg(name, importer):
+    try:
+        mod = importer()
+        bp = getattr(mod, 'bp')
+        app.register_blueprint(bp)
+        SERVICES_STATUS[name] = {'ok': True, 'routes': sorted(str(r) for r in bp.deferred_functions)}
+        return mod
+    except Exception as _e:
+        import traceback
+        SERVICES_STATUS[name] = {'ok': False, 'error': f'{type(_e).__name__}: {_e}', 'trace': traceback.format_exc()[-800:]}
+        app.logger.error('%s blueprint failed: %s', name, _e)
+
+_reg('bus', lambda: __import__('services.bus_service', fromlist=['bp']))
+_acad = _reg('academic', lambda: __import__('services.academic_service', fromlist=['bp']))
+_onou = _reg('onou', lambda: __import__('services.onou_service', fromlist=['bp']))
 try:
-    from services.bus_service import bp as bus_bp
-    app.register_blueprint(bus_bp)
+    if _onou and hasattr(_onou, 'start_autobook'):
+        _onou.start_autobook()
 except Exception as _e:
-    app.logger.error('bus blueprint failed: %s', _e)
-try:
-    from services.academic_service import bp as academic_bp
-    app.register_blueprint(academic_bp)
-except Exception as _e:
-    app.logger.error('academic blueprint failed: %s', _e)
-try:
-    from services.onou_service import bp as onou_bp, start_autobook
-    app.register_blueprint(onou_bp)
-    start_autobook()
-except Exception as _e:
-    app.logger.error('onou blueprint failed: %s', _e)
+    app.logger.error('autobook start failed: %s', _e)
+
+@app.route('/api/services-health')
+def _services_health():
+    return jsonify(SERVICES_STATUS)
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=PORT)
