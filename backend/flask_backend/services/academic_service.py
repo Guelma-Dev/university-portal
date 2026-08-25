@@ -68,8 +68,8 @@ def _resolve_token(uuid_):
         with _engine().connect() as c:
             row = c.execute(
                 text('SELECT token, expires_at FROM progres_tokens '
-                     'WHERE uuid = :u AND expires_at > :now'),
-                {'u': uuid_, 'now': datetime.utcnow()},
+                     'WHERE uuid = :u'),
+                {'u': uuid_},
             ).fetchone()
     except Exception:
         return None
