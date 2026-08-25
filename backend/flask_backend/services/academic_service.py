@@ -7,6 +7,7 @@ progres_tokens vault (raw ministry JWT per uuid) and progres_cache table.
 import base64
 import json
 import os
+import time
 from datetime import datetime, timedelta
 
 try:
@@ -204,6 +205,16 @@ def _auth_args():
 
 _RELAY_URL_MEM = None
 RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
+_DIRECT_BLOCK = {}
+DIRECT_COOLDOWN = 300
+
+
+def _direct_ok(base):
+    return time.time() >= _DIRECT_BLOCK.get(base, 0)
+
+
+def _block_direct(base):
+    _DIRECT_BLOCK[base] = time.time() + DIRECT_COOLDOWN
 
 
 def _relay_url():
@@ -234,12 +245,14 @@ def _relay_path(path, method='GET'):
 
 def _upstream_get(path, headers, timeout=TIMEOUT):
     url = f'{BASE_URL}{path}'
-    try:
-        r = _session.get(url, headers=headers, timeout=timeout)
-        if r.status_code in (502, 503):
-            raise OSError('egress blocked (%d)' % r.status_code)
-        return r
-    except Exception:
+    if _direct_ok(BASE_URL):
+        try:
+            r = _session.get(url, headers=headers, timeout=timeout)
+            if r.status_code in (502, 503):
+                raise OSError('egress blocked (%d)' % r.status_code)
+            return r
+        except Exception:
+            _block_direct(BASE_URL)
         rb = _relay_url()
         if not rb:
             raise
@@ -251,12 +264,14 @@ def _upstream_get(path, headers, timeout=TIMEOUT):
 
 def _upstream_post(path, headers, timeout=TIMEOUT):
     url = f'{BASE_URL}{path}'
-    try:
-        r = _session.post(url, headers=headers, timeout=timeout)
-        if r.status_code in (502, 503):
-            raise OSError('egress blocked (%d)' % r.status_code)
-        return r
-    except Exception:
+    if _direct_ok(BASE_URL):
+        try:
+            r = _session.post(url, headers=headers, timeout=timeout)
+            if r.status_code in (502, 503):
+                raise OSError('egress blocked (%d)' % r.status_code)
+            return r
+        except Exception:
+            _block_direct(BASE_URL)
         rb = _relay_url()
         if not rb:
             raise

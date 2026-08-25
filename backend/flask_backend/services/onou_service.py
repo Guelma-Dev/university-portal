@@ -190,6 +190,16 @@ def _first_dia(claims):
 # ============================================
 _RELAY_URL_MEM = None
 RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
+_DIRECT_BLOCK = {}
+DIRECT_COOLDOWN = 300
+
+
+def _direct_ok(base):
+    return time.time() >= _DIRECT_BLOCK.get(base, 0)
+
+
+def _block_direct(base):
+    _DIRECT_BLOCK[base] = time.time() + DIRECT_COOLDOWN
 
 
 def _relay_url():
@@ -210,23 +220,20 @@ def _relay_url():
 def _upstream(method, base, path, headers, kwargs):
     """Direct first; on failure fall back to the Algerian phone relay.
     base must be GS_BASE ('/onou' prefix) or WEBETU_BASE ('/w' prefix)."""
-    try:
-        r = _session.request(method, base + path, headers=headers, **kwargs)
-        if r.status_code in (502, 503):
-            raise OSError('egress blocked (%d)' % r.status_code)
-        return r
-    except Exception:
+    if _direct_ok(base):
+        try:
+            r = _session.request(method, base + path, headers=headers, **kwargs)
+            if r.status_code in (502, 503):
+                raise OSError('egress blocked (%d)' % r.status_code)
+            return r
+        except Exception:
+            _block_direct(base)
         rb = _relay_url()
         if not rb:
             raise
         h = dict(headers)
         h['X-Relay-Key'] = RELAY_KEY
-        if base == GS_BASE:
-            prefix = '/onou'
-        elif path.startswith('/api/infos/'):
-            prefix = ''  # mirrored by progres — v2-relay compatible
-        else:
-            prefix = '/w'
+        prefix = '/onou' if base == GS_BASE else '/w'
         kw = dict(kwargs)
         kw.pop('verify', None)
         return _session.request(method, rb.rstrip('/') + prefix + path,

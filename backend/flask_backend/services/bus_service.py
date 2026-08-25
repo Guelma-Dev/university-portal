@@ -102,6 +102,8 @@ def _cached_json(cache_key: str, producer):
 # ============================================
 _RELAY_URL_MEM = None
 RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
+_DIRECT_BLOCKED_UNTIL = 0
+DIRECT_COOLDOWN = 300
 
 
 def _relay_url():
@@ -117,14 +119,18 @@ def _relay_url():
 
 
 def _fetch_json(path: str):
+    global _DIRECT_BLOCKED_UNTIL
     try:
-        resp = _session.get(f'{BUS_API_BASE}{path}', timeout=BUS_TIMEOUT_SECONDS)
-        if resp.status_code in (502, 503):
-            raise UpstreamError('egress blocked')
-        if resp.status_code != 200:
-            raise UpstreamError(f'HTTP {resp.status_code} from {path}')
-        return resp.json()
+        if time.time() >= _DIRECT_BLOCKED_UNTIL:
+            resp = _session.get(f'{BUS_API_BASE}{path}', timeout=BUS_TIMEOUT_SECONDS)
+            if resp.status_code in (502, 503):
+                raise UpstreamError('egress blocked')
+            if resp.status_code != 200:
+                raise UpstreamError(f'HTTP {resp.status_code} from {path}')
+            return resp.json()
+        raise UpstreamError('direct cooldown active')
     except UpstreamError as direct_err:
+        _DIRECT_BLOCKED_UNTIL = time.time() + DIRECT_COOLDOWN
         rb = _relay_url()
         if not rb:
             raise direct_err
