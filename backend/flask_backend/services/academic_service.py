@@ -58,7 +58,38 @@ def _err(msg, code):
     return resp
 
 
+LAST_DB_ERR = None
+
+
+@bp.get('/debug-vault')
+def debug_vault():
+    uuid_ = (request.args.get('uuid') or '').strip()
+    info = {
+        'db_prefix': os.environ.get('DATABASE_URL', '')[:38],
+        'utcnow': datetime.utcnow().isoformat(),
+        'uuid_in': uuid_[:8] + '…' if uuid_ else None,
+        'last_err': LAST_DB_ERR,
+    }
+    try:
+        with _engine().connect() as c:
+            row = c.execute(
+                text('SELECT token, expires_at FROM progres_tokens '
+                     'WHERE uuid = :u'),
+                {'u': uuid_},
+            ).fetchone()
+        info['row'] = None
+        if row:
+            info['row'] = {
+                'token_len': len(row[0] or ''),
+                'expires_at': str(row[1]),
+            }
+    except Exception as e:
+        info['query_err'] = f'{type(e).__name__}: {e}'
+    return jsonify(info)
+
+
 def _resolve_token(uuid_):
+    global LAST_DB_ERR
     if not isinstance(uuid_, str):
         return None
     uuid_ = uuid_.strip()
@@ -71,7 +102,8 @@ def _resolve_token(uuid_):
                      'WHERE uuid = :u'),
                 {'u': uuid_},
             ).fetchone()
-    except Exception:
+    except Exception as e:
+        LAST_DB_ERR = f'{type(e).__name__}: {e}'
         return None
     if not row:
         return None

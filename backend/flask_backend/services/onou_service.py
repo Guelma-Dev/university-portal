@@ -91,13 +91,47 @@ def _vault_get(u):
     try:
         with _db.connect() as c:
             row = c.execute(
-                text('SELECT token FROM progres_tokens WHERE uuid = :u AND expires_at > :now'),
-                {'u': u, 'now': datetime.utcnow()},
+                text('SELECT token, expires_at FROM progres_tokens '
+                     'WHERE uuid = :u'),
+                {'u': u},
             ).fetchone()
-        return row[0] if row else None
+        if not row:
+            return None
+        exp = row[1]
+        if isinstance(exp, str):
+            try:
+                exp = datetime.fromisoformat(exp)
+            except ValueError:
+                return None
+        if not exp or exp <= datetime.utcnow():
+            print(f'[ONOU] vault: token expired at {exp}', flush=True)
+            return None
+        return row[0]
     except Exception as e:
-        print(f'[ONOU] vault get: {type(e).__name__}', flush=True)
+        print(f'[ONOU] vault get: {type(e).__name__}: {e}', flush=True)
+        VAULT_ERR = f'{type(e).__name__}: {e}'
+        globals()['VAULT_ERR'] = VAULT_ERR
         return None
+
+
+@bp.get('/debug-vault')
+def debug_vault():
+    u = (request.args.get('uuid') or '').strip()
+    info = {
+        'db_prefix': DATABASE_URL[:38],
+        'utcnow': datetime.utcnow().isoformat(),
+        'vault_err': globals().get('VAULT_ERR'),
+    }
+    tok = _vault_get(u) if u else None
+    info['token_resolved'] = bool(tok)
+    info['token_len'] = len(tok or '')
+    try:
+        with _db.connect() as c:
+            row = c.execute(text("SELECT 1")).fetchone()
+        info['db_ping'] = 'ok' if row else 'empty'
+    except Exception as e:
+        info['db_ping'] = f'{type(e).__name__}: {e}'
+    return jsonify(info)
 
 
 def _cache_get(key, ttl_seconds):
