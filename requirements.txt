@@ -6,3 +6,4 @@ psycopg2-binary==2.9.9
 python-telegram-bot==20.7
 bcrypt==4.2.1
 httpx==0.25.2
+requests==2.32.3
