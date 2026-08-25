@@ -27,7 +27,18 @@ _session.headers.update({
     'Accept': 'application/json',
 })
 
-_engine = None
+_ENGINE_OBJ = None
+
+
+def _engine():
+    global _ENGINE_OBJ
+    if _ENGINE_OBJ is None:
+        url = os.environ.get('DATABASE_URL', 'sqlite:///university.db')
+        if url.startswith('postgres://'):
+            url = url.replace('postgres://', 'postgresql://', 1)
+        _ENGINE_OBJ = create_engine(url, pool_pre_ping=True,
+                                    pool_recycle=280, future=True)
+    return _ENGINE_OBJ
 
 TTL_DEFAULT = 30 * 60
 TTL_BANNER = 3 * 3600
@@ -40,16 +51,6 @@ TRANSPORT_STATUS_MAP = {
     'approuvee': 'مقبولة',
     'noNapprouvee': 'غير مقبولة',
 }
-
-
-def _engine():
-    global _engine
-    if _engine is None:
-        url = os.environ.get('DATABASE_URL', 'sqlite:///university.db')
-        if url.startswith('postgres://'):
-            url = url.replace('postgres://', 'postgresql://', 1)
-        _engine = create_engine(url, pool_pre_ping=True, pool_recycle=280, future=True)
-    return _engine
 
 
 def _err(msg, code):

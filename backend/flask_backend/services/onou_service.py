@@ -348,6 +348,12 @@ def context():
             'depots': depots or [],
         })
     except Exception as e:
+        if request.args.get('debug') == '1':
+            import traceback
+            return jsonify({
+                'error': str(e), 'type': type(e).__name__,
+                'trace': traceback.format_exc()[-900:],
+            }), 500
         return _fail(e)
 
 
