@@ -574,7 +574,7 @@ function handleLogout() {
 // ============================================
 // NAVIGATION - SPA HASH ROUTING
 // ============================================
-const VALID_SECTIONS = ['home', 'library', 'schedule', 'calculator', 'exams', 'grades', 'admin', 'account'];
+const VALID_SECTIONS = ['home', 'library', 'schedule', 'calculator', 'exams', 'grades', 'admin', 'account', 'transport', 'meals', 'profile360'];
 // ==== Native-app shell helpers (new UI) ====
 const $id = (i) => document.getElementById(i);
 function showEl(id, disp = 'flex') { const e = $id(id); if (e) e.style.display = disp; }
@@ -676,6 +676,9 @@ function navigateToSection(section) {
         admin: 'لوحة التحكم',
         home: 'الرئيسية',
         account: 'حسابي',
+        transport: 'النقل الحي',
+        meals: 'الوجبات',
+        profile360: 'ملفي الشامل',
     };
     const sub = $id('appbar-subtitle');
     if (sub) sub.textContent = titles[section] || '';

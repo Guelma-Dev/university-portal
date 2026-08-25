@@ -23,7 +23,8 @@
             theme: { extend: { fontFamily: { sans: ['Tajawal', 'sans-serif'] } } },
         };
     </script>
-    <link rel="stylesheet" href="css/styles.css?v=20260823a">
+    <link rel="stylesheet" href="css/styles.css?v=20260825a">
+    <link rel="stylesheet" href="css/luxury.css?v=20260825a">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -323,6 +324,15 @@
                     </button>
                     <button class="tile pressable" onclick="switchSection('library')">
                         <i class="fas fa-book-open"></i><span>المكتبة</span>
+                    </button>
+                    <button class="tile pressable" onclick="switchSection('transport')">
+                        <i class="fas fa-bus"></i><span>النقل الحي</span>
+                    </button>
+                    <button class="tile pressable" onclick="switchSection('meals')">
+                        <i class="fas fa-utensils"></i><span>الوجبات</span>
+                    </button>
+                    <button class="tile pressable col-span-2" onclick="switchSection('profile360')" style="border-color:#d4af37;">
+                        <i class="fas fa-id-badge"></i><span>ملفي الشامل</span>
                     </button>
                     <button class="tile pressable col-span-2" onclick="switchSection('admin')" id="admin-tile" style="display:none;">
                         <i class="fas fa-cog"></i><span>لوحة التحكم</span>
@@ -753,6 +763,9 @@
                     </div>
                 </div>
             </section>
+            <section id="section-transport" class="section"></section>
+            <section id="section-meals" class="section"></section>
+            <section id="section-profile360" class="section"></section>
         </main>
 
         <!-- ===== BOTTOM NAVIGATION ثابت ===== -->
@@ -809,7 +822,11 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/app.js?v=20260823a"></script>
+    <script src="js/app.js?v=20260825a"></script>
+    <script src="js/sec-loader.js?v=20260825a"></script>
+    <script src="js/sec-transport.js?v=20260825a"></script>
+    <script src="js/sec-meals.js?v=20260825a"></script>
+    <script src="js/sec-profile.js?v=20260825a"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});

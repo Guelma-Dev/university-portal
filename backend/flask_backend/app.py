@@ -1620,5 +1620,23 @@ def health():
     return jsonify({'ok': True})
 
 
+# ==== Native services blueprints (bus / academic / ONOU meals) ====
+try:
+    from services.bus_service import bp as bus_bp
+    app.register_blueprint(bus_bp)
+except Exception as _e:
+    app.logger.error('bus blueprint failed: %s', _e)
+try:
+    from services.academic_service import bp as academic_bp
+    app.register_blueprint(academic_bp)
+except Exception as _e:
+    app.logger.error('academic blueprint failed: %s', _e)
+try:
+    from services.onou_service import bp as onou_bp, start_autobook
+    app.register_blueprint(onou_bp)
+    start_autobook()
+except Exception as _e:
+    app.logger.error('onou blueprint failed: %s', _e)
+
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=PORT)

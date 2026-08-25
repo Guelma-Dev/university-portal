@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0e7a3d">
+<title>بوابة الطالب — جامعة 8 ماي 1945 قالمة</title>
+<style>
+    :root {
+        --primary: #0e7a3d;
+        --primary-dark: #0b5c2e;
+        --primary-light: #e7f3ec;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --green-bg: #dcfce7; --green-tx: #15803d;
+        --red-bg: #fee2e2;   --red-tx: #b91c1c;
+        --amber: #f59e0b;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+    input, textarea { user-select: text; }
+    body {
+        font-family: "Segoe UI", Tahoma, "Noto Kufi Arabic", "Droid Arabic Kufi", sans-serif;
+        background: #f3f4f6; color: var(--text);
+        height: 100vh; height: 100dvh; overflow: hidden;
+        display: flex; flex-direction: column; overscroll-behavior-y: none;
+    }
+    ::-webkit-scrollbar { display: none; }
+    .safe-top { padding-top: env(safe-area-inset-top); }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+    /* ===== App Bar ===== */
+    header.appbar {
+        position: fixed; top: 0; right: 0; left: 0; z-index: 50;
+        background: var(--primary); color: #fff;
+        box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    .appbar-inner {
+        height: 64px; padding: 0 16px;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+        width: 40px; height: 40px; border-radius: 50%;
+        background: #fff; color: var(--primary);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+    }
+    .brand h1 { font-size: 16px; font-weight: 700; }
+    .brand p { font-size: 11px; opacity: .8; }
+    .menu-btn {
+        width: 40px; height: 40px; border: none; border-radius: 50%;
+        background: transparent; color: #fff; font-size: 20px; cursor: pointer;
+    }
+    .menu-btn:active { background: rgba(255,255,255,.12); }
+
+    /* ===== Offline banner ===== */
+    #offline-banner {
+        position: fixed; top: calc(64px + env(safe-area-inset-top)); right: 0; left: 0; z-index: 40;
+        background: var(--amber); color: #fff; text-align: center;
+        font-size: 13px; font-weight: 700; padding: 8px; display: none;
+    }
+    #offline-banner.show { display: block; }
+
+    /* ===== Main ===== */
+    main {
+        position: fixed; inset: 0;
+        top: calc(64px + env(safe-area-inset-top));
+        bottom: calc(64px + env(safe-area-inset-bottom));
+        overflow-y: auto; -webkit-overflow-scrolling: touch;
+    }
+    .screen { display: none; padding: 16px; animation: fadeIn .18s ease; }
+    .screen.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    /* ===== Buttons ===== */
+    button { font-family: inherit; cursor: pointer; }
+    .pressable { transition: transform .12s ease; }
+    .pressable:active { transform: scale(.96); }
+
+    /* ===== Home ===== */
+    .welcome {
+        background: var(--primary); color: #fff; border-radius: 14px;
+        padding: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;
+        box-shadow: 0 3px 10px rgba(14,122,61,.25);
+    }
+    .welcome .avatar { font-size: 30px; opacity: .9; }
+    .welcome .hint { font-size: 12px; opacity: .8; }
+    .welcome .name { font-weight: 700; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .tile {
+        background: #fff; border: none; border-radius: 14px;
+        box-shadow: 0 3px 10px rgba(0,0,0,.08);
+        padding: 20px 10px; display: flex; flex-direction: column;
+        align-items: center; gap: 8px;
+    }
+    .tile .ico { font-size: 28px; }
+    .tile .lbl { font-size: 13px; font-weight: 700; color: var(--text); }
+
+    /* ===== Section titles ===== */
+    h2.title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    p.subtitle { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+
+    /* ===== Grades cards ===== */
+    .stack > * + * { margin-top: 12px; }
+    .card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .card-head h3 { font-size: 14px; font-weight: 700; }
+    .avg-pill {
+        background: var(--primary-light); color: var(--primary);
+        font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px;
+    }
+    .subject { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; }
+    .subject + .subject { border-top: 1px solid #f3f4f6; }
+    .subject .name { font-size: 14px; font-weight: 500; }
+    .mark { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
+    .mark.pass { background: var(--green-bg); color: var(--green-tx); }
+    .mark.fail { background: var(--red-bg); color: var(--red-tx); }
+    .card-foot {
+        margin-top: 12px; padding-top: 12px; border-top: 1px solid #f3f4f6;
+        display: flex; justify-content: space-between; font-size: 12px; color: var(--muted);
+    }
+    .card-foot .ok { font-weight: 700; color: var(--primary); }
+    .annual {
+        background: var(--primary); color: #fff; border-radius: 12px; padding: 16px;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .annual .t { font-size: 12px; opacity: .85; }
+    .annual .r { font-weight: 700; }
+    .annual .score { text-align: center; }
+    .annual .score b { font-size: 24px; }
+    .annual .score span { display: block; font-size: 10px; opacity: .8; }
+
+    /* ===== Student card ===== */
+    .stucard { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,.08); }
+    .stucard .head { background: var(--primary); color: #fff; text-align: center; padding: 12px; }
+    .stucard .head .s { font-size: 10px; }
+    .stucard .head .b { font-size: 13px; font-weight: 800; letter-spacing: 1px; }
+    .stucard .body { padding: 16px; display: flex; gap: 12px; }
+    .photo {
+        width: 80px; height: 96px; flex-shrink: 0; border-radius: 10px;
+        background: #e5e7eb; border: 1px solid #d1d5db;
+        display: flex; align-items: center; justify-content: center; font-size: 26px; color: #9ca3af;
+    }
+    .info { display: flex; flex-direction: column; justify-content: center; gap: 8px; font-size: 14px; }
+    .info .k { color: var(--muted); font-size: 12px; }
+    .stucard .foot {
+        background: var(--primary-dark); color: #fff; font-size: 12px;
+        display: flex; justify-content: space-between; padding: 8px 16px;
+    }
+
+    /* ===== Account ===== */
+    .profile { background: #fff; border-radius: 14px; padding: 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .pavatar {
+        width: 56px; height: 56px; border-radius: 50%; background: var(--primary-light);
+        color: var(--primary); display: flex; align-items: center; justify-content: center;
+        font-size: 22px; font-weight: 800;
+    }
+    .profile .n { font-weight: 700; font-size: 14px; }
+    .profile .d { font-size: 12px; color: var(--muted); }
+    .list { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .row {
+        width: 100%; background: none; border: none; text-align: right;
+        padding: 16px; font-size: 14px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .row + .row { border-top: 1px solid #f3f4f6; }
+    .row .l { color: var(--text); }
+    .row .arr { color: #d1d5db; }
+    .row.danger .l { color: #dc2626; }
+
+    /* ===== Bottom Nav ===== */
+    nav.bottomnav {
+        position: fixed; bottom: 0; right: 0; left: 0; z-index: 50;
+        background: #fff; border-top: 1px solid #e5e7eb;
+        box-shadow: 0 -2px 10px rgba(0,0,0,.05);
+    }
+    .nav-inner { height: 64px; display: flex; justify-content: space-around; align-items: center; }
+    .nav-btn {
+        width: 64px; background: none; border: none;
+        display: flex; flex-direction: column; align-items: center; gap: 3px;
+        color: #9ca3af;
+    }
+    .nav-btn .i { font-size: 17px; }
+    .nav-btn .t { font-size: 10px; font-weight: 700; }
+    .nav-btn.on { color: var(--primary); }
+</style>
+</head>
+<body>
+
+<!-- ==================== APP BAR ==================== -->
+<header class="appbar safe-top">
+    <div class="appbar-inner">
+        <div class="brand">
+            <div class="logo">🎓</div>
+            <div>
+                <h1>بوابة الطالب</h1>
+                <p>جامعة 8 ماي 1945 قالمة</p>
+            </div>
+        </div>
+        <button class="menu-btn pressable" aria-label="القائمة">☰</button>
+    </div>
+</header>
+
+<!-- ===== شريط عدم الاتصال ===== -->
+<div id="offline-banner">⚠️ أنت الآن في وضع عدم الاتصال. يتم عرض آخر بيانات محفوظة.</div>
+
+<!-- ==================== MAIN ==================== -->
+<main id="main">
+
+    <!-- الرئيسية -->
+    <section id="screen-home" class="screen active">
+        <div class="welcome">
+            <span class="avatar">👤</span>
+            <div>
+                <p class="hint">مرحباً بك</p>
+                <p class="name">براهيمي محمد — مالية ومحاسبة 2</p>
+            </div>
+        </div>
+
+        <div class="grid2">
+            <button onclick="go('grades')" class="tile pressable"><span class="ico">📄</span><span class="lbl">كشف النقاط</span></button>
+            <button onclick="go('card')" class="tile pressable"><span class="ico">🪪</span><span class="lbl">بطاقة الطالب</span></button>
+            <button class="tile pressable"><span class="ico">✏️</span><span class="lbl">التقييم المستمر</span></button>
+            <button class="tile pressable"><span class="ico">📅</span><span class="lbl">جدول الامتحانات</span></button>
+            <button class="tile pressable"><span class="ico">🕐</span><span class="lbl">الجدول الزمني</span></button>
+            <button class="tile pressable"><span class="ico">📣</span><span class="lbl">الإعلانات</span></button>
+            <button class="tile pressable"><span class="ico">🧮</span><span class="lbl">حاسبة المعدل</span></button>
+            <button class="tile pressable"><span class="ico">📚</span><span class="lbl">المكتبة</span></button>
+        </div>
+    </section>
+
+    <!-- كشف النقاط -->
+    <section id="screen-grades" class="screen">
+        <h2 class="title">كشف النقاط</h2>
+        <p class="subtitle">السنة الجامعية 2025/2026 — ليسانس مالية ومحاسبة</p>
+
+        <div class="stack">
+            <div class="card">
+                <div class="card-head">
+                    <h3>السداسي الأول</h3>
+                    <span class="avg-pill">المعدل 12.48</span>
+                </div>
+                <div class="subject"><span class="name">المحاسبة المالية</span><span class="mark pass">14.25</span></div>
+                <div class="subject"><span class="name">التمويل الخارجي</span><span class="mark pass">12.00</span></div>
+                <div class="subject"><span class="name">القانون التجاري</span><span class="mark fail">08.50</span></div>
+                <div class="subject"><span class="name">الاقتصاد القياسي</span><span class="mark pass">11.75</span></div>
+                <div class="card-foot">
+                    <span>🪙 الرصيد: 28 / 30</span>
+                    <span class="ok">ناجح</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">
+                    <h3>السداسي الثاني</h3>
+                    <span class="avg-pill">المعدل 10.27</span>
+                </div>
+                <div class="subject"><span class="name">المحاسبة التحليلية</span><span class="mark pass">11.00</span></div>
+                <div class="subject"><span class="name">النظام الضريبي</span><span class="mark fail">09.25</span></div>
+                <div class="subject"><span class="name">أساسيات التسويق</span><span class="mark pass">10.50</span></div>
+                <div class="card-foot">
+                    <span>🪙 الرصيد: 24 / 30</span>
+                    <span class="ok">ناجح</span>
+                </div>
+            </div>
+
+            <div class="annual">
+                <div>
+                    <p class="t">النتيجة السنوية</p>
+                    <p class="r">ناجح — دورة عادية</p>
+                </div>
+                <div class="score">
+                    <b>11.38</b>
+                    <span>60 رصيد</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- بطاقة الطالب -->
+    <section id="screen-card" class="screen">
+        <h2 class="title" style="margin-bottom:16px;">بطاقة الطالب</h2>
+        <div class="stucard">
+            <div class="head">
+                <p class="s">الجمهورية الجزائرية الديمقراطية الشعبية</p>
+                <p class="s" style="opacity:.8">وزارة التعليم العالي والبحث العلمي</p>
+                <p class="b">بطاقة الطالب</p>
+            </div>
+            <div class="body">
+                <div class="photo">👤</div>
+                <div class="info">
+                    <p><span class="k">اللقب:</span> <b>براهيمي</b></p>
+                    <p><span class="k">الاسم:</span> <b>محمد</b></p>
+                    <p><span class="k">الميلاد:</span> <b>قالمة / 2006</b></p>
+                    <p><span class="k">التخصص:</span> <b>مالية ومحاسبة</b></p>
+                </div>
+            </div>
+            <div class="foot">
+                <span>السنة الجامعية 2026/2027</span>
+                <span>202536255705</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- حسابي -->
+    <section id="screen-account" class="screen">
+        <h2 class="title" style="margin-bottom:16px;">حسابي</h2>
+        <div class="profile">
+            <div class="pavatar">ب</div>
+            <div>
+                <p class="n">براهيمي محمد</p>
+                <p class="d">202536255705 — مالية ومحاسبة 2</p>
+            </div>
+        </div>
+        <div class="list">
+            <button class="row pressable">
+                <span class="l">🛡️ تغيير كلمة المرور</span>
+                <span class="arr">‹</span>
+            </button>
+            <button class="row pressable">
+                <span class="l">🔔 الإشعارات</span>
+                <span class="arr">‹</span>
+            </button>
+            <button class="row pressable danger">
+                <span class="l">🚪 تسجيل الخروج</span>
+            </button>
+        </div>
+    </section>
+</main>
+
+<!-- ==================== BOTTOM NAV ==================== -->
+<nav class="bottomnav safe-bottom">
+    <div class="nav-inner">
+        <button data-nav="home" onclick="go('home')" class="nav-btn pressable on"><span class="i">🏠</span><span class="t">الرئيسية</span></button>
+        <button data-nav="grades" onclick="go('grades')" class="nav-btn pressable"><span class="i">📄</span><span class="t">كشف النقاط</span></button>
+        <button data-nav="card" onclick="go('card')" class="nav-btn pressable"><span class="i">🪪</span><span class="t">بطاقة الطالب</span></button>
+        <button data-nav="account" onclick="go('account')" class="nav-btn pressable"><span class="i">👤</span><span class="t">حسابي</span></button>
+    </div>
+</nav>
+
+<script>
+    // ===== تبديل الشاشات =====
+    function go(name) {
+        document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+        var target = document.getElementById('screen-' + name);
+        if (target) target.classList.add('active');
+        document.querySelectorAll('.nav-btn').forEach(function(b){
+            b.classList.toggle('on', b.dataset.nav === name);
+        });
+        document.getElementById('main').scrollTo(0, 0);
+    }
+
+    // ===== وضع عدم الاتصال =====
+    var banner = document.getElementById('offline-banner');
+    function syncOnline(){ banner.classList.toggle('show', !navigator.onLine); }
+    window.addEventListener('online', syncOnline);
+    window.addEventListener('offline', syncOnline);
+    syncOnline();
+</script>
+</body>
+</html>
