@@ -210,6 +210,12 @@ def _relay_url():
     return _RELAY_URL_MEM or None
 
 
+def _relay_path(path):
+    # /api/infos/* GETs are mirrored by progres.mesrs.dz — the v2 relay
+    # forwards them bare. Write ops need the v3 '/w' passthrough.
+    return path if path.startswith('/api/infos/') else '/w' + path
+
+
 def _upstream_get(path, headers, timeout=TIMEOUT):
     url = f'{BASE_URL}{path}'
     try:
@@ -223,7 +229,7 @@ def _upstream_get(path, headers, timeout=TIMEOUT):
             raise
         h = dict(headers)
         h['X-Relay-Key'] = RELAY_KEY
-        return _session.get(rb.rstrip('/') + '/w' + path,
+        return _session.get(rb.rstrip('/') + _relay_path(path),
                             headers=h, timeout=timeout + 10)
 
 
@@ -240,7 +246,7 @@ def _upstream_post(path, headers, timeout=TIMEOUT):
             raise
         h = dict(headers)
         h['X-Relay-Key'] = RELAY_KEY
-        return _session.post(rb.rstrip('/') + '/w' + path,
+        return _session.post(rb.rstrip('/') + _relay_path(path),
                              headers=h, timeout=timeout + 10)
 
 

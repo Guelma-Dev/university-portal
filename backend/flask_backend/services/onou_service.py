@@ -221,7 +221,12 @@ def _upstream(method, base, path, headers, kwargs):
             raise
         h = dict(headers)
         h['X-Relay-Key'] = RELAY_KEY
-        prefix = '/onou' if base == GS_BASE else '/w'
+        if base == GS_BASE:
+            prefix = '/onou'
+        elif path.startswith('/api/infos/'):
+            prefix = ''  # mirrored by progres — v2-relay compatible
+        else:
+            prefix = '/w'
         kw = dict(kwargs)
         kw.pop('verify', None)
         return _session.request(method, rb.rstrip('/') + prefix + path,

@@ -57,7 +57,7 @@ class Handler(BaseHTTPRequestHandler):
         for prefix, upstream in UPSTREAMS:
             if path.startswith(prefix):
                 fwd = path[len(prefix) - 1:]
-                if not fwd.split('?')[0].startswith('/api/'):
+                if not fwd.startswith('/') or len(fwd) > 480:
                     return (None, 'path not allowed')
                 return (upstream, fwd)
         if not base.startswith('/api/'):
