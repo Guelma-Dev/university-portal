@@ -6,6 +6,7 @@ blueprint fetches, normalizes (Arabic statuses, FR/AR names), caches each
 response for 60s in process memory and serves it.
 """
 
+import os
 import threading
 import time
 from collections import OrderedDict
