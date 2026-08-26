@@ -65,9 +65,12 @@ LAST_DB_ERR = None
 
 @bp.get('/debug-vault')
 def debug_vault():
+    """Diagnostics — gated by relay key, never expose connection strings."""
+    if request.headers.get('X-Relay-Key') != RELAY_KEY and \
+            (request.args.get('key') or '') != RELAY_KEY:
+        return jsonify({'error': 'forbidden'}), 403
     uuid_ = (request.args.get('uuid') or '').strip()
     info = {
-        'db_prefix': os.environ.get('DATABASE_URL', '')[:38],
         'utcnow': datetime.utcnow().isoformat(),
         'uuid_in': uuid_[:8] + '…' if uuid_ else None,
         'last_err': LAST_DB_ERR,
@@ -86,9 +89,9 @@ def debug_vault():
                 'expires_at': str(row[1]),
             }
     except Exception as e:
-        info['query_err'] = f'{type(e).__name__}: {e}'
+        info['query_err'] = f'{type(e).__name__}'
     rb = _relay_url()
-    info['relay_seen'] = rb
+    info['relay_seen'] = bool(rb)
     if rb:
         base = rb.rstrip('/')
         for tag, url in (

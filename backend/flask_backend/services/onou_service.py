@@ -116,9 +116,13 @@ def _vault_get(u):
 
 @bp.get('/debug-vault')
 def debug_vault():
+    """Diagnostics — never expose connection strings. Gated by the relay key
+    so public visitors can't probe the vault or infra details."""
+    if request.headers.get('X-Relay-Key') != RELAY_KEY and \
+            (request.args.get('key') or '') != RELAY_KEY:
+        return jsonify({'error': 'forbidden'}), 403
     u = (request.args.get('uuid') or '').strip()
     info = {
-        'db_prefix': DATABASE_URL[:38],
         'utcnow': datetime.utcnow().isoformat(),
         'vault_err': globals().get('VAULT_ERR'),
     }
@@ -130,7 +134,7 @@ def debug_vault():
             row = c.execute(text("SELECT 1")).fetchone()
         info['db_ping'] = 'ok' if row else 'empty'
     except Exception as e:
-        info['db_ping'] = f'{type(e).__name__}: {e}'
+        info['db_ping'] = f'{type(e).__name__}'
     return jsonify(info)
 
 

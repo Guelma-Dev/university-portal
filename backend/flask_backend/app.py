@@ -775,7 +775,10 @@ def progres_login():
 
 @app.route('/api/progres/debug', methods=['GET'])
 def progres_debug():
-    """Temporary connectivity diagnostic — remove once Progres access is confirmed."""
+    """Temporary connectivity diagnostic — gated by relay key; remove once Progres access is confirmed."""
+    if request.headers.get('X-Relay-Key') != PROGRES_RELAY_KEY and \
+            (request.args.get('key') or '') != PROGRES_RELAY_KEY:
+        return jsonify({'error': 'forbidden'}), 403
     result = {'relay_url': _relay_url(), 'env_default': PROGRES_RELAY_URL}
     for name, base, extra in (
         ('direct', PROGRES_DIRECT, {}),

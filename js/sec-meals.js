@@ -14,9 +14,11 @@
     const state = {
         ctx: null,
         ctxError: false,
+        ctxReason: '',
         res: [],
         resLoaded: false,
         resError: false,
+        resReason: '',
         prefs: null,
         prefsLoaded: false,
         depotId: null,
@@ -178,6 +180,7 @@
     async function loadContext(force = false) {
         if (state.ctx && !force) { renderNewPane(); return; }
         state.ctxError = false;
+        state.ctxReason = '';
         const p = paneEl('new');
         if (p && !state.showingResults) p.innerHTML = skCards();
         try {
@@ -188,6 +191,11 @@
             state.depotId = preferred ? preferred.id : null;
             renderNewPane();
         } catch (e) {
+            const msg = String(e && e.message || '');
+            // 401 = no valid Progres session in the server vault -> guide the
+            // student to log in instead of showing a generic failure.
+            if (/انتهيت الجلسة|401/.test(msg)) state.ctxReason = 'login';
+            else if (/uuid مطلوب/.test(msg)) state.ctxReason = 'login';
             state.ctxError = true;
             renderNewPane();
         }
@@ -212,12 +220,17 @@
         if (!p) return;
         if (state.showingResults) return;
         if (state.ctxError) {
+            const loginNeeded = state.ctxReason === 'login';
             p.innerHTML = `
                 <div class="lx-m-wrap-pad" style="margin-top:16px">
                     <div class="lx-m-errcard">
-                        <i class="fas fa-triangle-exclamation"></i>
-                        <p>تعذر الوصول لخدمة الوجبات، أعد المحاولة بعد قليل</p>
-                        <button type="button" class="lx-m-btn-retry" data-action="retry-ctx"><i class="fas fa-rotate-right"></i> إعادة المحاولة</button>
+                        <i class="fas ${loginNeeded ? 'fa-right-to-bracket' : 'fa-triangle-exclamation'}"></i>
+                        <p>${loginNeeded
+                            ? 'تتطلب خدمة الوجبات جلسة Progres نشطة — سجّل دخولك أولاً'
+                            : 'تعذر الوصول لخدمة الوجبات، أعد المحاولة بعد قليل'}</p>
+                        ${loginNeeded
+                            ? `<button type="button" class="lx-m-btn-retry" data-action="goto-progres-login"><i class="fas fa-right-to-bracket"></i> تسجيل دخول Progres</button>`
+                            : `<button type="button" class="lx-m-btn-retry" data-action="retry-ctx"><i class="fas fa-rotate-right"></i> إعادة المحاولة</button>`}
                     </div>
                 </div>`;
             return;
@@ -396,6 +409,8 @@
             state.resLoaded = true;
             renderMinePane();
         } catch (e) {
+            const msg = String(e && e.message || '');
+            if (/انتهيت الجلسة|401|uuid مطلوب/.test(msg)) state.resReason = 'login';
             state.resError = true;
             renderMinePane();
         }
@@ -405,12 +420,17 @@
         const p = paneEl('mine');
         if (!p) return;
         if (state.resError) {
+            const loginNeeded = state.resReason === 'login';
             p.innerHTML = `
                 <div style="margin-top:16px">
                     <div class="lx-m-errcard">
-                        <i class="fas fa-triangle-exclamation"></i>
-                        <p>تعذر جلب الحجوزات حالياً</p>
-                        <button type="button" class="lx-m-btn-retry" data-action="retry-res"><i class="fas fa-rotate-right"></i> إعادة المحاولة</button>
+                        <i class="fas ${loginNeeded ? 'fa-right-to-bracket' : 'fa-triangle-exclamation'}"></i>
+                        <p>${loginNeeded
+                            ? 'تتطلب خدمة الوجبات جلسة Progres نشطة — سجّل دخولك أولاً'
+                            : 'تعذر جلب الحجوزات حالياً'}</p>
+                        ${loginNeeded
+                            ? `<button type="button" class="lx-m-btn-retry" data-action="goto-progres-login"><i class="fas fa-right-to-bracket"></i> تسجيل دخول Progres</button>`
+                            : `<button type="button" class="lx-m-btn-retry" data-action="retry-res"><i class="fas fa-rotate-right"></i> إعادة المحاولة</button>`}
                     </div>
                 </div>`;
             return;
@@ -695,6 +715,16 @@
         else if (a === 'confirm') confirmReserve(el);
         else if (a === 'results-done') closeResults();
         else if (a === 'retry-ctx') loadContext(true);
+        else if (a === 'goto-progres-login') {
+            if (typeof navigateToSection === 'function') {
+                navigateToSection('grades');
+                setTimeout(() => {
+                    const inp = document.getElementById('progres-username');
+                    if (inp) inp.focus();
+                    toast('أدخل بيانات Progres ثم عد إلى قسم الوجبات', 'info');
+                }, 350);
+            }
+        }
         else if (a === 'retry-res') loadReservations(true);
         else if (a === 'del-start') askDelete(el.dataset.id, el);
         else if (a === 'del-confirm') doDelete(el.dataset.id, el);
