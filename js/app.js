@@ -10,12 +10,23 @@ const APP_STATE = {
     searchQuery: '',
     universityName: localStorage.getItem('university_name') || '',
     wilaya: localStorage.getItem('user_wilaya') || '',
+    specialtyName: localStorage.getItem('user_specialty') || '',
 };
 
 function getUniversityName() { return APP_STATE.universityName || 'طالب جامعي'; }
 function setUniversityName(name) { APP_STATE.universityName = name || ''; localStorage.setItem('university_name', name || ''); }
 function getUserWilaya() { return APP_STATE.wilaya || ''; }
 function setUserWilaya(w) { APP_STATE.wilaya = w || ''; localStorage.setItem('user_wilaya', w || ''); }
+
+function getSpecialtyName() { return APP_STATE.specialtyName || ''; }
+function setSpecialtyName(s) { APP_STATE.specialtyName = s || ''; localStorage.setItem('user_specialty', s || ''); }
+
+function getProfileSubtitle() {
+    var uni = getUniversityName();
+    var spec = getSpecialtyName();
+    if (spec) return uni + ' - ' + spec;
+    return uni;
+}
 
 // ============================================
 // DATA CACHE — cache-first with 1h TTL
@@ -602,6 +613,7 @@ function handleLogout() {
     localStorage.removeItem('user_name');
     localStorage.removeItem('university_name');
     localStorage.removeItem('user_wilaya');
+    localStorage.removeItem('user_specialty');
     localStorage.removeItem(PROGRES_SESSION_KEY);
     sessionStorage.removeItem(PROGRES_SESSION_KEY);
     clearProgresCache();
@@ -610,6 +622,7 @@ function handleLogout() {
     APP_STATE.role = 'guest';
     APP_STATE.universityName = '';
     APP_STATE.wilaya = '';
+    APP_STATE.specialtyName = '';
     hideEl('admin-menu-item'); hideEl('admin-tile');
     hideEl('logout-btn-account'); hideEl('logout-btn');
     setNameEverywhere((String('<i class="fas fa-eye"></i><span>ضيف</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
@@ -1779,6 +1792,7 @@ function loadProgresCache() {
         if (raw) {
             progresCache = JSON.parse(raw);
             if (progresCache.universityName) setUniversityName(progresCache.universityName);
+            if (progresCache.specialtyName) setSpecialtyName(progresCache.specialtyName);
             if (progresCache.wilaya) setUserWilaya(progresCache.wilaya);
         }
     } catch (e) {}
@@ -1804,6 +1818,8 @@ async function ensureProgresData() {
     const first = cards[0] || {};
     const uni = first.etablissementLibelleAr || first.etablissementLibelle || first.etablissementLibelleLt || '';
     if (uni) setUniversityName(String(uni).trim());
+    const spec = first.ofLlFiliereArabe || first.ofLlFiliere || first.filiere || first.specialiteLibelleAr || first.specialty || '';
+    if (spec) setSpecialtyName(String(spec).trim());
     const wil = first.wilayaLibelle || first.wilaya || first.wilayaCode || first.etablissementWilaya || '';
     if (wil) setUserWilaya(String(wil).trim());
     const select = document.getElementById('grades-card-select');
@@ -1839,6 +1855,7 @@ async function ensureProgresData() {
         data,
         notice,
         universityName: getUniversityName(),
+        specialtyName: getSpecialtyName(),
         wilaya: getUserWilaya(),
     };
     saveProgresCache();
