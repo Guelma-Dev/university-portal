@@ -280,7 +280,7 @@ def _webetu_get(path, token):
 
 def _as_list(data):
     if isinstance(data, dict):
-        for k in ('data', 'items', 'results'):
+        for k in ('data', 'items', 'results', 'depots'):
             if isinstance(data.get(k), list):
                 return data[k]
         return []
