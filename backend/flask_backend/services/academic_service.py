@@ -98,6 +98,7 @@ def debug_vault():
             ('probe_infos', base + '/api/infos/bannerInformations'),
             ('probe_bus', base + '/bus/api/nearby-lines?lat=36.19&lng=6.14'),
             ('probe_onou', base + '/onou/api/getdepotres'),
+            ('probe_gs_direct', 'https://gs-api.onou.dz/api/getdepotres'),
         ):
             try:
                 rr = _session.get(url, headers={'X-Relay-Key': RELAY_KEY,
