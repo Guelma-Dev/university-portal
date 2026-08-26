@@ -8,6 +8,37 @@ const APP_STATE = {
     currentSubject: null,
     currentDetailTab: 'lectures',
     searchQuery: '',
+    universityName: localStorage.getItem('university_name') || '',
+    wilaya: localStorage.getItem('user_wilaya') || '',
+};
+
+function getUniversityName() { return APP_STATE.universityName || 'طالب جامعي'; }
+function setUniversityName(name) { APP_STATE.universityName = name || ''; localStorage.setItem('university_name', name || ''); }
+function getUserWilaya() { return APP_STATE.wilaya || ''; }
+function setUserWilaya(w) { APP_STATE.wilaya = w || ''; localStorage.setItem('user_wilaya', w || ''); }
+
+// ============================================
+// DATA CACHE — cache-first with 1h TTL
+// ============================================
+const DataCache = {
+    _prefix: 'dc_',
+    get(key) {
+        try {
+            const raw = localStorage.getItem(this._prefix + key);
+            if (!raw) return null;
+            const p = JSON.parse(raw);
+            if (p.ts && Date.now() - p.ts > 3600000) { localStorage.removeItem(this._prefix + key); return null; }
+            return p.data;
+        } catch (e) { return null; }
+    },
+    set(key, data) {
+        try { localStorage.setItem(this._prefix + key, JSON.stringify({ data, ts: Date.now() })); } catch (e) { /* quota */ }
+    },
+    clear() {
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(this._prefix)) keys.push(k); }
+        keys.forEach(k => localStorage.removeItem(k));
+    }
 };
 
 // Telegram config (saved in localStorage)
@@ -83,6 +114,8 @@ async function loadSubjectsFromAPI() {
 let examsData = { sem1: [], sem2: [] };
 
 async function loadExams() {
+    const cached = DataCache.get('exams_data');
+    if (cached && cached.sem1) { examsData = cached; renderExams('sem1'); renderExams('sem2'); }
     const token = localStorage.getItem('admin_token');
     const endpoint = token ? '/api/exams' : '/api/guest/exams';
     const headers = {};
@@ -96,6 +129,7 @@ async function loadExams() {
         }
         renderExams(sem);
     }));
+    DataCache.set('exams_data', examsData);
 }
 
 function renderExams(sem) {
@@ -565,7 +599,15 @@ function handleLogout() {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('user_role');
     localStorage.removeItem('user_name');
+    localStorage.removeItem('university_name');
+    localStorage.removeItem('user_wilaya');
+    localStorage.removeItem(PROGRES_SESSION_KEY);
+    sessionStorage.removeItem(PROGRES_SESSION_KEY);
+    progresCache = null;
+    DataCache.clear();
     APP_STATE.role = 'guest';
+    APP_STATE.universityName = '';
+    APP_STATE.wilaya = '';
     hideEl('admin-menu-item'); hideEl('admin-tile');
     hideEl('logout-btn-account'); hideEl('logout-btn');
     setNameEverywhere((String('<i class="fas fa-eye"></i><span>ضيف</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
@@ -1397,16 +1439,20 @@ const PROGRES_SESSION_KEY = 'progres_session';
 
 function getProgresSession() {
     try {
-        return JSON.parse(sessionStorage.getItem(PROGRES_SESSION_KEY) || 'null');
+        let raw = localStorage.getItem(PROGRES_SESSION_KEY);
+        if (!raw) raw = sessionStorage.getItem(PROGRES_SESSION_KEY);
+        return JSON.parse(raw || 'null');
     } catch (e) { return null; }
 }
 
 function setProgresSession(session) {
-    sessionStorage.setItem(PROGRES_SESSION_KEY, JSON.stringify(session));
+    localStorage.setItem(PROGRES_SESSION_KEY, JSON.stringify(session));
 }
 
 function progresLogout() {
+    localStorage.removeItem(PROGRES_SESSION_KEY);
     sessionStorage.removeItem(PROGRES_SESSION_KEY);
+    progresCache = null;
     renderGradesSection();
     showToast('تم إنهاء جلسة بروقرس', 'info');
 }
@@ -1496,13 +1542,18 @@ function progresCardHasData(r) {
 }
 
 async function fetchProgresCardData(cardId) {
+    const ck = 'grades_' + cardId;
+    const cached = DataCache.get(ck);
+    if (cached) return cached;
     const results = await Promise.allSettled([
         progresFetch(`transcripts/${cardId}`),
         progresFetch(`exams/${cardId}`),
         progresFetch(`cc/${cardId}`),
         progresFetch(`annual/${cardId}`),
     ]);
-    return { transcripts: results[0], exams: results[1], cc: results[2], annual: results[3] };
+    const data = { transcripts: results[0], exams: results[1], cc: results[2], annual: results[3] };
+    DataCache.set(ck, data);
+    return data;
 }
 
 function renderTranscripts(bilans) {
@@ -1727,14 +1778,17 @@ async function ensureProgresData() {
         setProgresSession(session);
     }
     if (!Array.isArray(cards) || cards.length === 0) throw new Error('no-cards');
+    const first = cards[0] || {};
+    const uni = first.etablissementLibelleAr || first.etablissementLibelle || first.etablissementLibelleLt || '';
+    if (uni) setUniversityName(String(uni).trim());
+    const wil = first.wilayaLibelle || first.wilaya || first.wilayaCode || first.etablissementWilaya || '';
+    if (wil) setUserWilaya(String(wil).trim());
     const select = document.getElementById('grades-card-select');
     if (select) select.innerHTML = cards.map(c => `<option value="${c.id}">${progresCardLabel(c)}</option>`).join('');
     let cardId = session.selectedCard && cards.some(c => String(c.id) === String(session.selectedCard))
         ? String(session.selectedCard)
         : String(cards[0].id);
     let data = await fetchProgresCardData(cardId);
-    // اختيار المستخدم للسنة محترم دائماً؛ لو كانت بلا نقاط نعرض نقاط أحدث سنة
-    // متوفرة مع تنبيه، لكن دون تغيير اختياره المحفوظ ولا قيمة القائمة.
     let gradesCardId = cardId;
     let notice = '';
     if (!progresCardHasData(data)) {

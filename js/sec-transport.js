@@ -65,7 +65,10 @@
     }
 
     async function api(path, params, signal) {
-        const res = await fetch(`${API_BASE}${path}?${authQS(params)}`, { signal });
+        const p = Object.assign({}, params || {});
+        const w = (typeof getUserWilaya === 'function') ? getUserWilaya() : '';
+        if (w && !p.wilaya) p.wilaya = w;
+        const res = await fetch(`${API_BASE}${path}?${authQS(p)}`, { signal });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
     }
@@ -112,11 +115,13 @@
     }
 
     function tplShell() {
+        const userWilaya = (typeof getUserWilaya === 'function') ? getUserWilaya() : '';
+        const geoSub = userWilaya ? `${esc(userWilaya)} · ${esc(S.geoLabel)}` : esc(S.geoLabel);
         return `<div class="lx-tr-root">
             <header class="lx-tr-hero">
                 <div class="lx-tr-hinfo">
                     <h2>النقل <em>الحي</em></h2>
-                    <p><i class="fas fa-location-dot"></i><span data-geolbl>${esc(S.geoLabel)}</span></p>
+                    <p><i class="fas fa-location-dot"></i><span data-geolbl>${geoSub}</span></p>
                 </div>
                 <button type="button" class="lx-tr-locate" data-locate aria-label="تحديد موقعي" title="تحديد موقعي"><i class="fas fa-location-crosshairs"></i></button>
             </header>

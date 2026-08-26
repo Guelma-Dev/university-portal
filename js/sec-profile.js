@@ -144,10 +144,11 @@
             return '<button class="lx-p-tab' + (i === 0 ? ' active' : '') + '" role="tab" aria-selected="' +
                 (i === 0) + '" data-lx-tab="' + t.id + '">' + ico(t.icon) + '<span>' + t.label + '</span></button>';
         }).join('');
+        var uniName = (typeof getUniversityName === 'function') ? getUniversityName() : 'طالب جامعي';
         return '<div class="lx-p-head lx-p-in">' +
             '<div class="lx-p-head-ic">' + ico('fa-id-badge') + '</div>' +
             '<div class="lx-p-head-tx"><h3>ملفي الشامل</h3>' +
-            '<small>جامعة 8 ماي 1945 — قالمة · الوضع الأكاديمي الكامل</small></div>' +
+            '<small>' + esc(uniName) + ' · الوضع الأكاديمي الكامل</small></div>' +
             '<button class="lx-p-refresh" data-lx-refresh title="تحديث البيانات" aria-label="تحديث البيانات">' + ico('fa-rotate') + '</button>' +
             '</div>' +
             '<div class="lx-p-tabs" role="tablist">' + tabs + '</div>' +

@@ -186,14 +186,13 @@
         try {
             const data = await jfetch(`/api/onou/context?${authQS()}`);
             state.ctx = Array.isArray(data.depots) ? data : { ...data, depots: [] };
+            if (state.ctx.wilaya && typeof setUserWilaya === 'function') setUserWilaya(String(state.ctx.wilaya).trim());
             const pref = state.prefs && Number(state.prefs.depot);
             const preferred = state.ctx.depots.find((d) => Number(d.id) === pref) || state.ctx.depots.find((d) => Number(d.id) === state.depotId) || state.ctx.depots[0];
             state.depotId = preferred ? preferred.id : null;
             renderNewPane();
         } catch (e) {
             const msg = String(e && e.message || '');
-            // 401 = no valid Progres session in the server vault -> guide the
-            // student to log in instead of showing a generic failure.
             if (/انتهيت الجلسة|401/.test(msg)) state.ctxReason = 'login';
             else if (/uuid مطلوب/.test(msg)) state.ctxReason = 'login';
             state.ctxError = true;
