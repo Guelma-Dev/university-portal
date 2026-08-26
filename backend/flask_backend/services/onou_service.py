@@ -401,7 +401,7 @@ def context():
         cache_key = f'onou:{u}:depots:{ctx["wilaya"]}:{ctx["residence"]}'
         depots = _cache_get(cache_key, 3600)
         if depots is None:
-            data = _gs_request('GET', '/getdepotres', ctx['gs'], params={
+            data = _gs_request('GET', '/api/getdepotres', ctx['gs'], params={
                 'uuid': u, 'wilaya': ctx['wilaya'], 'residence': ctx['residence'], 'token': ctx['gs'],
             })
             depots = _as_list(data)
@@ -424,7 +424,7 @@ def context():
 
 
 def _fetch_reservations(ctx):
-    data = _gs_request('GET', '/meal-reservations/student', ctx['gs'], params={
+    data = _gs_request('GET', '/api/meal-reservations/student', ctx['gs'], params={
         'uuid': ctx['u'], 'wilaya': ctx['wilaya'], 'residence': ctx['residence'],
         'token': ctx['gs'], 'page': 1,
     })
@@ -497,7 +497,7 @@ def reserve():
             json.dumps({'date_reserve': d, 'menu_type': menu_type, 'idDepot': depot}, separators=(',', ':'))
             for d in clean_dates
         ]
-        result = _gs_request('POST', '/reservemeal', ctx['gs'], body={
+        result = _gs_request('POST', '/api/reservemeal', ctx['gs'], body={
             'uuid': u, 'wilaya': ctx['wilaya'], 'residence': ctx['residence'],
             'token': ctx['gs'], 'details': details,
         })
@@ -513,7 +513,7 @@ def delete_reservation(rid):
         if not u:
             return jsonify({'error': 'uuid مطلوب'}), 400
         ctx = _build_ctx(u, dia=_req_dia())
-        result = _gs_request('DELETE', f'/reservemeal/{rid}', ctx['gs'], body={
+        result = _gs_request('DELETE', f'/api/reservemeal/{rid}', ctx['gs'], body={
             'uuid': u, 'wilaya': ctx['wilaya'], 'residence': ctx['residence'], 'token': ctx['gs'],
         })
         return jsonify(result)
@@ -690,7 +690,7 @@ def _autobook_user(row):
                 separators=(',', ':'),
             )
             try:
-                out = _gs_request('POST', '/reservemeal', ctx['gs'], body={
+                out = _gs_request('POST', '/api/reservemeal', ctx['gs'], body={
                     'uuid': u, 'wilaya': ctx['wilaya'], 'residence': ctx['residence'],
                     'token': ctx['gs'], 'details': [detail],
                 })
