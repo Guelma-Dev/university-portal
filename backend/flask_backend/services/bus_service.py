@@ -134,12 +134,20 @@ def _fetch_json(path: str):
     global _DIRECT_BLOCKED_UNTIL
     try:
         if time.time() >= _DIRECT_BLOCKED_UNTIL:
-            resp = _session.get(f'{BUS_API_BASE}{path}', timeout=BUS_TIMEOUT_SECONDS)
-            if resp.status_code in (502, 503):
-                raise UpstreamError('egress blocked')
-            if resp.status_code != 200:
-                raise UpstreamError(f'HTTP {resp.status_code} from {path}')
-            return resp.json()
+            try:
+                resp = _session.get(f'{BUS_API_BASE}{path}',
+                                    timeout=BUS_TIMEOUT_SECONDS)
+                if resp.status_code in (502, 503):
+                    raise UpstreamError('egress blocked')
+                if resp.status_code != 200:
+                    raise UpstreamError(f'HTTP {resp.status_code} from {path}')
+                return resp.json()
+            except UpstreamError:
+                raise
+            except Exception as e:
+                # raw network errors (RemoteDisconnected…) MUST fall through
+                # to the relay branch below, not escape as 502
+                raise UpstreamError(f'{type(e).__name__}: {e}') from e
         raise UpstreamError('direct cooldown active')
     except UpstreamError as direct_err:
         _DIRECT_BLOCKED_UNTIL = time.time() + DIRECT_COOLDOWN
@@ -147,8 +155,13 @@ def _fetch_json(path: str):
         if not rb:
             raise direct_err
         try:
-            resp = _session.get(rb.rstrip('/') + '/bus/api' + path,
-                                headers={'X-Relay-Key': RELAY_KEY},
+            # Fresh session per attempt: a pooled keep-alive connection to a
+            # dead tunnel hostname keeps raising RemoteDisconnected even after
+            # the relay re-registers under a new URL.
+            resp = requests.get(rb.rstrip('/') + '/bus/api' + path,
+                                headers={'X-Relay-Key': RELAY_KEY,
+                                         'User-Agent': _session.headers.get('User-Agent'),
+                                         'Accept': 'application/json'},
                                 timeout=BUS_TIMEOUT_SECONDS + 10)
             if resp.status_code != 200:
                 raise UpstreamError(f'relay HTTP {resp.status_code} for {path}')
