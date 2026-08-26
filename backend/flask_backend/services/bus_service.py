@@ -258,7 +258,14 @@ def nearby_lines():
         # sorted by distance asc inside _extract_lines
         return {'data': _extract_lines(payload)[:NEARBY_LIMIT]}
 
-    return _cached_json(f'nearby:{lat:.6f}:{lng:.6f}', produce)
+    try:
+        return _cached_json(f'nearby:{lat:.6f}:{lng:.6f}', produce)
+    except UpstreamError as e:
+        if request.args.get('debug') == '1':
+            import traceback
+            return jsonify({'error': str(e),
+                            'trace': traceback.format_exc()[-600:]}), 502
+        raise
 
 
 @bp.route('/search', methods=['GET'])
