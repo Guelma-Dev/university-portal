@@ -135,8 +135,10 @@ def _fetch_json(path: str):
     try:
         if time.time() >= _DIRECT_BLOCKED_UNTIL:
             try:
+                # Short probe: Render egress is usually blocked by the
+                # ministry, so don't let the direct attempt stall the request.
                 resp = _session.get(f'{BUS_API_BASE}{path}',
-                                    timeout=BUS_TIMEOUT_SECONDS)
+                                    timeout=(3, 6))
                 if resp.status_code in (502, 503):
                     raise UpstreamError('egress blocked')
                 if resp.status_code != 200:
@@ -150,7 +152,8 @@ def _fetch_json(path: str):
                 raise UpstreamError(f'{type(e).__name__}: {e}') from e
         raise UpstreamError('direct cooldown active')
     except UpstreamError as direct_err:
-        _DIRECT_BLOCKED_UNTIL = time.time() + DIRECT_COOLDOWN
+        # Ministry hangs up on datacenter IPs — don't retry direct for 30 min.
+        _DIRECT_BLOCKED_UNTIL = time.time() + 1800
         rb = _relay_url()
         if not rb:
             raise direct_err

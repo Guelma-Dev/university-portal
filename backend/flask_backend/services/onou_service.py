@@ -199,7 +199,9 @@ def _direct_ok(base):
 
 
 def _block_direct(base):
-    _DIRECT_BLOCK[base] = time.time() + DIRECT_COOLDOWN
+    # Ministry hangs up on datacenter IPs — don't re-probe direct for 30 min,
+    # otherwise every request pays the failed-connect stall all over again.
+    _DIRECT_BLOCK[base] = time.time() + 1800
 
 
 _RELAY_URL_TS = 0.0
