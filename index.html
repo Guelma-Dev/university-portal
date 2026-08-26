@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منصة المالية والمحاسبة | جامعة 8 ماي 1945 قالمة</title>
     <meta name="description" content="منصة التنظيم الجامعي - المالية والمحاسبة - جامعة 8 ماي 1945 قالمة">
-    <meta name="theme-color" content="#0b0e14">
+    <meta name="theme-color" content="#09090b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="المنصة الجامعية">
@@ -23,9 +23,9 @@
             theme: { extend: { fontFamily: { sans: ['Tajawal', 'sans-serif'] } } },
         };
     </script>
-    <link rel="stylesheet" href="css/styles.css?v=20260826a">
-    <link rel="stylesheet" href="css/luxury.css?v=20260826a">
-    <link rel="stylesheet" href="css/auth.css?v=20260826b">
+    <link rel="stylesheet" href="css/styles.css?v=20260826c">
+    <link rel="stylesheet" href="css/luxury.css?v=20260826c">
+    <link rel="stylesheet" href="css/auth.css?v=20260826c">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -48,15 +48,6 @@
 <body>
     <!-- ===== LANDING PAGE ===== -->
     <div id="landing-page" class="landing-page">
-        <div class="landing-bg">
-            <div class="floating-shapes">
-                <div class="shape shape-1"></div>
-                <div class="shape shape-2"></div>
-                <div class="shape shape-3"></div>
-                <div class="shape shape-4"></div>
-                <div class="shape shape-5"></div>
-            </div>
-        </div>
         <div class="landing-content">
             <div class="landing-logo">
                 <i class="fas fa-graduation-cap"></i>
@@ -80,7 +71,7 @@
                 <button class="btn btn-quick" onclick="enterAsStudent()">
                     <i class="fas fa-user-graduate"></i>
                     <span>دخول كضيف</span>
-                    <small>م limited ميزات</small>
+                    <small>ميزات محدودة</small>
                 </button>
                 <button class="btn btn-admin" onclick="showAdminLogin()">
                     <i class="fas fa-shield-halved"></i>
@@ -844,12 +835,12 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/app.js?v=20260826a"></script>
-    <script src="js/sec-loader.js?v=20260826a"></script>
-    <script src="js/sec-transport.js?v=20260825c"></script>
-    <script src="js/sec-meals.js?v=20260825b"></script>
-    <script src="js/sec-profile.js?v=20260826a"></script>
-    <script src="js/auth-ui.js?v=20260826b" defer></script>
+    <script src="js/app.js?v=20260826c"></script>
+    <script src="js/sec-loader.js?v=20260826c"></script>
+    <script src="js/sec-transport.js?v=20260826c"></script>
+    <script src="js/sec-meals.js?v=20260826c"></script>
+    <script src="js/sec-profile.js?v=20260826c"></script>
+    <script src="js/auth-ui.js?v=20260826c" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});
