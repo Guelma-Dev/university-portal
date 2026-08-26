@@ -243,42 +243,42 @@ def _relay_path(path, method='GET'):
     return '/w' + path
 
 
+def _relay_call(path, headers, method='GET', timeout=TIMEOUT):
+    rb = _relay_url()
+    if not rb:
+        raise RuntimeError('no relay registered')
+    h = dict(headers)
+    h['X-Relay-Key'] = RELAY_KEY
+    url = rb.rstrip('/') + _relay_path(path, method)
+    if method == 'GET':
+        return _session.get(url, headers=h, timeout=timeout + 10)
+    return _session.post(url, headers=h, timeout=timeout + 10)
+
+
 def _upstream_get(path, headers, timeout=TIMEOUT):
-    url = f'{BASE_URL}{path}'
     if _direct_ok(BASE_URL):
         try:
-            r = _session.get(url, headers=headers, timeout=timeout)
+            r = _session.get(f'{BASE_URL}{path}', headers=headers,
+                             timeout=min(timeout, 8))
             if r.status_code in (502, 503):
                 raise OSError('egress blocked (%d)' % r.status_code)
             return r
         except Exception:
             _block_direct(BASE_URL)
-        rb = _relay_url()
-        if not rb:
-            raise
-        h = dict(headers)
-        h['X-Relay-Key'] = RELAY_KEY
-        return _session.get(rb.rstrip('/') + _relay_path(path),
-                            headers=h, timeout=timeout + 10)
+    return _relay_call(path, headers, 'GET', timeout)
 
 
 def _upstream_post(path, headers, timeout=TIMEOUT):
-    url = f'{BASE_URL}{path}'
     if _direct_ok(BASE_URL):
         try:
-            r = _session.post(url, headers=headers, timeout=timeout)
+            r = _session.post(f'{BASE_URL}{path}', headers=headers,
+                              timeout=min(timeout, 8))
             if r.status_code in (502, 503):
                 raise OSError('egress blocked (%d)' % r.status_code)
             return r
         except Exception:
             _block_direct(BASE_URL)
-        rb = _relay_url()
-        if not rb:
-            raise
-        h = dict(headers)
-        h['X-Relay-Key'] = RELAY_KEY
-        return _session.post(rb.rstrip('/') + _relay_path(path),
-                             headers=h, timeout=timeout + 10)
+    return _relay_call(path, headers, 'POST', timeout)
 
 
 def _cached_fetch(cache_key, path, token, ttl, dia=None, uuid_suffix=None, transform=None):

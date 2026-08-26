@@ -218,26 +218,34 @@ def _relay_url():
 
 
 def _upstream(method, base, path, headers, kwargs):
-    """Direct first; on failure fall back to the Algerian phone relay.
-    base must be GS_BASE ('/onou' prefix) or WEBETU_BASE ('/w' prefix)."""
+    """Direct first (short probe); on failure fall back to the Algerian
+    phone relay. GS_BASE -> '/onou' prefix; webetu reads -> bare (progres
+    mirror), webetu writes -> '/w'."""
     if _direct_ok(base):
         try:
-            r = _session.request(method, base + path, headers=headers, **kwargs)
+            kw = dict(kwargs)
+            kw['timeout'] = min(kw.get('timeout', 30), 8)
+            r = _session.request(method, base + path, headers=headers, **kw)
             if r.status_code in (502, 503):
                 raise OSError('egress blocked (%d)' % r.status_code)
             return r
         except Exception:
             _block_direct(base)
-        rb = _relay_url()
-        if not rb:
-            raise
-        h = dict(headers)
-        h['X-Relay-Key'] = RELAY_KEY
-        prefix = '/onou' if base == GS_BASE else '/w'
-        kw = dict(kwargs)
-        kw.pop('verify', None)
-        return _session.request(method, rb.rstrip('/') + prefix + path,
-                                headers=h, **kw)
+    rb = _relay_url()
+    if not rb:
+        raise RuntimeError('no relay registered')
+    h = dict(headers)
+    h['X-Relay-Key'] = RELAY_KEY
+    if base == GS_BASE:
+        prefix = '/onou'
+    elif path.startswith('/api/infos/'):
+        prefix = ''
+    else:
+        prefix = '/w'
+    kw = dict(kwargs)
+    kw.pop('verify', None)
+    return _session.request(method, rb.rstrip('/') + prefix + path,
+                            headers=h, **kw)
 
 
 def _webetu_get(path, token):
