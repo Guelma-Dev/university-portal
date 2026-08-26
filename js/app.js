@@ -791,6 +791,11 @@ function goStudentCard() {
     setTimeout(() => { if (getProgresSession()) openProgresView('card'); }, 250);
 }
 
+function goCC() {
+    switchSection('grades');
+    setTimeout(() => { if (getProgresSession()) openProgresView('cc'); }, 250);
+}
+
 // ============================================
 // SUBJECTS RENDERING
 // ============================================
@@ -1872,37 +1877,8 @@ async function ensureProgresData() {
     return progresCache;
 }
 
-const PROGRES_TILES = [
-    ['transcripts', 'fa-file-lines', 'كشف النقاط'],
-    ['card', 'fa-id-card', 'بطاقة الطالب'],
-    ['exams', 'fa-calendar-days', 'جدول الامتحانات'],
-    ['cc', 'fa-pen-ruler', 'التقييم المستمر'],
-];
-
-function renderProgresHome() {
-    return `<div class="progres-home">
-        <p class="ph-welcome">اختر الخدمة</p>
-        <div class="ph-grid">
-            ${PROGRES_TILES.map(([v, i, t]) => `
-                <button class="ph-tile" onclick="openProgresView('${v}')">
-                    <i class="fas ${i}"></i><span>${t}</span>
-                </button>`).join('')}
-        </div>
-    </div>`;
-}
-
-function showProgresHome() {
-    progresCurrentView = null;
-    document.getElementById('grades-toolbar-wrap')?.classList.add('hidden');
-    const content = document.getElementById('grades-content');
-    if (content) content.innerHTML = renderProgresHome();
-    const session = getProgresSession();
-    const select = document.getElementById('grades-card-select');
-    if (session && Array.isArray(session.cards) && session.cards.length && select && !select.options.length) {
-        select.innerHTML = session.cards.map(c => `<option value="${c.id}">${progresCardLabel(c)}</option>`).join('');
-        select.value = session.idCardYear || session.selectedCard || String(session.cards[0].id);
-    }
-}
+// Removed: PROGRES_TILES, renderProgresHome(), showProgresHome()
+// Entering the grades section now opens transcripts directly.
 
 async function openProgresView(view) {
     const content = document.getElementById('grades-content');
@@ -1912,7 +1888,7 @@ async function openProgresView(view) {
     content.innerHTML = '<div class="mobile-empty"><i class="fas fa-spinner fa-spin"></i><p>جاري جلب البيانات من الوزارة...</p></div>';
     try {
         const c = await ensureProgresData();
-        const back = `<button class="btn btn-ghost btn-sm ph-back" onclick="showProgresHome()"><i class="fas fa-arrow-right"></i> رجوع للخدمات</button>`;
+        const back = `<button class="btn btn-ghost btn-sm ph-back" onclick="switchSection('home')"><i class="fas fa-arrow-right"></i> الرئيسية</button>`;
         let html = '';
         if (view === 'card') {
             // بطاقة الطالب تابعة للسنة المختارة، لا علاقة لها بتوفر النقاط
@@ -1957,9 +1933,10 @@ async function onProgresCardChange(value) {
     if (progresCurrentView) await openProgresView(progresCurrentView);
 }
 
-// Kept as the navigation entry point: entering the section opens the services grid
+// Direct entry point: entering grades section opens transcripts view
 async function loadProgresGrades() {
-    showProgresHome();
+    progresCurrentView = 'transcripts';
+    openProgresView('transcripts');
 }
 
 function renderGradesSection() {
