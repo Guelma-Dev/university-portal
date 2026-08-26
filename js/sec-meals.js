@@ -391,7 +391,8 @@
         if (force) state.resLoaded = false;
         try {
             const data = await jfetch(`/api/onou/reservations?${authQS()}`);
-            state.res = Array.isArray(data) ? data : [];
+            state.res = Array.isArray(data) ? data
+                : (data && Array.isArray(data.data)) ? data.data : [];
             state.resLoaded = true;
             renderMinePane();
         } catch (e) {

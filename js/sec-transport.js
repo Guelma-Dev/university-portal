@@ -240,7 +240,8 @@
                 ? await api('/api/bus/search', { q: S.q }, ctrl.signal)
                 : await api('/api/bus/nearby', { lat: S.geo.lat, lng: S.geo.lng }, ctrl.signal);
             if (ctrl.signal.aborted) return;
-            S.lines = Array.isArray(data) ? data : [];
+            S.lines = Array.isArray(data) ? data
+                : (data && Array.isArray(data.data)) ? data.data : [];
             S.loading = false;
             renderList();
         } catch (err) {
