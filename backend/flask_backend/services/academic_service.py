@@ -90,13 +90,19 @@ def debug_vault():
     rb = _relay_url()
     info['relay_seen'] = rb
     if rb:
-        try:
-            rr = _session.get(rb.rstrip('/') + '/api/infos/bannerInformations',
-                              headers={'X-Relay-Key': RELAY_KEY,
-                                       'Accept': 'application/json'}, timeout=20)
-            info['relay_probe'] = f'HTTP {rr.status_code}: {rr.text[:60]}'
-        except Exception as e:
-            info['relay_probe'] = f'{type(e).__name__}: {e}'
+        base = rb.rstrip('/')
+        for tag, url in (
+            ('probe_infos', base + '/api/infos/bannerInformations'),
+            ('probe_bus', base + '/bus/api/nearby-lines?lat=36.19&lng=6.14'),
+            ('probe_onou', base + '/onou/api/getdepotres'),
+        ):
+            try:
+                rr = _session.get(url, headers={'X-Relay-Key': RELAY_KEY,
+                                                'Accept': 'application/json'},
+                                  timeout=20)
+                info[tag] = f'HTTP {rr.status_code}: {rr.text[:80]}'
+            except Exception as e:
+                info[tag] = f'{type(e).__name__}: {e}'
     return jsonify(info)
 
 
