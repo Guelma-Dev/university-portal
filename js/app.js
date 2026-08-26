@@ -570,7 +570,7 @@ function handleLogout() {
     hideEl('logout-btn-account'); hideEl('logout-btn');
     setNameEverywhere((String('<i class="fas fa-eye"></i><span>ضيف</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     showToast('تم تسجيل الخروج', 'info');
-    switchSection('schedule');
+    switchSection('home');
 }
 
 // ============================================
