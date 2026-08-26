@@ -1,7 +1,7 @@
 (() => {
     'use strict';
 
-    const GOLD = '#d4af37';
+    const GOLD = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim() || '#4f46e5';
     const MEALS = {
         1: { name: 'فطور الصباح', icon: 'fa-mug-saucer', slot: '06:30 - 09:30' },
         2: { name: 'الغداء', icon: 'fa-bowl-food', slot: '11:30 - 14:30' },
@@ -750,7 +750,7 @@
             container.innerHTML = `
                 <div class="lx-m-wrap">
                     <div class="lx-m-tabs" aria-hidden="true">
-                        <span class="lx-m-tab active" style="background:linear-gradient(135deg,#e7c766,#d4af37 55%,#b8912c);box-shadow:0 4px 14px rgba(212,175,55,.35)"><i class="fas fa-utensils"></i><span>الوجبات</span></span>
+                        <span class="lx-m-tab active" style="background:linear-gradient(135deg,var(--brand-light),var(--brand),var(--brand-dark));box-shadow:0 4px 14px var(--accent-glow)"><i class="fas fa-utensils"></i><span>الوجبات</span></span>
                     </div>
                     <div class="lx-m-glass lx-m-lock" style="margin-top:16px">
                         <i class="fas fa-lock"></i>

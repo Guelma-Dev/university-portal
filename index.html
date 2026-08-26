@@ -5,27 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منصة المالية والمحاسبة | جامعة 8 ماي 1945 قالمة</title>
     <meta name="description" content="منصة التنظيم الجامعي - المالية والمحاسبة - جامعة 8 ماي 1945 قالمة">
-    <meta name="theme-color" content="#09090b">
+    <meta name="theme-color" content="#fafaf9">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="المنصة الجامعية">
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        // Preflight معطّل لحماية الأنماط القديمة؛ Tailwind للتخطيط فقط
-        tailwind.config = {
-            corePlugins: { preflight: false },
-            theme: { extend: { fontFamily: { sans: ['Tajawal', 'sans-serif'] } } },
-        };
-    </script>
-    <link rel="stylesheet" href="css/styles.css?v=20260826c">
-    <link rel="stylesheet" href="css/luxury.css?v=20260826c">
-    <link rel="stylesheet" href="css/auth.css?v=20260826c">
+    <link rel="stylesheet" href="css/styles.css?v=20260826e">
+    <link rel="stylesheet" href="css/luxury.css?v=20260826e">
+    <link rel="stylesheet" href="css/auth.css?v=20260826e">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -44,40 +35,50 @@
             });
         }
     </script>
+    <script>
+        (function(){var t=localStorage.getItem('theme')||(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#0c0a09':'#fafaf9');})();
+    </script>
 </head>
 <body>
     <!-- ===== LANDING PAGE ===== -->
     <div id="landing-page" class="landing-page">
-        <div class="landing-content">
-            <div class="landing-logo">
-                <i class="fas fa-graduation-cap"></i>
+        <div class="landing-split">
+            <!-- Brand Panel (start side) -->
+            <div class="landing-brand">
+                <div class="lb-inner">
+                    <div class="lb-logo">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <h1 class="lb-title">منصة المالية<br>والمحاسبة</h1>
+                    <p class="lb-sub">السنة الثانية — تخصص مالية ومحاسبة</p>
+                    <p class="lb-uni">جامعة 8 ماي 1945 — قالمة</p>
+                </div>
             </div>
-            <h1 class="landing-title">منصة المالية والمحاسبة</h1>
-            <p class="landing-subtitle">السنة الثانية — تخصص مالية ومحاسبة</p>
-            <p class="landing-university">جامعة 8 ماي 1945 — قالمة</p>
-            <div class="landing-divider"></div>
-            <p class="landing-desc">منصة رقمية تجمع جميع محاضراتك وملفات الـ TD/TP وجدول الامتحانات في مكان واحد. سجّل دخولك للوصول إلى كل المواد أو تصفح المنصة كضيف.</p>
-            <div class="landing-buttons">
-                <button class="btn btn-student" onclick="showStudentLogin()">
-                    <i class="fas fa-right-to-bracket"></i>
-                    <span>تسجيل الدخول</span>
-                    <small>لديك حساب بالفعل؟</small>
-                </button>
-                <button class="btn btn-register" onclick="showStudentRegister()">
-                    <i class="fas fa-user-plus"></i>
-                    <span>إنشاء حساب جديد</span>
-                    <small>انضم إلى المنصة الآن</small>
-                </button>
-                <button class="btn btn-quick" onclick="enterAsStudent()">
-                    <i class="fas fa-user-graduate"></i>
-                    <span>دخول كضيف</span>
-                    <small>ميزات محدودة</small>
-                </button>
-                <button class="btn btn-admin" onclick="showAdminLogin()">
-                    <i class="fas fa-shield-halved"></i>
-                    <span>دخول المسؤول</span>
-                    <small>يتطلب كلمة مرور</small>
-                </button>
+
+            <!-- Form Panel (end side) -->
+            <div class="landing-content">
+                <div class="lc-inner">
+                    <p class="lc-desc">منصة رقمية تجمع جميع محاضراتك وملفات الـ TD/TP وجدول الامتحانات في مكان واحد.</p>
+                    <div class="landing-buttons">
+                        <button class="btn btn-student" onclick="showStudentLogin()">
+                            <i class="fas fa-right-to-bracket"></i>
+                            <span>تسجيل الدخول</span>
+                        </button>
+                        <button class="btn btn-register" onclick="showStudentRegister()">
+                            <i class="fas fa-user-plus"></i>
+                            <span>إنشاء حساب جديد</span>
+                        </button>
+                        <button class="btn btn-quick" onclick="enterAsStudent()">
+                            <i class="fas fa-user-graduate"></i>
+                            <span>دخول كضيف</span>
+                        </button>
+                        <button class="btn btn-admin" onclick="showAdminLogin()">
+                            <i class="fas fa-shield-halved"></i>
+                            <span>دخول المسؤول</span>
+                        </button>
+                    </div>
+                    <p class="lc-footer">سجّل دخولك للوصول إلى كل المواد<br>أو تصفح المنصة كضيف.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -217,7 +218,7 @@
                 <i class="fas fa-shield-halved"></i>
                 <h3>التحقق من الكود</h3>
                 <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">أدخل الكود المرسل إلى بريدك الإلكتروني</p>
-                <p style="color: #e67e22; font-size: 0.8rem; margin-top: 6px;"><i class="fas fa-exclamation-triangle"></i> لم يصل الكود؟ تحقق من مجلد البريد المزعج (Spam)</p>
+                <p style="color: var(--warning); font-size: 0.8rem; margin-top: 6px;"><i class="fas fa-exclamation-triangle"></i> لم يصل الكود؟ تحقق من مجلد البريد المزعج (Spam)</p>
             </div>
             <form onsubmit="handleVerifyOtp(event)">
                 <div class="input-group">
@@ -316,7 +317,7 @@
                         <p class="hh-name" id="hero-name">طالب مالية ومحاسبة 2</p>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4 px-4 pb-4">
+                <div class="tile-grid">
                     <button class="tile pressable" onclick="switchSection('grades')">
                         <i class="fas fa-file-lines"></i><span>كشف النقاط</span>
                     </button>
@@ -341,10 +342,10 @@
                     <button class="tile pressable" onclick="switchSection('meals')">
                         <i class="fas fa-utensils"></i><span>الوجبات</span>
                     </button>
-                    <button class="tile pressable col-span-2" onclick="switchSection('profile360')" style="border-color:#d4af37;">
+                    <button class="tile pressable tile-wide" onclick="switchSection('profile360')">
                         <i class="fas fa-id-badge"></i><span>ملفي الشامل</span>
                     </button>
-                    <button class="tile pressable col-span-2" onclick="switchSection('admin')" id="admin-tile" style="display:none;">
+                    <button class="tile pressable tile-wide" onclick="switchSection('admin')" id="admin-tile" style="display:none;">
                         <i class="fas fa-cog"></i><span>لوحة التحكم</span>
                     </button>
                 </div>
@@ -371,7 +372,7 @@
 
 
             <!-- ===== LIBRARY SECTION ===== -->
-            <section id="section-library" class="section active">
+            <section id="section-library" class="section">
                 <!-- Subject Cards Grid -->
                 <div id="subjects-grid" class="subjects-grid">
                     <!-- Cards injected by JS -->

@@ -3,7 +3,7 @@
 // ============================================
 const APP_STATE = {
     role: null, // 'guest', 'student', or 'admin'
-    theme: localStorage.getItem('theme') || 'light',
+    theme: localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
     currentSection: 'home',
     currentSubject: null,
     currentDetailTab: 'lectures',
@@ -265,6 +265,8 @@ function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     APP_STATE.theme = theme;
     localStorage.setItem('theme', theme);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0c0a09' : '#fafaf9');
     const icon = document.getElementById('theme-icon');
     const text = document.getElementById('theme-text');
     const iconTop = document.getElementById('theme-icon-top');

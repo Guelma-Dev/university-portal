@@ -1,79 +1,46 @@
 /* ============================================================
-   AUTH.CSS — Clean Dark Auth Styles
-   Landing page + Auth modals · Blue accent · No decoration
+   AUTH.CSS — Auth modals + landing refinements
+   Loaded AFTER styles.css — cascade handles precedence.
    ============================================================ */
 
-/* ---- LANDING PAGE overrides ---- */
+/* ---- LANDING PAGE ---- */
 .landing-page { background: var(--bg); }
 
 /* ---- PARTICLES CANVAS — hidden, not created ---- */
 #auth-particles { display: none; }
 
-/* ---- AUTH MODALS: clean solid surface ---- */
+/* ---- AUTH MODALS ---- */
 .modal-overlay {
-    background: rgba(0, 0, 0, 0.65) !important;
+    background: rgba(0, 0, 0, 0.65);
     backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
 }
 .modal-card {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--radius-lg) !important;
-    padding: 32px 28px 28px !important;
-    box-shadow: var(--shadow-xl) !important;
+    border: 1px solid var(--border);
+    padding: 32px 28px 28px;
     max-width: 400px;
 }
-
-/* ---- MODAL HEADER ---- */
-.modal-header {
-    text-align: center; margin-bottom: 24px !important;
-}
+.modal-header { margin-bottom: 24px; }
 .modal-header i {
-    display: inline-flex !important;
+    display: inline-flex;
     width: 52px; height: 52px; align-items: center; justify-content: center;
-    font-size: 1.2rem !important;
-    background: var(--accent-light) !important;
-    border-radius: 14px !important;
-    color: var(--brand) !important;
-    margin-bottom: 12px !important;
+    font-size: 1.2rem;
+    background: var(--accent-light);
+    border-radius: 14px;
+    color: var(--brand);
+    margin-bottom: 12px;
 }
-.modal-header h3 {
-    font-size: 1.1rem !important;
-    color: var(--text-primary) !important;
-    font-weight: 700;
-}
-.modal-header p {
-    color: var(--text-secondary) !important;
-    font-size: 0.82rem !important;
-}
+.modal-header h3 { font-weight: 700; }
 
 /* ---- FORM INPUTS ---- */
-.input-group { margin-bottom: 16px !important; }
-.input-group label {
-    display: block; font-size: 0.8rem; font-weight: 600;
-    color: var(--text-secondary) !important; margin-bottom: 6px;
-}
 .input-group input,
 .input-group select,
 .input-group textarea {
-    width: 100%; padding: 11px 14px;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--radius-sm) !important;
-    font-size: 0.9rem;
-    background: var(--bg-secondary) !important;
-    color: var(--text-primary) !important;
-    transition: border-color 0.15s, box-shadow 0.15s !important;
-    outline: none;
-}
-.input-group input::placeholder { color: var(--muted); }
-.input-group input:focus,
-.input-group select:focus {
-    border-color: var(--brand) !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12) !important;
+    border-width: 1px;
 }
 
 /* ---- PASSWORD TOGGLE ---- */
 .pw-wrap { position: relative; }
-.pw-wrap input { padding-right: 42px !important; }
+.pw-wrap input { padding-right: 42px; }
 .pw-toggle {
     position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
     width: 36px; height: 36px; border-radius: 8px;
@@ -82,50 +49,35 @@
     color: var(--muted); font-size: 0.9rem;
     transition: color 0.15s, background 0.15s;
 }
-.pw-toggle:hover { color: var(--text-secondary); background: rgba(255,255,255,0.05); }
+.pw-toggle:hover { color: var(--text-secondary); background: var(--accent-light); }
 
 /* ---- SUBMIT BUTTON ---- */
 .btn-primary {
-    background: var(--brand) !important;
-    color: #fff !important;
-    font-weight: 700 !important;
-    border: none !important;
-    border-radius: var(--radius-sm) !important;
-    padding: 12px 24px !important;
+    font-weight: 700;
     width: 100%;
-    transition: background 0.15s !important;
+    padding: 13px 24px;
+    transition: all 0.2s ease;
 }
 .btn-primary:hover {
-    background: var(--brand-light) !important;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
 }
-.btn-primary:active { opacity: 0.9; }
-.btn-primary:disabled, .btn-primary.loading {
-    opacity: 0.5; pointer-events: none;
+.btn-primary:active {
+    transform: scale(0.98);
 }
 
 /* ---- GHOST BUTTON ---- */
 .btn-ghost {
-    color: var(--text-tertiary) !important;
-    background: transparent !important;
-    border: none !important;
-    border-radius: var(--radius-sm) !important;
     width: 100%;
-}
-.btn-ghost:hover {
-    color: var(--text-secondary) !important;
-    background: rgba(255,255,255,0.04) !important;
 }
 
 /* ---- AUTH LINKS ---- */
-.auth-links { text-align: left !important; margin-bottom: 16px !important; margin-top: -8px !important; }
-.auth-links a { color: var(--brand) !important; font-size: 0.82rem !important; }
-.auth-links a:hover { color: var(--brand-light) !important; }
+.auth-links { text-align: left; margin-bottom: 16px; margin-top: -8px; }
+.auth-links a { font-size: 0.82rem; }
 .auth-switch {
-    text-align: center !important; margin: 16px 0 8px !important;
-    font-size: 0.85rem !important; color: var(--text-tertiary) !important;
+    text-align: center; margin: 16px 0 8px;
+    font-size: 0.85rem; color: var(--text-tertiary);
 }
-.auth-switch a { color: var(--brand) !important; font-weight: 600 !important; }
-.auth-switch a:hover { color: var(--brand-light) !important; }
 
 /* ---- ERROR SHAKE ---- */
 @keyframes shake {
@@ -135,32 +87,21 @@
     60% { transform: translateX(-4px); }
     80% { transform: translateX(3px); }
 }
-.modal-card.shake { animation: shake 0.35s ease !important; }
+.modal-card.shake { animation: shake 0.35s ease; }
 
 /* ---- PROGRES LOGIN FORM ---- */
-.grades-container {
-    border-color: var(--border) !important;
-    background: var(--bg-card) !important;
-}
-#progres-login-form input {
-    background: var(--bg-secondary) !important;
-    border: 1px solid var(--border) !important;
-    color: var(--text-primary) !important;
-}
 #progres-login-form input:focus {
-    border-color: var(--brand) !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12) !important;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 /* ---- REDUCED MOTION ---- */
 @media (prefers-reduced-motion: reduce) {
-    .modal-card { animation: none !important; transition: none !important; }
+    .modal-card { animation: none; transition: none; }
 }
 
 /* ---- MOBILE ---- */
 @media (max-width: 480px) {
-    .landing-content { padding: 32px 20px 28px !important; max-width: 100%; }
-    .landing-title { font-size: 1.5rem !important; }
-    .modal-card { padding: 24px 20px 22px !important; }
+    .modal-card { padding: 24px 20px 22px; }
     .modal-header i { width: 46px; height: 46px; font-size: 1.1rem; }
 }
