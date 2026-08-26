@@ -602,7 +602,7 @@ function applyInitialRoute() {
     if (section) {
         navigateToSection(section);
     } else {
-        history.replaceState(null, '', '#/library');
+        history.replaceState(null, '', '#/home');
         navigateToSection('home');
     }
 }

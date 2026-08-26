@@ -278,7 +278,9 @@ input { font-family: inherit; }
 }
 .lc-inner {
     position: relative; z-index: 2;
-    padding: 48px 40px; width: 100%; max-width: 380px;
+    padding: 48px 40px; width: 100%; max-width: 440px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    margin: 0 auto; text-align: center;
     animation: fadeUp 0.5s ease;
 }
 @keyframes fadeUp {
@@ -298,44 +300,46 @@ input { font-family: inherit; }
     display: flex; flex-direction: column; gap: 10px;
 }
 .landing-buttons .btn {
-    width: 100%; padding: 14px 20px; border-radius: 10px;
+    width: 100%; height: 50px; margin-bottom: 12px; padding: 0 20px;
     font-family: inherit; font-size: 0.92rem; font-weight: 600;
     cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
-    transition: all 0.25s ease;
+    border-radius: 12px;
+    background: var(--surface, #141414);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    color: #D4AF37;
+    transition: all 0.2s ease;
+}
+.landing-buttons .btn:hover {
+    background: rgba(212, 175, 55, 0.08);
+    border-color: rgba(212, 175, 55, 0.6);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.25);
+    transform: translateY(-2px);
+}
+.landing-buttons .btn:active {
+    transform: translateY(0) scale(0.98);
 }
 .landing-buttons .btn i { font-size: 1rem; }
 .landing-buttons .btn span { flex: 1; text-align: center; }
 
-/* Primary CTA — Dark surface + gold border + gold text */
-.btn-student {
-    background: rgba(212,175,55,0.08);
-    color: var(--brand);
-    border: 1px solid rgba(212,175,55,0.25);
+/* Auth buttons unified — override original variants */
+.btn-student,
+.btn-register,
+.btn-quick,
+.btn-admin {
+    background: var(--surface, #141414) !important;
+    border: 1px solid rgba(212, 175, 55, 0.4) !important;
+    color: #D4AF37 !important;
+    height: 50px;
 }
-.btn-student:hover {
-    background: rgba(212,175,55,0.15);
-    border-color: rgba(212,175,55,0.45);
-    box-shadow: 0 0 20px rgba(212,175,55,0.12);
-    transform: translateY(-1px);
+.btn-student:hover,
+.btn-register:hover,
+.btn-quick:hover,
+.btn-admin:hover {
+    background: rgba(212, 175, 55, 0.08) !important;
+    border-color: rgba(212, 175, 55, 0.6) !important;
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.25) !important;
+    transform: translateY(-2px) !important;
 }
-
-/* Secondary — dark surface */
-.btn-register {
-    background: var(--surface);
-    color: var(--text);
-    border: 1px solid var(--border);
-}
-.btn-register:hover {
-    background: var(--surface-2);
-    border-color: rgba(212,175,55,0.2);
-}
-
-/* Ghost links */
-.btn-quick, .btn-admin {
-    background: transparent; color: var(--text-2);
-    padding: 8px 20px !important;
-}
-.btn-quick:hover, .btn-admin:hover { color: var(--text); }
 
 /* ============================================
    MODAL
