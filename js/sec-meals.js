@@ -755,6 +755,7 @@
                         <i class="fas fa-lock"></i>
                         <p>خدمة الوجبات متاحة للطلبة المسجلين</p>
                         <span>سجّل الدخول بمعرف الجامعة لتصل إلى حجز الوجبات والحاجز الآلي</span>
+                        <button type="button" class="lx-m-btn-retry" style="margin-top:12px" data-action="goto-progres-login"><i class="fas fa-right-to-bracket"></i> تسجيل الدخول</button>
                     </div>
                 </div>`;
             return;

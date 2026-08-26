@@ -640,10 +640,6 @@
                     <div style="padding: 24px;">
                         <div class="progres-notice">
                             <i class="fas fa-shield-halved"></i>
-                            <div>
-                                <strong>كلمة السر لا تُخزَّن أبداً</strong>
-                                <p>تُرسل مباشرة إلى خوادم الوزارة وتُنسى فوراً. الجلسة تنتهي بإغلاق المتصفح.</p>
-                            </div>
                         </div>
                         <form id="progres-login-form" onsubmit="handleProgresLogin(event)">
                             <div class="input-group">
@@ -666,9 +662,12 @@
 
                 <!-- Data view -->
                 <div class="grades-container hidden" id="grades-data-view">
-                    <div class="calculator-header">
+                    <div class="calculator-header" style="position:relative">
                         <i class="fas fa-user-graduate"></i>
                         <h3 id="grades-student-name">نقاطي</h3>
+                        <button class="btn btn-ghost btn-sm" onclick="progresLogout()" style="position:absolute;left:0;top:50%;transform:translateY(-50%)" title="إنهاء جلسة بروقرس">
+                            <i class="fas fa-right-from-bracket"></i>
+                        </button>
                     </div>
                     <div style="padding: 16px;">
                         <div class="grades-toolbar hidden" id="grades-toolbar-wrap">
@@ -837,12 +836,12 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/app.js?v=20260826j"></script>
-    <script src="js/sec-loader.js?v=20260826j"></script>
-    <script src="js/sec-transport.js?v=20260826j"></script>
-    <script src="js/sec-meals.js?v=20260826j"></script>
-    <script src="js/sec-profile.js?v=20260826j"></script>
-    <script src="js/auth-ui.js?v=20260826j" defer></script>
+    <script src="js/app.js?v=20260826k"></script>
+    <script src="js/sec-loader.js?v=20260826k"></script>
+    <script src="js/sec-transport.js?v=20260826k"></script>
+    <script src="js/sec-meals.js?v=20260826k"></script>
+    <script src="js/sec-profile.js?v=20260826k"></script>
+    <script src="js/auth-ui.js?v=20260826k" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});

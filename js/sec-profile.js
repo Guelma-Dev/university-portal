@@ -171,9 +171,9 @@
 
     function gateHTML() {
         return '<div class="lx-p-gate">' + ico('fa-lock') +
-            '<strong>هذه الصفحة تتطلب جلسة بروقرس نشطة</strong>' +
-            '<p>سجّل الدخول إلى «نقاطي» أولاً حتى يتم ربط ملفك الشامل تلقائياً.</p>' +
-            '<button class="lx-p-btn gold block" data-lx-goto-grades>' + ico('fa-right-to-bracket') + 'الانتقال إلى نقاطي</button></div>';
+            '<strong>سجّل الدخول بحسابك في بروقرس عن طريق رقم التسجيل وكلمة المرور</strong>' +
+            '<p>بمجرد تسجيل الدخول، سيتم ربط ملفك الشامل تلقائياً.</p>' +
+            '<button class="lx-p-btn gold block" data-lx-goto-grades>' + ico('fa-right-to-bracket') + 'تسجيل الدخول</button></div>';
     }
 
     function errorHTML() {

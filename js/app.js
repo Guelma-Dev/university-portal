@@ -240,6 +240,7 @@ let pdfPagePending = null;
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
     applyTheme(APP_STATE.theme);
+    loadProgresCache();
     await Promise.all([loadSubjectsFromAPI(), loadScheduleFromAPI()]);
     renderSubjects();
     renderSchedule();
@@ -603,6 +604,7 @@ function handleLogout() {
     localStorage.removeItem('user_wilaya');
     localStorage.removeItem(PROGRES_SESSION_KEY);
     sessionStorage.removeItem(PROGRES_SESSION_KEY);
+    clearProgresCache();
     progresCache = null;
     DataCache.clear();
     APP_STATE.role = 'guest';
@@ -1452,7 +1454,7 @@ function setProgresSession(session) {
 function progresLogout() {
     localStorage.removeItem(PROGRES_SESSION_KEY);
     sessionStorage.removeItem(PROGRES_SESSION_KEY);
-    progresCache = null;
+    clearProgresCache();
     renderGradesSection();
     showToast('تم إنهاء جلسة بروقرس', 'info');
 }
@@ -1767,9 +1769,30 @@ async function loadProgresImages() {
 let progresCache = null;
 let progresCurrentView = null;
 
+function saveProgresCache() {
+    if (!progresCache) return;
+    try { localStorage.setItem('progres_cache', JSON.stringify(progresCache)); } catch (e) {}
+}
+function loadProgresCache() {
+    try {
+        const raw = localStorage.getItem('progres_cache');
+        if (raw) {
+            progresCache = JSON.parse(raw);
+            if (progresCache.universityName) setUniversityName(progresCache.universityName);
+            if (progresCache.wilaya) setUserWilaya(progresCache.wilaya);
+        }
+    } catch (e) {}
+}
+function clearProgresCache() {
+    progresCache = null;
+    try { localStorage.removeItem('progres_cache'); } catch (e) {}
+}
+
 async function ensureProgresData() {
     const session = getProgresSession();
     if (!session) throw new Error('no-session');
+    if (progresCache && String(progresCache.cardId) === String(session.selectedCard || '')) return progresCache;
+    if (!progresCache) loadProgresCache();
     if (progresCache && String(progresCache.cardId) === String(session.selectedCard || '')) return progresCache;
     let cards = session.cards;
     if (!cards) {
@@ -1815,7 +1838,10 @@ async function ensureProgresData() {
         selectedCard,
         data,
         notice,
+        universityName: getUniversityName(),
+        wilaya: getUserWilaya(),
     };
+    saveProgresCache();
     return progresCache;
 }
 
@@ -1900,7 +1926,7 @@ async function onProgresCardChange(value) {
     s.selectedCard = value;
     s.idCardYear = value;
     setProgresSession(s);
-    progresCache = null;
+    clearProgresCache();
     if (progresCurrentView) await openProgresView(progresCurrentView);
 }
 
