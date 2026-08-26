@@ -108,20 +108,25 @@ def _cached_json(cache_key: str, producer):
 # UPSTREAM HELPERS
 # ============================================
 _RELAY_URL_MEM = None
+_RELAY_URL_TS = 0.0
 RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
 _DIRECT_BLOCKED_UNTIL = 0
 DIRECT_COOLDOWN = 60
 
 
 def _relay_url():
-    global _RELAY_URL_MEM
-    if _RELAY_URL_MEM is None:
+    """Re-read at most 5 min old — the phone tunnel URL changes on every
+    relay restart, so a permanent cache would pin a dead URL forever."""
+    global _RELAY_URL_MEM, _RELAY_URL_TS
+    if not _RELAY_URL_MEM or time.time() - _RELAY_URL_TS > 300:
         try:
             from .academic_service import _relay_url as _shared
             u = _shared() or ''
         except Exception:
             u = ''
-        _RELAY_URL_MEM = u
+        if u:
+            _RELAY_URL_MEM = u
+            _RELAY_URL_TS = time.time()
     return _RELAY_URL_MEM or None
 
 
