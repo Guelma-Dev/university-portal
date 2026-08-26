@@ -1,0 +1,406 @@
+/* ============================================================
+   AUTH.CSS — Dark Luxury Glassmorphism
+   Landing page + Auth modals · Gold #d4af37 · Aurora orbs
+   Loaded AFTER styles.css to override landing/modal styles
+   ============================================================ */
+
+/* ---- LANDING PAGE: deep dark base ---- */
+.landing-page {
+    background: #060810;
+    min-height: 100dvh;
+}
+
+/* ---- AURORA ORBS (override purple shapes) ---- */
+.floating-shapes .shape { border-radius: 50%; background: transparent; opacity: 1; }
+.shape-1 {
+    width: 600px; height: 600px; top: -200px; right: -150px;
+    background: radial-gradient(circle, rgba(212,175,55,0.14) 0%, transparent 70%);
+    animation: auroraDrift 28s ease-in-out infinite !important;
+}
+.shape-2 {
+    width: 500px; height: 500px; bottom: -120px; left: -100px;
+    background: radial-gradient(circle, rgba(245,215,142,0.10) 0%, transparent 70%);
+    animation: auroraDrift 34s ease-in-out infinite reverse !important;
+}
+.shape-3 {
+    width: 350px; height: 350px; top: 35%; left: 55%;
+    background: radial-gradient(circle, rgba(184,134,11,0.12) 0%, transparent 70%);
+    animation: auroraDrift 24s ease-in-out infinite 4s !important;
+}
+.shape-4 {
+    width: 250px; height: 250px; top: 15%; left: 15%;
+    background: radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%);
+    animation: auroraDrift 30s ease-in-out infinite 8s !important;
+}
+.shape-5 {
+    width: 200px; height: 200px; bottom: 20%; right: 25%;
+    background: radial-gradient(circle, rgba(245,215,142,0.07) 0%, transparent 70%);
+    animation: auroraDrift 26s ease-in-out infinite 12s !important;
+}
+@keyframes auroraDrift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(50px, -40px) scale(1.08); }
+    50% { transform: translate(-35px, 30px) scale(0.94); }
+    75% { transform: translate(25px, 20px) scale(1.04); }
+}
+
+/* ---- PARTICLES CANVAS ---- */
+#auth-particles {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 5;
+}
+
+/* ---- LANDING HERO GLASS CARD ---- */
+.landing-content {
+    z-index: 10; position: relative;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 28px;
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    padding: 44px 36px 36px;
+    max-width: 460px; width: 92%;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
+    animation: heroGlassIn 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes heroGlassIn {
+    from { opacity: 0; transform: translateY(28px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---- LOGIC: gold gradient circle ---- */
+.landing-logo {
+    width: 88px; height: 88px;
+    background: linear-gradient(135deg, #f5d78e 0%, #d4af37 50%, #b8860b 100%) !important;
+    border-radius: 50% !important;
+    box-shadow: 0 12px 40px rgba(212,175,55,0.35), 0 0 80px rgba(212,175,55,0.12) !important;
+    animation: logoPulse 4s ease-in-out infinite !important;
+    margin-bottom: 20px !important;
+}
+@keyframes logoPulse {
+    0%, 100% { box-shadow: 0 12px 40px rgba(212,175,55,0.35), 0 0 60px rgba(212,175,55,0.10); }
+    50% { box-shadow: 0 16px 56px rgba(212,175,55,0.45), 0 0 100px rgba(212,175,55,0.18); }
+}
+.landing-logo i {
+    font-size: 2.4rem !important;
+    color: #1a1405 !important;
+    text-shadow: none !important;
+}
+
+/* ---- TITLE: gold gradient text ---- */
+.landing-title {
+    font-size: 2.2rem !important;
+    font-weight: 800;
+    background: linear-gradient(135deg, #f5d78e 0%, #d4af37 50%, #b8860b 100%);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent !important;
+    line-height: 1.3;
+    margin-bottom: 8px;
+}
+.landing-subtitle {
+    font-size: 1.05rem !important;
+    color: #aab2c5 !important;
+    font-weight: 400;
+}
+.landing-university {
+    font-size: 0.88rem !important;
+    color: #6b7385 !important;
+    margin-top: 4px;
+}
+
+/* ---- DIVIDER ---- */
+.landing-divider {
+    width: 48px !important; height: 2px !important;
+    background: linear-gradient(90deg, transparent, #d4af37, transparent) !important;
+    margin: 24px auto !important;
+}
+
+/* ---- DESCRIPTION ---- */
+.landing-desc {
+    font-size: 0.92rem !important;
+    color: #6b7385 !important;
+    max-width: 380px !important;
+    line-height: 1.75;
+    font-weight: 300;
+    margin-bottom: 28px !important;
+}
+
+/* ---- CTA BUTTONS: glass + gold ---- */
+.landing-buttons {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px !important;
+    max-width: 420px;
+}
+.landing-buttons .btn {
+    flex-direction: column !important;
+    padding: 22px 16px !important;
+    min-width: auto !important;
+    border-radius: 16px !important;
+    background: rgba(255,255,255,0.035) !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
+    backdrop-filter: blur(12px);
+    color: #eef1f7 !important;
+    position: relative; overflow: hidden;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.landing-buttons .btn::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent 60%);
+    opacity: 0; transition: opacity 0.35s;
+}
+.landing-buttons .btn:hover::after { opacity: 1; }
+.landing-buttons .btn:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.35) !important;
+    border-color: rgba(212,175,55,0.2) !important;
+    background: rgba(255,255,255,0.06) !important;
+}
+.landing-buttons .btn:active { transform: translateY(-1px) !important; }
+.landing-buttons .btn i { font-size: 1.5rem !important; margin-bottom: 6px; position: relative; z-index: 1; }
+.landing-buttons .btn span { font-size: 0.95rem !important; font-weight: 700; position: relative; z-index: 1; }
+.landing-buttons .btn small { font-size: 0.72rem !important; opacity: 0.45; position: relative; z-index: 1; }
+
+/* Primary CTA (login) — solid gold gradient */
+.btn-student {
+    background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%) !important;
+    border: none !important;
+    color: #1a1405 !important;
+    box-shadow: 0 6px 24px rgba(212,175,55,0.25) !important;
+}
+.btn-student:hover {
+    background: linear-gradient(135deg, #f5d78e 0%, #d4af37 100%) !important;
+    box-shadow: 0 12px 40px rgba(212,175,55,0.35) !important;
+}
+.btn-student i, .btn-student span, .btn-student small { color: #1a1405 !important; }
+.btn-student small { opacity: 0.65 !important; }
+
+/* Register — gold border accent */
+.btn-register {
+    background: rgba(212,175,55,0.06) !important;
+    border-color: rgba(212,175,55,0.22) !important;
+}
+.btn-register:hover {
+    background: rgba(212,175,55,0.12) !important;
+    border-color: rgba(212,175,55,0.4) !important;
+}
+
+/* Guest + Admin — ghost */
+.btn-quick, .btn-admin {
+    background: rgba(255,255,255,0.025) !important;
+    border-color: rgba(255,255,255,0.06) !important;
+}
+
+/* ---- AUTH MODALS: glass overlay ---- */
+.modal-overlay {
+    background: rgba(4, 6, 12, 0.75) !important;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.modal-card {
+    background: rgba(16, 20, 32, 0.88) !important;
+    border: 1px solid rgba(212,175,55,0.10) !important;
+    backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+    border-radius: 22px !important;
+    padding: 36px 28px 28px !important;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.03) inset !important;
+    animation: modalGlassIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) !important;
+    max-width: 400px;
+    position: relative; overflow: hidden;
+}
+@keyframes modalGlassIn {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* Gold accent line at top of modal */
+.modal-card::before {
+    content: ''; position: absolute; top: 0; left: 10%; right: 10%;
+    height: 2px; border-radius: 0 0 2px 2px;
+    background: linear-gradient(90deg, transparent, #d4af37, transparent);
+}
+
+/* ---- MODAL HEADER ---- */
+.modal-header {
+    text-align: center; margin-bottom: 24px !important;
+}
+.modal-header i {
+    display: inline-flex !important;
+    width: 60px; height: 60px; align-items: center; justify-content: center;
+    font-size: 1.4rem !important;
+    background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(212,175,55,0.04)) !important;
+    border: 1.5px solid rgba(212,175,55,0.22) !important;
+    border-radius: 50% !important;
+    color: #d4af37 !important;
+    margin-bottom: 14px !important;
+    box-shadow: 0 8px 24px rgba(212,175,55,0.12);
+}
+.modal-header h3 {
+    font-size: 1.15rem !important;
+    color: #eef1f7 !important;
+    font-weight: 700;
+}
+.modal-header p {
+    color: #6b7385 !important;
+    font-size: 0.82rem !important;
+}
+
+/* ---- FORM INPUTS: dark glass ---- */
+.input-group { margin-bottom: 18px !important; }
+.input-group label {
+    display: block; font-size: 0.82rem; font-weight: 600;
+    color: #aab2c5 !important; margin-bottom: 7px;
+    transition: color 0.3s;
+}
+.input-group:focus-within label { color: #d4af37 !important; }
+.input-group input,
+.input-group select,
+.input-group textarea {
+    width: 100%; padding: 13px 16px;
+    border: 1.5px solid rgba(255,255,255,0.08) !important;
+    border-radius: 12px !important;
+    font-size: 0.9rem;
+    background: rgba(255,255,255,0.035) !important;
+    color: #eef1f7 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    outline: none;
+}
+.input-group input::placeholder { color: #4a5568; }
+.input-group input:focus,
+.input-group select:focus {
+    border-color: #d4af37 !important;
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.12), 0 0 20px rgba(212,175,55,0.06) !important;
+    background: rgba(255,255,255,0.05) !important;
+}
+
+/* ---- PASSWORD TOGGLE ---- */
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 46px !important; }
+.pw-toggle {
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none; cursor: pointer;
+    color: #6b7385; font-size: 0.95rem;
+    transition: all 0.2s;
+}
+.pw-toggle:hover { color: #d4af37; background: rgba(212,175,55,0.08); }
+
+/* ---- SUBMIT BUTTON: gold gradient ---- */
+.btn-primary {
+    background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%) !important;
+    color: #1a1405 !important;
+    font-weight: 700 !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 14px 28px !important;
+    position: relative; overflow: hidden;
+    box-shadow: 0 6px 20px rgba(212,175,55,0.2);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.btn-primary::after {
+    content: ''; position: absolute; top: 0; left: -110%;
+    width: 90%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+    transition: left 0.55s ease;
+}
+.btn-primary:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 32px rgba(212,175,55,0.3) !important;
+}
+.btn-primary:hover::after { left: 110%; }
+.btn-primary:active { transform: translateY(0) !important; }
+.btn-primary:disabled, .btn-primary.loading {
+    opacity: 0.6; pointer-events: none;
+}
+
+/* ---- GHOST BUTTON ---- */
+.btn-ghost {
+    color: #6b7385 !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 12px !important;
+}
+.btn-ghost:hover {
+    color: #aab2c5 !important;
+    background: rgba(255,255,255,0.04) !important;
+}
+
+/* ---- AUTH LINKS ---- */
+.auth-links { text-align: left !important; margin-bottom: 18px !important; margin-top: -10px !important; }
+.auth-links a { color: #d4af37 !important; font-size: 0.82rem !important; }
+.auth-links a:hover { color: #f5d78e !important; }
+.auth-switch {
+    text-align: center !important; margin: 18px 0 10px !important;
+    font-size: 0.85rem !important; color: #6b7385 !important;
+}
+.auth-switch a { color: #d4af37 !important; font-weight: 600 !important; }
+.auth-switch a:hover { color: #f5d78e !important; }
+
+/* ---- ERROR SHAKE ---- */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    15% { transform: translateX(-8px); }
+    30% { transform: translateX(7px); }
+    45% { transform: translateX(-6px); }
+    60% { transform: translateX(5px); }
+    75% { transform: translateX(-3px); }
+    90% { transform: translateX(2px); }
+}
+.modal-card.shake { animation: shake 0.45s ease !important; }
+
+/* ---- PROGRES LOGIN FORM (inside grades section) ---- */
+.grades-container {
+    border-color: rgba(212,175,55,0.08) !important;
+    background: rgba(16, 20, 32, 0.7) !important;
+    backdrop-filter: blur(16px);
+}
+.progres-notice {
+    background: rgba(212,175,55,0.05) !important;
+    border-color: rgba(212,175,55,0.12) !important;
+}
+.progres-notice i { color: #d4af37 !important; }
+#progres-login-form input {
+    background: rgba(255,255,255,0.035) !important;
+    border: 1.5px solid rgba(255,255,255,0.08) !important;
+    color: #eef1f7 !important;
+}
+#progres-login-form input:focus {
+    border-color: #d4af37 !important;
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.12) !important;
+}
+
+/* ---- PREFERS REDUCED MOTION ---- */
+@media (prefers-reduced-motion: reduce) {
+    .landing-content,
+    .modal-card,
+    .floating-shapes .shape,
+    #auth-particles {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* ---- MOBILE ---- */
+@media (max-width: 480px) {
+    .landing-content {
+        padding: 32px 20px 28px !important;
+        border-radius: 22px !important;
+        width: 95% !important;
+    }
+    .landing-title { font-size: 1.7rem !important; }
+    .landing-subtitle { font-size: 0.92rem !important; }
+    .landing-desc { font-size: 0.85rem !important; padding: 0 8px; }
+    .landing-buttons {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    .landing-buttons .btn { padding: 18px 20px !important; }
+    .modal-card { padding: 28px 20px 22px !important; }
+    .modal-header i { width: 52px; height: 52px; font-size: 1.2rem; }
+}
+@media (max-height: 700px) {
+    .landing-content { padding: 28px 24px 22px !important; }
+    .landing-logo { width: 68px; height: 68px; margin-bottom: 14px !important; }
+    .landing-logo i { font-size: 1.8rem !important; }
+    .landing-title { font-size: 1.6rem !important; }
+    .landing-buttons .btn { padding: 16px 14px !important; }
+    .modal-card { max-height: 92vh; overflow-y: auto; }
+}

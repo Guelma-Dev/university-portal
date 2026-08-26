@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>منصة المالية والمحاسبة | جامعة 8 ماي 1945 قالمة</title>
     <meta name="description" content="منصة التنظيم الجامعي - المالية والمحاسبة - جامعة 8 ماي 1945 قالمة">
-    <meta name="theme-color" content="#4f46e5">
+    <meta name="theme-color" content="#0b0e14">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="المنصة الجامعية">
@@ -25,6 +25,7 @@
     </script>
     <link rel="stylesheet" href="css/styles.css?v=20260826a">
     <link rel="stylesheet" href="css/luxury.css?v=20260826a">
+    <link rel="stylesheet" href="css/auth.css?v=20260826b">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -105,7 +106,10 @@
                 </div>
                 <div class="input-group">
                     <label>كلمة المرور</label>
-                    <input type="password" id="admin-password" placeholder="••••••••" required>
+                    <div class="pw-wrap">
+                        <input type="password" id="admin-password" placeholder="••••••••" required>
+                        <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary btn-full">
                     <i class="fas fa-right-to-bracket"></i> تسجيل الدخول
@@ -131,7 +135,10 @@
                 </div>
                 <div class="input-group">
                     <label>كلمة المرور</label>
-                    <input type="password" id="login-password" placeholder="••••••••" required>
+                    <div class="pw-wrap">
+                        <input type="password" id="login-password" placeholder="••••••••" required>
+                        <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
                 </div>
                 <div class="auth-links">
                     <a href="#" onclick="showForgotPassword(); return false;">نسيت كلمة المرور؟</a>
@@ -165,11 +172,17 @@
                 </div>
                 <div class="input-group">
                     <label>كلمة المرور</label>
-                    <input type="password" id="reg-password" placeholder="6 أحرف على الأقل" required minlength="6">
+                    <div class="pw-wrap">
+                        <input type="password" id="reg-password" placeholder="6 أحرف على الأقل" required minlength="6">
+                        <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
                 </div>
                 <div class="input-group">
                     <label>تأكيد كلمة المرور</label>
-                    <input type="password" id="reg-password-confirm" placeholder="أعد إدخال كلمة المرور" required>
+                    <div class="pw-wrap">
+                        <input type="password" id="reg-password-confirm" placeholder="أعد إدخال كلمة المرور" required>
+                        <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary btn-full">
                     <i class="fas fa-user-plus"></i> إنشاء الحساب
@@ -243,11 +256,17 @@
             <form onsubmit="handleResetPassword(event)">
                 <div class="input-group">
                     <label>كلمة المرور الجديدة</label>
-                    <input type="password" id="new-password" placeholder="6 أحرف على الأقل" required minlength="6">
+                    <div class="pw-wrap">
+                        <input type="password" id="new-password" placeholder="6 أحرف على الأقل" required minlength="6">
+                        <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
                 </div>
                 <div class="input-group">
                     <label>تأكيد كلمة المرور</label>
-                    <input type="password" id="new-password-confirm" placeholder="أعد إدخال كلمة المرور" required>
+                    <div class="pw-wrap">
+                        <input type="password" id="new-password-confirm" placeholder="أعد إدخال كلمة المرور" required>
+                        <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary btn-full">
                     <i class="fas fa-save"></i> حفظ كلمة المرور
@@ -640,7 +659,10 @@
                             </div>
                             <div class="input-group">
                                 <label>كلمة المرور</label>
-                                <input type="password" id="progres-password" autocomplete="current-password" required>
+                                <div class="pw-wrap">
+                                    <input type="password" id="progres-password" autocomplete="current-password" required>
+                                    <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-primary btn-full" id="progres-login-btn">
                                 <i class="fas fa-right-to-bracket"></i> عرض نقاطي
@@ -827,6 +849,7 @@
     <script src="js/sec-transport.js?v=20260825c"></script>
     <script src="js/sec-meals.js?v=20260825b"></script>
     <script src="js/sec-profile.js?v=20260826a"></script>
+    <script src="js/auth-ui.js?v=20260826b" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});
