@@ -346,6 +346,9 @@
                     <button class="tile pressable" onclick="switchSection('meals')">
                         <i class="fas fa-utensils"></i><span>الوجبات</span>
                     </button>
+                    <button class="tile pressable" onclick="goExamMarks()">
+                        <i class="fas fa-clipboard-check"></i><span>علامات الامتحانات</span>
+                    </button>
                     <button class="tile pressable tile-wide" onclick="switchSection('profile360')">
                         <i class="fas fa-id-badge"></i><span>ملفي الشامل</span>
                     </button>
@@ -839,12 +842,12 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/app.js?v=20260826o"></script>
-    <script src="js/sec-loader.js?v=20260826o"></script>
-    <script src="js/sec-transport.js?v=20260826o"></script>
-    <script src="js/sec-meals.js?v=20260826o"></script>
-    <script src="js/sec-profile.js?v=20260826o"></script>
-    <script src="js/auth-ui.js?v=20260826o" defer></script>
+    <script src="js/app.js?v=20260826p"></script>
+    <script src="js/sec-loader.js?v=20260826p"></script>
+    <script src="js/sec-transport.js?v=20260826p"></script>
+    <script src="js/sec-meals.js?v=20260826p"></script>
+    <script src="js/sec-profile.js?v=20260826p"></script>
+    <script src="js/auth-ui.js?v=20260826p" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});

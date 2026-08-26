@@ -796,6 +796,11 @@ function goCC() {
     setTimeout(() => { if (getProgresSession()) openProgresView('cc'); }, 250);
 }
 
+function goExamMarks() {
+    switchSection('grades');
+    setTimeout(() => { if (getProgresSession()) openProgresView('exams'); }, 250);
+}
+
 // ============================================
 // SUBJECTS RENDERING
 // ============================================
