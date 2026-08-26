@@ -1786,9 +1786,9 @@
     border-radius: 999px;
     font-size: 0.63rem;
     font-weight: 700;
-    color: #7c3aed;
-    background: rgba(139, 92, 246, 0.12);
-    border: 1px solid rgba(139, 92, 246, 0.28);
+    color: var(--brand);
+    background: var(--lx-gold-soft);
+    border: 1px solid var(--lx-gold-line);
 }
 .lx-m-badge-ru i { font-size: 0.6rem; }
 .lx-m-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
@@ -2409,6 +2409,25 @@ html[dir="ltr"] .lx-m-switch.on::after { transform: translateX(21px); }
     color: #94a3b8;
 }
 
+/* ---------- dark mode: ticket + hardcoded whites ---------- */
+[data-theme="light"] .lx-m-ticket { background: #ffffff; }
+[data-theme="light"] .lx-m-tkqr { background: #ffffff; }
+[data-theme="light"] .lx-m-tkqrfail { background: #f8fafc; color: #64748b; }
+[data-theme="light"] .lx-m-tkrow span:first-child { color: #64748b; }
+[data-theme="light"] .lx-m-tkrow span:last-child { color: #1e293b; }
+[data-theme="light"] .lx-m-dash { border-color: #e2e8f0; }
+[data-theme="light"] .lx-m-tkserial { color: #94a3b8; }
+[data-theme="light"] .lx-m-tkclose { background: rgba(35, 26, 2, 0.85); color: var(--lx-gold-2); }
+
+:root .lx-m-ticket { background: var(--surface-2); }
+:root .lx-m-tkqr { background: var(--surface); }
+:root .lx-m-tkqrfail { background: var(--surface); color: var(--text-2); }
+:root .lx-m-tkrow span:first-child { color: var(--text-2); }
+:root .lx-m-tkrow span:last-child { color: var(--text); }
+:root .lx-m-dash { border-color: var(--border); }
+:root .lx-m-tkserial { color: var(--text-2); }
+:root .lx-m-tkclose { background: var(--surface-2); color: var(--text-2); }
+
 /* ---------- responsive (≤ 520px column) ---------- */
 @media (max-width: 520px) {
     .lx-tr-hero { padding: 15px 14px; }
@@ -2425,6 +2444,34 @@ html[dir="ltr"] .lx-m-switch.on::after { transform: translateX(21px); }
     .lx-m-tkbody { padding: 15px 16px 17px; }
     .lx-m-dash { margin: 14px -16px; }
     .lx-m-setrow { align-items: flex-start; }
+}
+
+/* ---------- mobile overflow fix (transport + profile) ---------- */
+@media (max-width: 768px) {
+    .lx-tr-root, .lx-p-root, .lx-m-root {
+        max-width: 100% !important;
+        width: 100% !important;
+        overflow-x: hidden;
+        box-sizing: border-box;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+    .lx-tr-hero { padding: 14px 12px; box-sizing: border-box; }
+    .lx-tr-hinfo h2 { font-size: 0.95rem; }
+    .lx-tr-hinfo p { font-size: 0.74rem; }
+    .lx-tr-dephead { padding: 12px; gap: 8px; }
+    .lx-tr-bhead { padding: 11px; gap: 8px; }
+    .lx-tr-ar, .lx-tr-fr, .lx-tr-stnames strong, .lx-tr-stnames small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .lx-tr-tl { overflow: hidden; }
+    .lx-tr-tl li { max-width: 100%; overflow: hidden; }
+    .lx-p-root { font-size: 0.92rem; }
+    .lx-p-root .lx-p-card, .lx-p-root .lx-p-sect { max-width: 100%; overflow: hidden; box-sizing: border-box; }
+    .lx-p-root img, .lx-p-root canvas { max-width: 100% !important; height: auto !important; }
+    .lx-m-root { font-size: 0.92rem; }
+    .lx-m-depot, .lx-m-meal, .lx-m-day { max-width: 100%; box-sizing: border-box; }
+    .lx-m-ticket { max-width: calc(100vw - 48px); }
+    .lx-m-tkbody { padding: 14px 14px 16px; }
+    .lx-m-resrow { flex-wrap: wrap; }
 }
 
 /* ---------- reduced motion kill-switch (transport + meals) ---------- */

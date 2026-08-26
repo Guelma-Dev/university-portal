@@ -2378,18 +2378,23 @@ body { overflow-x: hidden; }
 .tile {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 10px; min-height: 88px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
+    background: var(--surface);
+    border: 1px solid rgba(212, 175, 55, 0.3);
     border-radius: 14px;
     cursor: pointer; font-family: inherit;
-    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, border-color 0.25s ease;
     box-shadow: var(--shadow-xs);
 }
-.tile i { font-size: 24px; color: var(--brand); transition: transform 0.2s ease; }
-.tile span { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); border-color: var(--accent-light); }
-.tile:hover i { transform: scale(1.1); }
-.tile:active { transform: scale(0.97); box-shadow: var(--shadow-xs); }
+.tile i { font-size: 24px; color: var(--brand); transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease; }
+.tile span { font-size: 13px; font-weight: 700; color: var(--brand); transition: color 0.2s ease; }
+.tile:hover {
+    transform: translateY(-4px);
+    border-color: rgba(212, 175, 55, 0.6);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.15), 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+.tile:hover i { transform: scale(1.12); color: var(--brand-light); }
+.tile:hover span { color: var(--brand-light); }
+.tile:active { transform: translateY(-1px) scale(0.98); box-shadow: 0 0 10px rgba(212, 175, 55, 0.1), var(--shadow-xs); }
 
 /* ---- BOTTOM NAVIGATION ثابت أسفل ---- */
 .bottom-nav {
@@ -2468,12 +2473,23 @@ body { overflow-x: hidden; }
     .landing-split { flex-direction: column; }
     .landing-brand {
         flex: none; padding: 48px 32px 36px;
-        background: var(--brand);
+        background: linear-gradient(135deg, #D4AF37 0%, #AA8C2C 100%);
     }
-    .lb-title { font-size: 1.8rem; }
+    .lb-title {
+        font-size: 1.8rem;
+        background: none; -webkit-background-clip: unset; -webkit-text-fill-color: unset; background-clip: unset;
+        color: #1a1a1a;
+    }
+    .lb-sub { color: rgba(26, 26, 26, 0.75); }
+    .lb-uni { color: rgba(26, 26, 26, 0.55); }
     .lb-inner { padding: 0; }
-    .lb-logo { width: 56px; height: 56px; margin-bottom: 16px; }
-    .lb-logo i { font-size: 1.3rem; }
+    .lb-logo {
+        width: 56px; height: 56px; margin-bottom: 16px;
+        background: rgba(26, 26, 26, 0.08);
+        border-color: rgba(26, 26, 26, 0.12);
+        box-shadow: none;
+    }
+    .lb-logo i { font-size: 1.3rem; color: #1a1a1a; }
 
     .landing-content {
         flex: 1; padding: 0;
