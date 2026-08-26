@@ -95,6 +95,10 @@ def _cached_json(cache_key: str, producer):
         payload = producer()
     except UpstreamError as e:
         print(f'[BUS] upstream failed ({cache_key}): {e}', flush=True)
+        if request.args.get('debug') == '1':
+            import traceback
+            return jsonify({'error': str(e),
+                            'trace': traceback.format_exc()[-600:]}), 502
         return jsonify({'error': UPSTREAM_ERROR_MESSAGE}), 502
     _cache_set(cache_key, payload)
     return jsonify(payload)
