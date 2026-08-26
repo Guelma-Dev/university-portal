@@ -172,6 +172,14 @@ def _cache_set(key, obj):
         print(f'[ONOU] cache set {key[:40]}: {type(e).__name__}', flush=True)
 
 
+def _cache_del(key):
+    try:
+        with _db.begin() as c:
+            c.execute(text('DELETE FROM progres_cache WHERE cache_key = :k'), {'k': key})
+    except Exception as e:
+        print(f'[ONOU] cache del {key[:40]}: {type(e).__name__}', flush=True)
+
+
 def _jwt_claims(token):
     try:
         p = token.split('.')[1]
@@ -407,10 +415,21 @@ def context():
         cache_key = f'onou:{u}:depots:{ctx["wilaya"]}:{ctx["residence"]}'
         depots = _cache_get(cache_key, 3600)
         if depots is None:
-            data = _gs_request('GET', '/api/getdepotres', ctx['gs'], params={
-                'uuid': u, 'wilaya': ctx['wilaya'], 'residence': ctx['residence'], 'token': ctx['gs'],
-            })
-            depots = _as_list(data)
+            def _fetch_depots(c):
+                return _as_list(_gs_request('GET', '/api/getdepotres', c['gs'], params={
+                    'uuid': u, 'wilaya': c['wilaya'], 'residence': c['residence'], 'token': c['gs'],
+                }))
+            try:
+                depots = _fetch_depots(ctx)
+            except ApiError as first_err:
+                # stale cached gs token -> purge it and re-login once
+                _cache_del(f'me:{u}:gs')
+                ctx = _build_ctx(u, dia=_req_dia(), residence=request.args.get('residence'))
+                cache_key = f'onou:{u}:depots:{ctx["wilaya"]}:{ctx["residence"]}'
+                try:
+                    depots = _fetch_depots(ctx)
+                except ApiError:
+                    raise first_err
             if depots:
                 _cache_set(cache_key, depots)
         return jsonify({
@@ -469,7 +488,15 @@ def reservations():
         if not u:
             return jsonify({'error': 'uuid مطلوب'}), 400
         ctx = _build_ctx(u, dia=_req_dia())
-        return jsonify(_normalize_reservations(_fetch_reservations(ctx)))
+        try:
+            return jsonify(_normalize_reservations(_fetch_reservations(ctx)))
+        except ApiError as first_err:
+            _cache_del(f'me:{u}:gs')
+            ctx = _build_ctx(u, dia=_req_dia())
+            try:
+                return jsonify(_normalize_reservations(_fetch_reservations(ctx)))
+            except ApiError:
+                raise first_err
     except Exception as e:
         return _fail(e)
 
