@@ -206,7 +206,7 @@ def _auth_args():
 _RELAY_URL_MEM = None
 RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
 _DIRECT_BLOCK = {}
-DIRECT_COOLDOWN = 300
+DIRECT_COOLDOWN = 60
 
 
 def _direct_ok(base):
@@ -217,9 +217,13 @@ def _block_direct(base):
     _DIRECT_BLOCK[base] = time.time() + DIRECT_COOLDOWN
 
 
+_RELAY_URL_TS = 0.0
+
+
 def _relay_url():
-    global _RELAY_URL_MEM
-    if _RELAY_URL_MEM is None:
+    global _RELAY_URL_MEM, _RELAY_URL_TS
+    # The phone tunnel URL changes on every restart — re-read at most 5 min old.
+    if not _RELAY_URL_MEM or time.time() - _RELAY_URL_TS > 300:
         try:
             with _engine().connect() as c:
                 row = c.execute(text("SELECT payload FROM progres_cache "
@@ -227,7 +231,9 @@ def _relay_url():
             u = (row[0] or '').strip() if row else ''
         except Exception:
             u = ''
-        _RELAY_URL_MEM = u
+        if u:
+            _RELAY_URL_MEM = u
+            _RELAY_URL_TS = time.time()
     return _RELAY_URL_MEM or None
 
 

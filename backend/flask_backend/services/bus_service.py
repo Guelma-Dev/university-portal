@@ -103,7 +103,7 @@ def _cached_json(cache_key: str, producer):
 _RELAY_URL_MEM = None
 RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
 _DIRECT_BLOCKED_UNTIL = 0
-DIRECT_COOLDOWN = 300
+DIRECT_COOLDOWN = 60
 
 
 def _relay_url():
@@ -135,7 +135,7 @@ def _fetch_json(path: str):
         if not rb:
             raise direct_err
         try:
-            resp = _session.get(rb.rstrip('/') + '/bus' + path,
+            resp = _session.get(rb.rstrip('/') + '/bus/api' + path,
                                 headers={'X-Relay-Key': RELAY_KEY},
                                 timeout=BUS_TIMEOUT_SECONDS + 10)
             if resp.status_code != 200:
