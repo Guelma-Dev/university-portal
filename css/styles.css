@@ -2106,104 +2106,164 @@ input { font-family: inherit; }
    PHYSICAL ALGERIAN STUDENT CARD (landscape printed replica)
    Scales with clamp() so it shrinks proportionally on phones
    ============================================================ */
-.real-student-card {
-    --zz: clamp(5px, 1.6vw, 9px);
+/* ============================================================
+   STUDENT CARD — Luxury Dark/Gold Redesign
+   ============================================================ */
+.rsc-card {
+    --rsc-zz: clamp(5px, 1.6vw, 9px);
+    box-sizing: border-box;
     position: relative;
     width: 100%;
-    max-width: 500px;
-    margin: 14px auto 18px;
-    background: linear-gradient(155deg, #fdfdfb 0%, #edece7 100%);
-    border: 1px solid #d3d2ca;
-    border-radius: clamp(10px, 3vw, 16px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.20), inset 0 0 46px rgba(255, 255, 255, 0.65);
+    max-width: 460px;
+    margin: 16px auto 20px;
+    background: linear-gradient(160deg, #1a1a1a 0%, #111 60%, #0d0d0d 100%);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    border-radius: clamp(12px, 3.5vw, 18px);
+    box-shadow:
+        0 16px 40px rgba(0, 0, 0, 0.45),
+        0 0 0 1px rgba(212, 175, 55, 0.08),
+        inset 0 1px 0 rgba(212, 175, 55, 0.10);
     overflow: hidden;
-    color: #101010;
+    color: var(--text, #E8E4DF);
+}
+.rsc-card,
+.rsc-card * { box-sizing: border-box; }
+
+/* ---- Top bar: logo + state/ministry ---- */
+.rsc-topbar {
+    display: flex;
+    align-items: center;
+    gap: clamp(6px, 2vw, 12px);
+    padding: clamp(8px, 2.5vw, 14px) clamp(12px, 3.5vw, 20px);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.12);
+    background: rgba(212, 175, 55, 0.04);
 }
 .rsc-logo {
-    position: absolute;
-    top: clamp(5px, 1.6vw, 9px);
-    right: clamp(7px, 2vw, 12px);
-    height: clamp(26px, 7.5vw, 40px);
-    max-width: clamp(52px, 15vw, 84px);
+    flex: 0 0 auto;
+    height: clamp(28px, 8vw, 44px);
+    max-width: clamp(48px, 14vw, 76px);
     object-fit: contain;
-    z-index: 2;
-    background: rgba(255, 255, 255, 0.85);
     border-radius: 6px;
-    padding: 2px;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 3px;
 }
-.rsc-header {
-    text-align: center;
-    padding: clamp(7px, 2vw, 11px) clamp(50px, 17vw, 96px) clamp(3px, .9vw, 5px);
-}
+.rsc-topbar-text { flex: 1 1 auto; min-width: 0; text-align: right; }
 .rsc-state {
-    font-size: clamp(7.5px, 2.1vw, 11px);
+    font-size: clamp(8px, 2.3vw, 12px);
     font-weight: 800;
-    letter-spacing: .2px;
+    color: var(--brand, #D4AF37);
+    letter-spacing: 0.3px;
+    line-height: 1.4;
 }
 .rsc-ministry {
-    font-size: clamp(6.5px, 1.85vw, 9.5px);
-    color: #3a3a36;
-    margin-top: 2px;
+    font-size: clamp(7px, 2vw, 10px);
+    color: var(--text-2, #9A9590);
     font-weight: 600;
+    margin-top: 1px;
+    line-height: 1.3;
 }
+
+/* ---- Title banner ---- */
 .rsc-title {
-    display: inline-block;
-    font-size: clamp(11.5px, 3.3vw, 17px);
+    text-align: center;
+    font-size: clamp(12px, 3.5vw, 18px);
     font-weight: 900;
-    color: #0d5c2d;
-    letter-spacing: 1px;
-    margin-top: clamp(3px, 1vw, 6px);
-    border-top: 1.5px solid #0d5c2d;
-    border-bottom: 1.5px solid #0d5c2d;
-    padding: 1px 10px;
+    color: var(--brand, #D4AF37);
+    letter-spacing: 1.5px;
+    padding: clamp(6px, 2vw, 10px) 12px;
+    background: linear-gradient(90deg, rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.08));
+    border-top: 1px solid rgba(212, 175, 55, 0.15);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
 }
+
+/* ---- Body: photo | info | QR ---- */
 .rsc-body {
     display: flex;
     align-items: stretch;
-    gap: clamp(8px, 2.6vw, 15px);
-    padding: clamp(8px, 2.4vw, 13px) clamp(10px, 3vw, 16px) calc(var(--zz) + clamp(6px, 2vw, 12px));
+    gap: clamp(10px, 3vw, 18px);
+    padding: clamp(12px, 3.5vw, 20px) clamp(12px, 3.5vw, 20px) clamp(10px, 3vw, 16px);
 }
-.rsc-photo-side { flex: 0 0 auto; display: flex; align-items: center; }
+
+/* Photo column */
+.rsc-photo-col {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(6px, 2vw, 10px);
+}
 .rsc-photo-box {
-    width: clamp(56px, 15.5vw, 84px);
-    height: clamp(68px, 19vw, 102px);
-    border-radius: clamp(5px, 1.5vw, 8px);
+    width: clamp(70px, 20vw, 100px);
+    height: clamp(86px, 24vw, 124px);
+    border-radius: clamp(6px, 2vw, 10px);
     overflow: hidden;
-    background: var(--surface);
-    border: 1.5px solid var(--border);
+    background: var(--surface-2, #242424);
+    border: 1.5px solid rgba(212, 175, 55, 0.30);
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
 }
-.rsc-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
-.rsc-avatar { font-size: clamp(1.4rem, 6vw, 2.3rem); color: var(--text-2); font-weight: 800; }
+.rsc-photo-box::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+}
+.rsc-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.rsc-avatar {
+    font-size: clamp(1.6rem, 7vw, 2.8rem);
+    color: var(--text-2, #9A9590);
+    font-weight: 800;
+    opacity: 0.5;
+}
 .rsc-photo-box.photo-failed .rsc-photo { display: none; }
-.rsc-data {
+.rsc-reg-num {
+    font-size: clamp(8px, 2.3vw, 12px);
+    font-weight: 800;
+    color: var(--brand, #D4AF37);
+    letter-spacing: 0.5px;
+    text-align: center;
+    direction: ltr;
+}
+
+/* Info column */
+.rsc-info-col {
     flex: 1 1 auto;
     min-width: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: clamp(3px, 1.1vw, 6px);
+    gap: clamp(5px, 1.8vw, 10px);
 }
 .rsc-row {
     display: flex;
-    align-items: baseline;
-    gap: clamp(4px, 1.2vw, 8px);
+    flex-direction: column;
+    gap: 1px;
 }
 .rsc-label {
-    font-size: clamp(6.5px, 1.85vw, 9px);
-    color: #5a5a54;
+    font-size: clamp(7px, 2vw, 9.5px);
+    color: var(--text-2, #9A9590);
     font-weight: 700;
-    white-space: nowrap;
+    text-transform: none;
 }
 .rsc-value {
-    font-size: clamp(7.5px, 2.2vw, 11.5px);
+    font-size: clamp(9px, 2.8vw, 13.5px);
     font-weight: 800;
-    line-height: 1.35;
+    color: var(--text, #E8E4DF);
+    line-height: 1.4;
     word-break: break-word;
 }
-.rsc-qr-side {
+
+/* QR column */
+.rsc-qr-col {
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
@@ -2212,50 +2272,58 @@ input { font-family: inherit; }
     gap: clamp(4px, 1.5vw, 8px);
 }
 .rsc-qr {
-    width: clamp(46px, 13.5vw, 70px);
+    width: clamp(50px, 15vw, 74px);
     height: auto;
     image-rendering: pixelated;
     background: #fff;
-    border: 1px solid #c9c9c2;
-    border-radius: 4px;
-    padding: 2px;
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 6px;
+    padding: 3px;
 }
-.rsc-bus {
-    color: #f2b705;
-    font-size: clamp(15px, 4.8vw, 26px);
-    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .25));
+.rsc-bus-icon {
+    color: var(--brand, #D4AF37);
+    font-size: clamp(16px, 5vw, 28px);
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 }
-/* Green zigzag ribbon footer */
+
+/* ---- Footer ribbon ---- */
 .rsc-footer {
     position: relative;
-    background: linear-gradient(180deg, #128a44, #0b5c2b);
-    color: #fff;
+    background: linear-gradient(135deg, var(--brand-dark, #AA8C2C), var(--brand, #D4AF37), var(--brand-dark, #AA8C2C));
+    color: #0a0a0a;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 8px;
-    padding: calc(var(--zz) * 0.55) clamp(10px, 3vw, 16px) clamp(4px, 1.4vw, 8px);
-    font-size: clamp(7px, 2vw, 11px);
+    padding: calc(var(--rsc-zz) * 0.6) clamp(12px, 3.5vw, 20px) clamp(5px, 1.8vw, 9px);
+    font-size: clamp(7.5px, 2.2vw, 11.5px);
     font-weight: 800;
+    letter-spacing: 0.3px;
 }
 .rsc-footer::before {
     content: '';
     position: absolute;
-    top: calc(var(--zz) * -1 + 1px);
+    top: calc(var(--rsc-zz) * -1 + 1px);
     left: 0;
     right: 0;
-    height: var(--zz);
+    height: var(--rsc-zz);
     background-image:
-        linear-gradient(135deg, #128a44 25%, transparent 25%),
-        linear-gradient(225deg, #128a44 25%, transparent 25%);
-    background-size: calc(var(--zz) * 1.8) 100%;
+        linear-gradient(135deg, var(--brand-dark, #AA8C2C) 25%, transparent 25%),
+        linear-gradient(225deg, var(--brand-dark, #AA8C2C) 25%, transparent 25%);
+    background-size: calc(var(--rsc-zz) * 1.8) 100%;
     background-repeat: repeat-x;
     background-position: 0 bottom;
 }
 
+/* ---- Mobile overrides ---- */
 @media (max-width: 480px) {
-    .rsc-header { padding-inline: 46px; }
-    .real-student-card { margin-inline: -8px; }
+    .rsc-body { gap: 8px; padding: 10px 10px 8px; }
+    .rsc-photo-box { width: 62px; height: 78px; }
+    .rsc-qr { width: 44px; }
+    .rsc-info-col { gap: 4px; }
+}
+@media (min-width: 481px) and (max-width: 768px) {
+    .rsc-body { gap: 12px; }
 }
 
 /* ============================================================

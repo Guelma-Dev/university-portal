@@ -1701,26 +1701,29 @@ function renderRealStudentId(card) {
     const qrData = encodeURIComponent(`${esc(card.numeroInscription)}|${nom} ${prenom}`);
     const initial = (prenom || nom || '?').charAt(0);
     return `
-    <div class="real-student-card">
-        <img id="rsc-logo" class="rsc-logo" alt="">
-        <div class="rsc-header">
-            <div class="rsc-state">الجمهورية الجزائرية الديمقراطية الشعبية</div>
-            <div class="rsc-ministry">وزارة التعليم العالي والبحث العلمي</div>
-            <div class="rsc-title">بطاقة الطالب</div>
+    <div class="rsc-card">
+        <div class="rsc-topbar">
+            <img id="rsc-logo" class="rsc-logo" alt="">
+            <div class="rsc-topbar-text">
+                <div class="rsc-state">الجمهورية الجزائرية الديمقراطية الشعبية</div>
+                <div class="rsc-ministry">وزارة التعليم العالي والبحث العلمي</div>
+            </div>
         </div>
+        <div class="rsc-title">بطاقة الطالب</div>
         <div class="rsc-body">
-            <div class="rsc-photo-side">
+            <div class="rsc-photo-col">
                 <div class="rsc-photo-box" id="rsc-photo-box">
                     <span class="rsc-avatar">${initial}</span>
                     <img id="rsc-photo" class="rsc-photo" alt="">
                 </div>
+                <div class="rsc-reg-num">${esc(card.numeroInscription)}</div>
             </div>
-            <div class="rsc-data">
+            <div class="rsc-info-col">
                 ${rows.map(r => `<div class="rsc-row"><span class="rsc-label">${r[0]}</span><span class="rsc-value">${r[1]}</span></div>`).join('')}
             </div>
-            <div class="rsc-qr-side">
+            <div class="rsc-qr-col">
                 <img class="rsc-qr" alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${qrData}" onerror="this.style.display='none'">
-                <i class="fas fa-bus rsc-bus"></i>
+                <i class="fas fa-bus rsc-bus-icon"></i>
             </div>
         </div>
         <div class="rsc-footer">
