@@ -46,7 +46,10 @@ UPSTREAM_ERROR_MESSAGE = 'خدمة النقل غير متاحة حالياً'
 bp = Blueprint('bus', __name__, url_prefix='/api/bus')
 
 _session = requests.Session()
-_session.headers.update({'Accept': 'application/json'})
+_session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36',
+    'Accept': 'application/json',
+})
 
 
 class UpstreamError(Exception):
