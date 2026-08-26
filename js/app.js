@@ -644,6 +644,14 @@ function setNameEverywhere(name) {
     if (welcomeEl) welcomeEl.textContent = displayName === 'طالب' || displayName === 'مسؤول' || displayName === 'ضيف'
         ? 'مرحباً بك' : 'مرحباً ' + displayName;
     ['acc-name', 'hero-name'].forEach((i) => { const e = $id(i); if (e) e.textContent = displayName; });
+    updateAccountSubtitle();
+}
+
+function updateAccountSubtitle() {
+    const el = $id('acc-sub');
+    if (!el) return;
+    const subtitle = (typeof getProfileSubtitle === 'function') ? getProfileSubtitle() : '';
+    el.textContent = subtitle || 'طالب جامعي';
 }
 
 
@@ -1794,6 +1802,7 @@ function loadProgresCache() {
             if (progresCache.universityName) setUniversityName(progresCache.universityName);
             if (progresCache.specialtyName) setSpecialtyName(progresCache.specialtyName);
             if (progresCache.wilaya) setUserWilaya(progresCache.wilaya);
+            updateAccountSubtitle();
         }
     } catch (e) {}
 }
@@ -1859,6 +1868,7 @@ async function ensureProgresData() {
         wilaya: getUserWilaya(),
     };
     saveProgresCache();
+    updateAccountSubtitle();
     return progresCache;
 }
 
