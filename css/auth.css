@@ -1,41 +1,62 @@
 /* ============================================================
-   AUTH.CSS — Auth modals + landing refinements
-   Loaded AFTER styles.css — cascade handles precedence.
+   AUTH.CSS — Luxury Glassmorphism Auth
+   Gold-bordered glassmorphism cards · Dark surfaces
    ============================================================ */
 
 /* ---- LANDING PAGE ---- */
-.landing-page { background: var(--bg); }
+.landing-page { background: #080808; }
 
-/* ---- PARTICLES CANVAS — hidden, not created ---- */
+/* ---- PARTICLES CANVAS — hidden ---- */
 #auth-particles { display: none; }
 
-/* ---- AUTH MODALS ---- */
+/* ---- AUTH MODALS — Glassmorphism ---- */
 .modal-overlay {
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
 .modal-card {
-    border: 1px solid var(--border);
-    padding: 32px 28px 28px;
+    background: rgba(20, 20, 20, 0.9);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    border-radius: var(--radius-lg);
+    padding: 36px 28px 28px;
     max-width: 400px;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(212, 175, 55, 0.05),
+                inset 0 1px 0 rgba(212, 175, 55, 0.06);
 }
-.modal-header { margin-bottom: 24px; }
+
+/* ---- MODAL HEADER ---- */
+.modal-header { margin-bottom: 28px; }
 .modal-header i {
     display: inline-flex;
     width: 52px; height: 52px; align-items: center; justify-content: center;
     font-size: 1.2rem;
-    background: var(--accent-light);
+    background: rgba(212, 175, 55, 0.08);
     border-radius: 14px;
+    border: 1px solid rgba(212, 175, 55, 0.12);
     color: var(--brand);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
-.modal-header h3 { font-weight: 700; }
+.modal-header h3 {
+    font-weight: 700;
+    color: var(--text);
+}
 
-/* ---- FORM INPUTS ---- */
+/* ---- FORM INPUTS — Minimalist ---- */
 .input-group input,
 .input-group select,
 .input-group textarea {
-    border-width: 1px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(212, 175, 55, 0.10);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input-group input:focus,
+.input-group select:focus {
+    border-color: rgba(212, 175, 55, 0.35);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.08);
 }
 
 /* ---- PASSWORD TOGGLE ---- */
@@ -49,21 +70,30 @@
     color: var(--muted); font-size: 0.9rem;
     transition: color 0.15s, background 0.15s;
 }
-.pw-toggle:hover { color: var(--text-secondary); background: var(--accent-light); }
+.pw-toggle:hover { color: var(--brand); background: rgba(212, 175, 55, 0.08); }
 
-/* ---- SUBMIT BUTTON ---- */
+/* ---- SUBMIT BUTTON — Premium gold fill ---- */
 .btn-primary {
     font-weight: 700;
     width: 100%;
     padding: 13px 24px;
-    transition: all 0.2s ease;
+    background: rgba(212, 175, 55, 0.08);
+    color: var(--brand);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: var(--radius-sm);
+    transition: all 0.25s ease;
 }
 .btn-primary:hover {
+    background: rgba(212, 175, 55, 0.18);
+    border-color: rgba(212, 175, 55, 0.45);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.12);
     transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
 }
 .btn-primary:active {
     transform: scale(0.98);
+}
+.btn-primary:disabled, .btn-primary.loading {
+    opacity: 0.4; pointer-events: none;
 }
 
 /* ---- GHOST BUTTON ---- */
@@ -73,11 +103,14 @@
 
 /* ---- AUTH LINKS ---- */
 .auth-links { text-align: left; margin-bottom: 16px; margin-top: -8px; }
-.auth-links a { font-size: 0.82rem; }
+.auth-links a { font-size: 0.82rem; color: var(--brand); }
+.auth-links a:hover { color: var(--brand-light); }
 .auth-switch {
     text-align: center; margin: 16px 0 8px;
-    font-size: 0.85rem; color: var(--text-tertiary);
+    font-size: 0.85rem; color: var(--muted);
 }
+.auth-switch a { color: var(--brand); font-weight: 600; }
+.auth-switch a:hover { color: var(--brand-light); }
 
 /* ---- ERROR SHAKE ---- */
 @keyframes shake {
@@ -90,9 +123,14 @@
 .modal-card.shake { animation: shake 0.35s ease; }
 
 /* ---- PROGRES LOGIN FORM ---- */
+#progres-login-form input {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(212, 175, 55, 0.10);
+    color: var(--text);
+}
 #progres-login-form input:focus {
-    border-color: var(--brand);
-    box-shadow: 0 0 0 3px var(--accent-glow);
+    border-color: rgba(212, 175, 55, 0.35);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.08);
 }
 
 /* ---- REDUCED MOTION ---- */
@@ -102,6 +140,6 @@
 
 /* ---- MOBILE ---- */
 @media (max-width: 480px) {
-    .modal-card { padding: 24px 20px 22px; }
+    .modal-card { padding: 28px 20px 22px; }
     .modal-header i { width: 46px; height: 46px; font-size: 1.1rem; }
 }

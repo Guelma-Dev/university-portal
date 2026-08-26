@@ -3,7 +3,7 @@
 // ============================================
 const APP_STATE = {
     role: null, // 'guest', 'student', or 'admin'
-    theme: localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+    theme: localStorage.getItem('theme') || 'dark',
     currentSection: 'home',
     currentSubject: null,
     currentDetailTab: 'lectures',
@@ -266,7 +266,7 @@ function applyTheme(theme) {
     APP_STATE.theme = theme;
     localStorage.setItem('theme', theme);
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0c0a09' : '#fafaf9');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0a0a0a' : '#FAFAF8');
     const icon = document.getElementById('theme-icon');
     const text = document.getElementById('theme-text');
     const iconTop = document.getElementById('theme-icon-top');
@@ -582,7 +582,11 @@ const $id = (i) => document.getElementById(i);
 function showEl(id, disp = 'flex') { const e = $id(id); if (e) e.style.display = disp; }
 function hideEl(id) { const e = $id(id); if (e) e.style.display = 'none'; }
 function setNameEverywhere(name) {
-    ['acc-name', 'hero-name'].forEach((i) => { const e = $id(i); if (e) e.textContent = name || 'طالب'; });
+    const displayName = name || localStorage.getItem('user_name') || 'طالب';
+    const welcomeEl = $id('hero-welcome');
+    if (welcomeEl) welcomeEl.textContent = displayName === 'طالب' || displayName === 'مسؤول' || displayName === 'ضيف'
+        ? 'مرحباً بك' : 'مرحباً ' + displayName;
+    ['acc-name', 'hero-name'].forEach((i) => { const e = $id(i); if (e) e.textContent = displayName; });
 }
 
 
