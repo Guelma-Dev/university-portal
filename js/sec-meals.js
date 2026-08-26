@@ -1,7 +1,7 @@
 (() => {
     'use strict';
 
-    const GOLD = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim() || '#4f46e5';
+    const GOLD = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim() || '#D4AF37';
     const MEALS = {
         1: { name: 'فطور الصباح', icon: 'fa-mug-saucer', slot: '06:30 - 09:30' },
         2: { name: 'الغداء', icon: 'fa-bowl-food', slot: '11:30 - 14:30' },
