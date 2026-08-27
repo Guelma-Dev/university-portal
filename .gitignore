@@ -7,3 +7,9 @@ venv/
 instance/
 *.log
 .DS_Store
+node_modules/
+www/
+android/
+*.apk
+*.keystore
+*.jks

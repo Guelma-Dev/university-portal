@@ -2593,3 +2593,61 @@ body { overflow-x: hidden; }
     .section { animation: none; }
     .tile:hover { transform: none; }
 }
+
+/* ============================================================
+   NATIVE APP (Capacitor) — safe-area, touch, offline banner
+   ============================================================ */
+body.native-app {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+body.native-app input,
+body.native-app textarea {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+body.native-app .app-bar {
+    height: calc(64px + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+}
+
+body.native-app .main-content {
+    padding-top: calc(76px + env(safe-area-inset-top));
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+body.native-app .bottom-nav .bn-inner {
+    height: calc(58px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+body.native-app [data-section='home'] .dashboard-wrap {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+
+.pn-netline {
+    position: fixed;
+    top: calc(64px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: var(--shell-max);
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(90deg, #b03a2e, #8f2b21);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
+}
