@@ -2,21 +2,23 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة المالية والمحاسبة | جامعة 8 ماي 1945 قالمة</title>
-    <meta name="description" content="منصة التنظيم الجامعي - المالية والمحاسبة - جامعة 8 ماي 1945 قالمة">
-    <meta name="theme-color" content="#0a0a0a">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>بوابة الطالب الجامعي</title>
+    <meta name="description" content="بوابة الطالب الجامعي — نقاطي، الملف الشامل، الوجبات، والنقل الجامعي لجميع الطلبة">
+    <meta name="theme-color" content="#08101D">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="المنصة الجامعية">
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css?v=20260826i">
-    <link rel="stylesheet" href="css/luxury.css?v=20260826i">
-    <link rel="stylesheet" href="css/auth.css?v=20260826i">
+    <link rel="stylesheet" href="css/styles.css?v=20260901r">
+    <link rel="stylesheet" href="css/luxury.css?v=20260901r">
+    <link rel="stylesheet" href="css/auth.css?v=20260901r">
+    <link rel="stylesheet" href="css/native.css?v=20260901r">
+    <link rel="stylesheet" href="css/radical.css?v=20260901r">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -36,50 +38,69 @@
         }
     </script>
     <script>
-        (function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#0a0a0a':'#FAFAF8');})();
+        (function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#08101D':'#EFF2F6');})();
+        (function(){var d=document.getElementById('hh-date');if(d){try{d.textContent=new Date().toLocaleDateString('ar-DZ',{weekday:'long',day:'numeric',month:'long'});}catch(e){}}}());
     </script>
 </head>
 <body>
     <!-- ===== LANDING PAGE ===== -->
     <div id="landing-page" class="landing-page">
-        <div class="landing-split">
-            <!-- Brand Panel (start side) -->
-            <div class="landing-brand" id="landing-brand">
-                <div class="brand-glow" id="brand-glow"></div>
-                <div class="lb-inner">
-                    <div class="lb-logo">
-                        <i class="fas fa-graduation-cap"></i>
-                    </div>
-                    <h1 class="lb-title">منصة المالية<br>والمحاسبة</h1>
-                    <p class="lb-sub">السنة الثانية — تخصص مالية ومحاسبة</p>
-                    <p class="lb-uni">جامعة 8 ماي 1945 — قالمة</p>
-                </div>
-            </div>
+        <div class="lhero-orbs" aria-hidden="true">
+            <span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span>
+        </div>
+        <button type="button" class="lc-theme" onclick="toggleTheme()" aria-label="التبديل بين الوضع الليلي والنهاري">
+            <i class="fas fa-sun"></i><i class="fas fa-moon"></i>
+        </button>
 
-            <!-- Form Panel (end side) -->
-            <div class="landing-content">
-                <div class="lc-inner">
-                    <p class="lc-desc">منصة رقمية تجمع جميع محاضراتك وملفات الـ TD/TP وجدول الامتحانات في مكان واحد.</p>
-                    <div class="landing-buttons">
-                        <button class="btn btn-student" onclick="showStudentLogin()">
-                            <i class="fas fa-right-to-bracket"></i>
-                            <span>تسجيل الدخول</span>
-                        </button>
-                        <button class="btn btn-register" onclick="showStudentRegister()">
-                            <i class="fas fa-user-plus"></i>
-                            <span>إنشاء حساب جديد</span>
-                        </button>
-                        <button class="btn btn-quick" onclick="enterAsStudent()">
-                            <i class="fas fa-user-graduate"></i>
-                            <span>دخول كضيف</span>
-                        </button>
-                        <button class="btn btn-admin" onclick="showAdminLogin()">
-                            <i class="fas fa-shield-halved"></i>
-                            <span>دخول المسؤول</span>
-                        </button>
-                    </div>
-                    <p class="lc-footer">سجّل دخولك للوصول إلى كل المواد<br>أو تصفح المنصة كضيف.</p>
-                </div>
+        <!-- Centered Identity Card -->
+        <div class="lhero" id="lhero">
+            <div class="lhero-brand">
+                <div class="lhero-logo"><i class="fas fa-graduation-cap"></i></div>
+                <h1 class="lb-title">بوابة الطالب الجامعي</h1>
+                <p class="lb-sub">كل خدماتك الجامعية في مكان واحد</p>
+                <span class="lhero-badge">شاملة لطلبة جميع الجامعات الجزائرية</span>
+            </div>
+            <div class="lhero-actions">
+                <button class="btn btn-student" onclick="showStudentLogin()">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>تسجيل الدخول — بروقرس</span>
+                </button>
+                <button class="btn btn-quick" onclick="enterAsStudent()">
+                    <i class="fas fa-user-graduate"></i>
+                    <span>دخول كضيف</span>
+                </button>
+                <button class="btn btn-admin" onclick="showAdminLogin()">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>دخول المسؤول</span>
+                </button>
+            </div>
+            <p class="lc-trust"><i class="fas fa-shield-halved"></i> بياناتك تُرسل مباشرة إلى خوادم الوزارة ولا تُخزَّن على الجهاز</p>
+            <p class="lc-footer">سجّل دخولك برقم تسجيل بروقرس الرسمي لفتح نقاطك وملفك الشامل</p>
+
+            <div class="br-index" aria-label="فهرس الخدمات">
+                <div class="br-index-h"><span>فهرس الخدمات</span><i>SERVICES INDEX</i></div>
+                <ol class="br-index-list">
+                    <li><b>01</b><span>كشف النقاط — بروقرس</span></li>
+                    <li><b>02</b><span>بطاقة الطالب الرسمية</span></li>
+                    <li><b>03</b><span>التقييم المستمر</span></li>
+                    <li><b>04</b><span>المكتبة + المستودعات</span></li>
+                    <li><b>05</b><span>الوجبات الجامعية</span></li>
+                    <li><b>06</b><span>النقل الجامعي المباشر</span></li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="lhero-chips" aria-hidden="true">
+            <span class="chip">كشف النقاط</span>
+            <span class="chip">بطاقة الطالب</span>
+            <span class="chip">الوجبات الجامعية</span>
+            <span class="chip">النقل الجامعي</span>
+        </div>
+
+        <div class="br-ticker" aria-hidden="true">
+            <div class="br-ticker-track" dir="ltr">
+                <span>MINISTÈRE DE L'ENSEIGNEMENT SUPÉRIEUR ET DE LA RECHERCHE SCIENTIFIQUE <i>✦</i> الجمهورية الجزائرية الديمقراطية الشعبية <i>✦</i> UNIVERSITÉ DE GUELMA <i>✦</i> نظام LMD — سداسي ومتعامل <i>✦</i> WILAYA DE GUELMA <i>✦</i></span>
+                <span>MINISTÈRE DE L'ENSEIGNEMENT SUPÉRIEUR ET DE LA RECHERCHE SCIENTIFIQUE <i>✦</i> الجمهورية الجزائرية الديمقراطية الشعبية <i>✦</i> UNIVERSITÉ DE GUELMA <i>✦</i> نظام LMD — سداسي ومتعامل <i>✦</i> WILAYA DE GUELMA <i>✦</i></span>
             </div>
         </div>
     </div>
@@ -101,7 +122,7 @@
                     <label>كلمة المرور</label>
                     <div class="pw-wrap">
                         <input type="password" id="admin-password" placeholder="••••••••" required>
-                        <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
+                        <button type="button" class="pw-toggle" tabindex="-1" aria-label="إظهار كلمة المرور"><i class="fas fa-eye"></i></button>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary btn-full">
@@ -114,156 +135,32 @@
         </div>
     </div>
 
-    <!-- Student Login Modal -->
+    <!-- Student Login Modal (Direct Progres gateway — no local accounts) -->
     <div id="student-login-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">
-                <i class="fas fa-right-to-bracket"></i>
-                <h3>تسجيل الدخول</h3>
+                <i class="fas fa-graduation-cap"></i>
+                <h3>تسجيل الدخول — بروقرس</h3>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">استخدم رقم تسجيلك الجامعي الرسمي وكلمة مرور بروقرس فقط. لا ننشئ حسابات.</p>
             </div>
-            <form onsubmit="handleStudentLogin(event)">
+            <form onsubmit="handleProgresLogin(event)">
                 <div class="input-group">
-                    <label>البريد الإلكتروني أو اسم المستخدم</label>
-                    <input type="text" id="login-email" placeholder="example@email.com" required>
+                    <label>رقم التسجيل في بروقرس</label>
+                    <input type="text" name="progres-username" placeholder="رقم التسجيل الجامعي" autocomplete="username" required>
                 </div>
                 <div class="input-group">
                     <label>كلمة المرور</label>
                     <div class="pw-wrap">
-                        <input type="password" id="login-password" placeholder="••••••••" required>
-                        <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
+                        <input type="password" name="progres-password" placeholder="••••••••" autocomplete="current-password" required>
+                        <button type="button" class="pw-toggle" tabindex="-1" aria-label="إظهار كلمة المرور"><i class="fas fa-eye"></i></button>
                     </div>
                 </div>
-                <div class="auth-links">
-                    <a href="#" onclick="showForgotPassword(); return false;">نسيت كلمة المرور؟</a>
-                </div>
                 <button type="submit" class="btn btn-primary btn-full">
-                    <i class="fas fa-right-to-bracket"></i> تسجيل الدخول
+                    <i class="fas fa-right-to-bracket"></i> عرض نقاطي
                 </button>
                 <div class="auth-switch">
-                    ليس لديك حساب؟ <a href="#" onclick="showStudentRegister(); return false;">إنشاء حساب</a>
+                    تفضّل التصفح فقط؟ <a href="#" onclick="closeAllModals(); enterAsStudent(); return false;">دخول كضيف</a>
                 </div>
-                <button type="button" class="btn btn-ghost btn-full" onclick="closeAllModals()">إلغاء</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Student Register Modal -->
-    <div id="student-register-modal" class="modal-overlay hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <i class="fas fa-user-plus"></i>
-                <h3>إنشاء حساب جديد</h3>
-            </div>
-            <form onsubmit="handleStudentRegister(event)">
-                <div class="input-group">
-                    <label>البريد الإلكتروني</label>
-                    <input type="email" id="reg-email" placeholder="example@email.com" required>
-                </div>
-                <div class="input-group">
-                    <label>اسم المستخدم</label>
-                    <input type="text" id="reg-username" placeholder="محمد" required>
-                </div>
-                <div class="input-group">
-                    <label>كلمة المرور</label>
-                    <div class="pw-wrap">
-                        <input type="password" id="reg-password" placeholder="6 أحرف على الأقل" required minlength="6">
-                        <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label>تأكيد كلمة المرور</label>
-                    <div class="pw-wrap">
-                        <input type="password" id="reg-password-confirm" placeholder="أعد إدخال كلمة المرور" required>
-                        <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">
-                    <i class="fas fa-user-plus"></i> إنشاء الحساب
-                </button>
-                <div class="auth-switch">
-                    لديك حساب بالفعل؟ <a href="#" onclick="showStudentLogin(); return false;">تسجيل الدخول</a>
-                </div>
-                <button type="button" class="btn btn-ghost btn-full" onclick="closeAllModals()">إلغاء</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Forgot Password Modal -->
-    <div id="forgot-password-modal" class="modal-overlay hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <i class="fas fa-key"></i>
-                <h3>استعادة كلمة المرور</h3>
-                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">أدخل بريدك الإلكتروني وسنرسل لك كود التحقق</p>
-            </div>
-            <form onsubmit="handleForgotPassword(event)">
-                <div class="input-group">
-                    <label>البريد الإلكتروني</label>
-                    <input type="email" id="forgot-email" placeholder="example@email.com" required>
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">
-                    <i class="fas fa-paper-plane"></i> إرسال كود التحقق
-                </button>
-                <div class="auth-switch">
-                    تذكرت كلمة المرور؟ <a href="#" onclick="showStudentLogin(); return false;">تسجيل الدخول</a>
-                </div>
-                <button type="button" class="btn btn-ghost btn-full" onclick="closeAllModals()">إلغاء</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- OTP Verification Modal -->
-    <div id="otp-modal" class="modal-overlay hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <i class="fas fa-shield-halved"></i>
-                <h3>التحقق من الكود</h3>
-                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">أدخل الكود المرسل إلى بريدك الإلكتروني</p>
-                <p style="color: var(--warning); font-size: 0.8rem; margin-top: 6px;"><i class="fas fa-exclamation-triangle"></i> لم يصل الكود؟ تحقق من مجلد البريد المزعج (Spam)</p>
-            </div>
-            <form onsubmit="handleVerifyOtp(event)">
-                <div class="input-group">
-                    <label>كود التحقق (6 أرقام)</label>
-                    <input type="text" id="otp-code" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required
-                        style="text-align: center; font-size: 1.5rem; letter-spacing: 8px; font-weight: 700;">
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">
-                    <i class="fas fa-check"></i> التحقق
-                </button>
-                <div class="auth-switch">
-                    <a href="#" onclick="resendOtp(); return false;">إعادة إرسال الكود</a>
-                </div>
-                <button type="button" class="btn btn-ghost btn-full" onclick="closeAllModals()">إلغاء</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Reset Password Modal -->
-    <div id="reset-password-modal" class="modal-overlay hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <i class="fas fa-lock"></i>
-                <h3>كلمة مرور جديدة</h3>
-                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">أدخل كلمة المرور الجديدة</p>
-            </div>
-            <form onsubmit="handleResetPassword(event)">
-                <div class="input-group">
-                    <label>كلمة المرور الجديدة</label>
-                    <div class="pw-wrap">
-                        <input type="password" id="new-password" placeholder="6 أحرف على الأقل" required minlength="6">
-                        <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label>تأكيد كلمة المرور</label>
-                    <div class="pw-wrap">
-                        <input type="password" id="new-password-confirm" placeholder="أعد إدخال كلمة المرور" required>
-                        <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">
-                    <i class="fas fa-save"></i> حفظ كلمة المرور
-                </button>
                 <button type="button" class="btn btn-ghost btn-full" onclick="closeAllModals()">إلغاء</button>
             </form>
         </div>
@@ -317,6 +214,7 @@
                         <p class="hh-welcome" id="hero-welcome">مرحباً بك</p>
                         <p class="hh-name" id="hero-name">طالب مالية ومحاسبة 2</p>
                     </div>
+                    <span class="hh-date" id="hh-date"></span>
                 </div>
                 <div class="tile-grid">
                     <button class="tile pressable" onclick="switchSection('grades')">
@@ -369,7 +267,7 @@
                         </div>
                     </div>
                     <div class="account-list">
-                        <button onclick="switchSection('library')"><span><i class="fas fa-book-open"></i>مكتبة المواد</span><i class="fas fa-chevron-left dim"></i></button>
+                        <button onclick="switchSection('library')"><span><i class="fas fa-book-open"></i>المكتبة الرقمية</span><i class="fas fa-chevron-left dim"></i></button>
                         <button onclick="goStudentCard()"><span><i class="fas fa-id-card"></i>بطاقة الطالب الرسمية</span><i class="fas fa-chevron-left dim"></i></button>
                         <button onclick="toggleTheme()"><span><i class="fas fa-circle-half-stroke"></i>تبديل المظهر</span><i class="fas fa-chevron-left dim"></i></button>
                         <button onclick="handleLogout()" style="display:none;" id="logout-btn-account" class="danger"><span><i class="fas fa-right-from-bracket"></i>تسجيل الخروج</span></button>
@@ -380,8 +278,83 @@
 
             <!-- ===== LIBRARY SECTION ===== -->
             <section id="section-library" class="section">
-                <!-- Subject Cards Grid -->
-                <div id="subjects-grid" class="subjects-grid">
+
+                <!-- ===== E-LEARNING DIGITAL LIBRARY (Moodle) ===== -->
+                <div id="library-view" class="library-view">
+                    <div class="lib-mode-tabs" id="lib-mode-tabs" role="tablist" aria-label="مصدر المكتبة"></div>
+                    <!-- Step 1: Specialty -->
+                    <div class="lib-step active" id="lib-step-1">
+                        <div class="lib-header">
+                            <div class="lib-head-flex">
+                                <div class="lib-head-ico"><i class="fas fa-book-open"></i></div>
+                                <div>
+                                    <div class="lib-title">المكتبة الرقمية</div>
+                                    <p class="lib-sub">التعلم الإلكتروني — Moodle جامعة قالمة</p>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="lib-section-label">اختر التخصص</p>
+                        <div class="lib-grid" id="lib-specialties"><!-- injected --></div>
+                    </div>
+
+                    <!-- Step 2: Year -->
+                    <div class="lib-step" id="lib-step-2">
+                        <div class="lib-header slim">
+                            <button class="lib-back pressable" onclick="LibraryView.back()"><i class="fas fa-arrow-right"></i></button>
+                            <div class="lib-title" id="lib-title-2">اختر السنة</div>
+                        </div>
+                        <div class="lib-chips" id="lib-years"><!-- injected --></div>
+                    </div>
+
+                    <!-- Step 3: Semester -->
+                    <div class="lib-step" id="lib-step-3">
+                        <div class="lib-header slim">
+                            <button class="lib-back pressable" onclick="LibraryView.back()"><i class="fas fa-arrow-right"></i></button>
+                            <div class="lib-title" id="lib-title-3">اختر السداسي</div>
+                        </div>
+                        <div class="lib-chips" id="lib-semesters"><!-- injected --></div>
+                    </div>
+
+                    <!-- Step 4: Subjects -->
+                    <div class="lib-step" id="lib-step-4">
+                        <div class="lib-header slim">
+                            <button class="lib-back pressable" onclick="LibraryView.back()"><i class="fas fa-arrow-right"></i></button>
+                            <div class="lib-title" id="lib-title-4">المواد الدراسية</div>
+                        </div>
+                        <div class="lib-list" id="lib-subjects"><!-- injected --></div>
+                    </div>
+
+                    <!-- Step 5: Resources -->
+                    <div class="lib-step" id="lib-step-5">
+                        <div class="lib-header slim">
+                            <button class="lib-back pressable" onclick="LibraryView.back()"><i class="fas fa-arrow-right"></i></button>
+                            <div class="lib-title" id="lib-title-5">ملفات المادة</div>
+                        </div>
+                        <div class="lib-list" id="lib-resources"><!-- injected --></div>
+                    </div>
+
+                    <!-- OPEN REPOSITORIES (DSpace) -->
+                    <div class="lib-step" id="lib-step-dspace">
+                        <div class="lib-header slim">
+                            <button class="lib-back pressable" onclick="LibraryView.back()"><i class="fas fa-arrow-right"></i></button>
+                            <div class="lib-title">المستودعات المفتوحة</div>
+                        </div>
+                        <div class="ds-controls">
+                            <div class="lib-section-label" style="margin:14px 0 8px">1) المستودع الرسمي</div>
+                            <div class="lib-chips" id="ds-repos"><!-- injected --></div>
+                            <div class="lib-section-label" style="margin:14px 0 8px">2) التخصص أو المقياس</div>
+                            <div class="lib-chips" id="ds-chips"><!-- injected --></div>
+                            <div class="ds-searchbar">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="ds-input" placeholder="بحث حر بالفرنسية أو الإنجليزية (مثال: economia، droit)..." autocomplete="off">
+                            </div>
+                        </div>
+                        <div id="ds-results"><!-- injected --></div>
+                    </div>
+                </div>
+
+                <!-- Subject Cards Grid (legacy static library, hidden) -->
+                <div id="subjects-grid" class="subjects-grid hidden">
                     <!-- Cards injected by JS -->
                 </div>
 
@@ -444,9 +417,9 @@
                         <div class="mobile-sheet-title" id="mobile-sheet-title">اسم الملف</div>
                         <div class="mobile-sheet-actions">
                             <button class="mobile-sheet-btn open" onclick="mobileSheetOpen()">
-                                <i class="fas fa-external-link-alt"></i>
+                                <i class="fas fa-book-open"></i>
                                 <span>فتح الملف</span>
-                                <small>يفتح في تبويب جديد</small>
+                                <small>يعرض داخل التطبيق</small>
                             </button>
                             <button class="mobile-sheet-btn download" onclick="mobileSheetDownload()">
                                 <i class="fas fa-download"></i>
@@ -647,19 +620,19 @@
                         <div class="progres-notice">
                             <i class="fas fa-shield-halved"></i>
                         </div>
-                        <form id="progres-login-form" onsubmit="handleProgresLogin(event)">
+                        <form onsubmit="handleProgresLogin(event)">
                             <div class="input-group">
                                 <label>رقم التسجيل / اسم المستخدم</label>
-                                <input type="text" id="progres-username" autocomplete="username" required>
+                                <input type="text" name="progres-username" autocomplete="username" required>
                             </div>
                             <div class="input-group">
                                 <label>كلمة المرور</label>
                                 <div class="pw-wrap">
-                                    <input type="password" id="progres-password" autocomplete="current-password" required>
-                                    <button type="button" class="pw-toggle" tabindex="-1"><i class="fas fa-eye"></i></button>
+                                    <input type="password" name="progres-password" autocomplete="current-password" required>
+                                    <button type="button" class="pw-toggle" tabindex="-1" aria-label="إظهار كلمة المرور"><i class="fas fa-eye"></i></button>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-full" id="progres-login-btn">
+                            <button type="submit" class="btn btn-primary btn-full">
                                 <i class="fas fa-right-to-bracket"></i> عرض نقاطي
                             </button>
                         </form>
@@ -800,6 +773,9 @@
                 <button class="bn-btn" data-nav="card" onclick="goStudentCard()">
                     <i class="fas fa-id-card"></i><span>بطاقة الطالب</span>
                 </button>
+                <button class="bn-btn" data-nav="library" onclick="switchSection('library')">
+                    <i class="fas fa-book-open"></i><span>المكتبة</span>
+                </button>
                 <button class="bn-btn" data-nav="account" onclick="switchSection('account')">
                     <i class="fas fa-circle-user"></i><span>حسابي</span>
                 </button>
@@ -842,28 +818,34 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/native.js?v=20260826q"></script>
-    <script src="js/app.js?v=20260826q"></script>
-    <script src="js/sec-loader.js?v=20260826q"></script>
-    <script src="js/sec-transport.js?v=20260826q"></script>
-    <script src="js/sec-meals.js?v=20260826q"></script>
-    <script src="js/sec-profile.js?v=20260826q"></script>
-    <script src="js/native-shell.js?v=20260826q" defer></script>
-    <script src="js/auth-ui.js?v=20260826q" defer></script>
+    <script src="js/native.js?v=20260828x"></script>
+    <script src="js/app.js?v=20260828x"></script>
+    <script src="js/sec-loader.js?v=20260828x"></script>
+    <script src="js/sec-transport.js?v=20260828x"></script>
+    <script src="js/sec-meals.js?v=20260828x"></script>
+    <script src="js/sec-profile.js?v=20260828x"></script>
+    <script src="js/native-shell.js?v=20260828x" defer></script>
+    <script src="js/auth-ui.js?v=20260828x" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});
         }
     </script>
     <script>
-        (function(){
-            var brand = document.getElementById('landing-brand');
-            var glow = document.getElementById('brand-glow');
-            if (!brand || !glow) return;
-            brand.addEventListener('mousemove', function(e){
-                var r = brand.getBoundingClientRect();
-                glow.style.left = (e.clientX - r.left) + 'px';
-                glow.style.top = (e.clientY - r.top) + 'px';
+        (function () {
+            var hero = document.getElementById('lhero');
+            var logo = document.querySelector('.lhero-logo');
+            if (!hero || !logo) return;
+            var supported = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches !== true && window.matchMedia('(pointer: fine)').matches;
+            if (!supported) return;
+            hero.addEventListener('mousemove', function (e) {
+                var r = hero.getBoundingClientRect();
+                var dx = (e.clientX - r.left) / r.width - 0.5;
+                var dy = (e.clientY - r.top) / r.height - 0.5;
+                logo.style.transform = 'rotate(-4deg) translate(' + (dx * 8) + 'px,' + (dy * 8) + 'px)';
+            });
+            hero.addEventListener('mouseleave', function () {
+                logo.style.transform = 'rotate(-4deg)';
             });
         })();
     </script>

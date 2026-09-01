@@ -10,6 +10,7 @@
     const BUS_HOST = 'https://mybus.mesrs.dz';
     const ONOU_HOST = 'https://gs-api.onou.dz';
     const GS_SECRET = 'pUzHUW2WX54uCzhO8JC2eQ6g1Ol21upw';
+    const LIVE_ORIGIN = 'https://university-portal-gv78.onrender.com';
 
     const DEFAULT_LAT = 36.4627;
     const DEFAULT_LNG = 7.4350;
@@ -109,10 +110,16 @@
 
     async function _signGs(bodyStr) {
         const ts = String(Math.floor(Date.now() / 1000));
-        const nonce = _uuidV4();
+        const nonce = _uuidV4().replace(/-/g, '');
         const secret = PENV.enc.encode(GS_SECRET);
         const sig = await _hmacSha256(secret, ts + '|' + nonce + '|' + bodyStr);
         return { 'X-Timestamp': ts, 'X-Nonce': nonce, 'X-Signature': sig };
+    }
+
+    function _jsonCompact(obj) {
+        return JSON.stringify(obj, function (k, v) { return v; }, 0)
+            .replace(/:\s+/g, ':')
+            .replace(/,\s+/g, ',');
     }
 
     function _b64ToBytes(b64) {
@@ -128,6 +135,18 @@
 
     function _bytesToText(bytes) {
         return PENV.dec.decode(bytes);
+    }
+
+    function _bytesToB64(bytes) {
+        const CH = 0x8000;
+        let s = '';
+        if (typeof window !== 'undefined' && window.btoa) {
+            for (let i = 0; i < bytes.length; i += CH) {
+                s += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+            }
+            return window.btoa(s);
+        }
+        return '';
     }
 
     function _mq(bytes) {
@@ -197,6 +216,46 @@
         return null;
     }
 
+    function _hostOnly(u) {
+        try {
+            const x = new URL(u);
+            return x.host + x.pathname;
+        } catch (e) {
+            return String(u).slice(0, 120);
+        }
+    }
+
+    function _errMsg(e) {
+        if (!e) return 'unknown';
+        const m = e && e.message ? e.message : String(e);
+        return String(m).slice(0, 200);
+    }
+
+    PN.log = function (rec) {
+        try {
+            const L = PN.logs || (PN.logs = []);
+            if (L.length > 64) L.shift();
+            rec.time = new Date().toISOString().slice(11, 23);
+            L.push(rec);
+            if (window.console && console.log) {
+                console.log('[PN]', rec.kind, String(rec.url || ''), '->', rec.status != null ? rec.status : (rec.error || 'ok'));
+            }
+        } catch (e) {}
+    };
+    PN.diag = function () {
+        return {
+            active: active(),
+            ready: PN.ready,
+            platform: platform(),
+            plugs: {
+                capacitor: !!window.Capacitor,
+                capacitorHttp: !!_capHttp(),
+                ministry: !!_caps(),
+            },
+            logs: (PN.logs || []).slice(-24),
+        };
+    };
+
     function _capHttp() {
         const C = window.Capacitor;
         if (!C) return null;
@@ -205,39 +264,7 @@
         return http || null;
     }
 
-    function _http(method, url, headers, bodyText) {
-        const cap = _capHttp();
-        if (cap && typeof cap.request === 'function') {
-            const opt = {
-                method: method,
-                url: url,
-                headers: headers,
-                connectTimeout: 30000,
-                readTimeout: 45000,
-            };
-            if (bodyText != null && bodyText !== '') opt.data = bodyText;
-            return cap.request(opt).then(function (r) {
-                let data = r && r.data;
-                let text = data;
-                if (data == null) {
-                    text = '';
-                } else if (typeof data === 'string') {
-                    text = data;
-                } else if (typeof data === 'object') {
-                    try { text = JSON.stringify(data); } catch (e) { text = String(data); }
-                } else {
-                    text = String(data);
-                }
-                let ct = '';
-                if (r && r.headers) {
-                    const hs = r.headers;
-                    if (typeof hs === 'object') {
-                        ct = hs['content-type'] || hs['Content-Type'] || hs['contentType'] || ct;
-                    }
-                }
-                return { status: (r && r.status) || 0, ct: ct, text: text, bytes: null };
-            });
-        }
+    function _httpFallback(method, url, headers, bodyText) {
         const head = Object.assign({}, headers);
         if (bodyText != null && bodyText !== '') head['Content-Length'] = String(PENV.enc.encode(bodyText).length);
         return fetch(url, { method: method, headers: head, body: bodyText || null }).then(function (r) {
@@ -260,7 +287,82 @@
                     raw: bytes,
                 };
             });
+        }).catch(function (err) {
+            PN.log({ kind: 'http-error', url: _hostOnly(url), method: method, status: null, error: _errMsg(err) });
+            throw err;
         });
+    }
+
+    function _http(method, url, headers, bodyText) {
+        const isOnou = String(url).indexOf('gs-api.onou.dz') !== -1;
+        const isElearning = String(url).indexOf('elearning.univ-guelma.dz') !== -1;
+        const isDspace = /(^|\.)dspace\./.test(String(url));
+        const m = _caps();
+        if ((isOnou || isElearning || isDspace) && m && typeof m.ministry.relaxed === 'function') {
+            PN.log({ kind: 'http', url: _hostOnly(url), method: method, via: 'ministry' });
+            return m.ministry.relaxed({
+                method: method,
+                url: url,
+                headers: headers || {},
+                body: bodyText != null ? bodyText : '',
+            }).then(function (res) {
+                const status = (res && res.status) || 0;
+                const ct = (res && res.headers && res.headers['content-type']) || '';
+                return { status: status, ct: ct, text: (res && res.body) || '', bytes: null };
+            }).catch(function (err) {
+                PN.log({ kind: 'http-error', url: _hostOnly(url), method: method, via: 'ministry', error: _errMsg(err) });
+                throw err;
+            });
+        }
+        const cap = _capHttp();
+        if (cap && typeof cap.request === 'function') {
+            if (isOnou) PN.log({ kind: 'gs-transport-strict', url: _hostOnly(url), method: method });
+            const opt = {
+                method: method,
+                url: url,
+                headers: headers,
+                connectTimeout: 30000,
+                readTimeout: 45000,
+            };
+            if (bodyText != null && bodyText !== '') opt.data = bodyText;
+            return cap.request(opt).then(function (r) {
+                const status = (r && r.status) || 0;
+                PN.log({ kind: 'http', url: _hostOnly(url), method: method, status: status });
+                if (!status) {
+                    PN.log({ kind: 'http-dropped', url: _hostOnly(url), method: method, error: 'CapacitorHttp returned status 0' });
+                    return null;
+                }
+                let data = r && r.data;
+                let text = data;
+                if (data == null) {
+                    text = '';
+                } else if (typeof data === 'string') {
+                    text = data;
+                } else if (typeof data === 'object') {
+                    try { text = JSON.stringify(data); } catch (e) { text = String(data); }
+                } else {
+                    text = String(data);
+                }
+                let ct = '';
+                if (r && r.headers) {
+                    const hs = r.headers;
+                    if (typeof hs === 'function' && typeof hs.get === 'function') {
+                        try { ct = hs.get('content-type') || ''; } catch (e) {}
+                    } else if (typeof hs === 'object') {
+                        ct = hs['content-type'] || hs['Content-Type'] || hs['contentType'] || ct;
+                    }
+                }
+                return { status: status, ct: ct, text: text, bytes: null };
+            }).then(function (res) {
+                if (res) return res;
+                PN.log({ kind: 'http-fallback', url: _hostOnly(url), method: method });
+                return _httpFallback(method, url, headers, bodyText);
+            }).catch(function (err) {
+                PN.log({ kind: 'http-error', url: _hostOnly(url), method: method, error: _errMsg(err) });
+                return _httpFallback(method, url, headers, bodyText);
+            });
+        }
+        return _httpFallback(method, url, headers, bodyText);
     }
 
     function _httpBinary(method, url, headers, bodyText) {
@@ -276,14 +378,32 @@
             };
             if (bodyText != null && bodyText !== '') opt.data = bodyText;
             return cap.request(opt).then(function (r) {
+                const status = (r && r.status) || 0;
+                PN.log({ kind: 'http', url: _hostOnly(url), method: method, status: status });
+                if (!status) return null;
                 const raw = _b64ToBytes(r && r.data);
-                return { status: (r && r.status) || 0, ct: '', raw: raw };
+                return { status: status, ct: '', raw: raw };
+            }).then(function (res) {
+                if (res) return res;
+                PN.log({ kind: 'http-fallback', url: _hostOnly(url), method: method, binary: 1 });
+                return _httpBinaryFallback(method, url, headers, bodyText);
+            }).catch(function (err) {
+                PN.log({ kind: 'http-error', url: _hostOnly(url), method: method, error: _errMsg(err) });
+                return _httpBinaryFallback(method, url, headers, bodyText);
             });
         }
+        return _httpBinaryFallback(method, url, headers, bodyText);
+    }
+
+    function _httpBinaryFallback(method, url, headers, bodyText) {
+        PN.log({ kind: 'http', url: _hostOnly(url), method: method, via: 'fetch-binary' });
         return fetch(url, { method: method, headers: headers, body: bodyText || null }).then(function (r) {
             return r.arrayBuffer().then(function (buf) {
                 return { status: r.status, ct: '', raw: new Uint8Array(buf) };
             });
+        }).catch(function (err) {
+            PN.log({ kind: 'http-error', url: _hostOnly(url), method: method, binary: 1, error: _errMsg(err) });
+            throw err;
         });
     }
 
@@ -406,6 +526,39 @@
         return _jsonParse(body);
     }
 
+    function _sleep(ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, ms); });
+    }
+
+    async function _proxyApi(path, urlText, init) {
+        const qsIdx = urlText.indexOf('?');
+        const target = LIVE_ORIGIN + path + (qsIdx !== -1 ? urlText.slice(qsIdx) : '');
+        const method = String((init && init.method) || 'GET').toUpperCase();
+        const headers = Object.assign({}, (init && init.headers) || {});
+        let bodyText = null;
+        if (init && init.body != null) {
+            if (typeof init.body === 'string') {
+                bodyText = init.body;
+            } else if (init.body instanceof Uint8Array) {
+                bodyText = _bytesToText(init.body);
+            } else {
+                try { bodyText = JSON.stringify(init.body); } catch (e) { bodyText = null; }
+            }
+        }
+        try {
+            if (path.indexOf('/files/') === 0) {
+                const r = await _httpBinary(method, target, headers, bodyText);
+                return _resp(r.status, '', r.ct || 'application/octet-stream', r.raw);
+            }
+            const r = await _http(method, target, headers, bodyText);
+            if (r.bytes) return _resp(r.status, '', r.ct || 'image/jpeg', r.bytes);
+            return _resp(r.status, r.text, r.ct || 'application/json; charset=utf-8', null);
+        } catch (e) {
+            PN.log({ kind: 'proxy-error', url: _hostOnly(target), method: method, error: _errMsg(e) });
+            return _resp(502, JSON.stringify({ error: 'تعذر الاتصال بالخادم، حاول لاحقاً', debug: _errMsg(e) }), 'application/json; charset=utf-8', null);
+        }
+    }
+
     const ROUTERS = {};
 
     ROUTERS.resp = _resp;
@@ -471,6 +624,7 @@
                 'Content-Type': 'application/json',
                 'User-Agent': GENERIC_UA,
                 Accept: 'application/json',
+                'Connection': 'close',
             }, JSON.stringify({ username: username, password: password }));
             if (r.status === 200) {
                 const data = _parseBody(r.text);
@@ -484,9 +638,15 @@
             if (r.status === 400 || r.status === 401) {
                 return _resp(r.status, r.text, 'application/json; charset=utf-8', r.bytes);
             }
-            return _errResp(502, 'خوادم الوزارة غير متاحة حالياً — حاول بعد قليل');
+            if (!r.status) {
+                PN.log({ kind: 'login-failed', error: 'upstream status 0' });
+                return _jsonResp(502, { error: 'تعذر الاتصال بخوادم الوزارة، تحقق من الإنترنت', debug: 'upstream status 0' });
+            }
+            PN.log({ kind: 'login-failed', error: 'upstream status ' + r.status, url: _hostOnly(AUTH_HOST) });
+            return _jsonResp(502, { error: 'خوادم الوزارة غير متاحة حالياً — حاول بعد قليل', debug: 'upstream status ' + r.status });
         } catch (e) {
-            return _errResp(502, 'خوادم الوزارة غير متاحة حالياً — حاول بعد قليل');
+            PN.log({ kind: 'login-failed', error: _errMsg(e), url: _hostOnly(AUTH_HOST) });
+            return _jsonResp(502, { error: 'تعذر الاتصال بخوادم الوزارة، تحقق من الإنترنت', debug: _errMsg(e) });
         }
     }
 
@@ -719,22 +879,43 @@
     }
 
     async function _gsMethod(method, path, gsToken, body, params) {
-        const bodyStr = body != null ? JSON.stringify(body) : '';
-        const sign = await _signGs(bodyStr);
-        const headers = {
-            'X-Timestamp': sign['X-Timestamp'],
-            'X-Nonce': sign['X-Nonce'],
-            'X-Signature': sign['X-Signature'],
-            'User-Agent': GENERIC_UA,
-            Accept: 'application/json',
+        const bodyStr = body != null ? _jsonCompact(body) : '';
+        const attempt = async (headers) => {
+            let url = ONOU_HOST + path + (params ? '?' + Object.keys(params).map(function (k) {
+                return encodeURIComponent(k) + '=' + encodeURIComponent(String(params[k]));
+            }).join('&') : '');
+            const r = await _http(method, url, headers, body != null ? bodyStr : null);
+            if (!r || !r.status) throw new Error('تعذر الوصول لخدمة الوجبات');
+            if (r.status >= 500) {
+                const snip = String(r.text || '').replace(/\s+/g, ' ').slice(0, 140);
+                throw new Error('gs-' + r.status + (snip ? ' :: ' + snip : ''));
+            }
+            return { status: r.status, text: r.text || '' };
         };
-        if (gsToken) headers.authorization = 'Bearer ' + gsToken;
-        if (body != null) headers['Content-Type'] = 'application/json';
-        let url = ONOU_HOST + path + (params ? '?' + Object.keys(params).map(function (k) {
-            return encodeURIComponent(k) + '=' + encodeURIComponent(String(params[k]));
-        }).join('&') : '');
-        const r = await _http(method, url, headers, body != null ? bodyStr : null);
-        return { status: r.status, text: r.text };
+        let headers = await (async function () {
+            const sign = await _signGs(bodyStr);
+            const h = {
+                'X-Timestamp': sign['X-Timestamp'],
+                'X-Nonce': sign['X-Nonce'],
+                'X-Signature': sign['X-Signature'],
+                'User-Agent': GENERIC_UA,
+                Accept: 'application/json',
+            };
+            if (gsToken) h.authorization = 'Bearer ' + gsToken;
+            if (body != null) h['Content-Type'] = 'application/json';
+            return h;
+        })();
+        try {
+            return await attempt(headers);
+        } catch (e) {
+            PN.log({ kind: 'gs-transient', path: path, error: _errMsg(e) });
+            await _sleep(400);
+            const again = await _signGs(bodyStr);
+            headers['X-Timestamp'] = again['X-Timestamp'];
+            headers['X-Nonce'] = again['X-Nonce'];
+            headers['X-Signature'] = again['X-Signature'];
+            return attempt(headers);
+        }
     }
 
     async function _getGsToken(u, token, wilaya, residence) {
@@ -891,7 +1072,7 @@
         try {
             const ctx = await _buildCtx(u, dia, body.residence != null ? String(body.residence) : null);
             const details = cleanDates.map(function (d) {
-                return JSON.stringify({ date_reserve: d, menu_type: menu_type, idDepot: depot });
+                return _jsonCompact({ date_reserve: d, menu_type: menu_type, idDepot: depot });
             });
             const r = await _gsMethod('POST', '/api/reservemeal', ctx.gs, {
                 uuid: u, wilaya: ctx.wilaya, residence: ctx.residence, token: ctx.gs, details: details,
@@ -1118,6 +1299,12 @@
     let authDone = false;
 
     function auth() {
+        const na = active();
+        if (na) {
+            PN.active = na;
+            PN.platform = platform();
+        }
+        if (!na) return Promise.resolve(false);
         if (authDone) return Promise.resolve(PN.ready);
         if (authPromise) return authPromise;
         authPromise = new Promise(function (resolve) {
@@ -1137,7 +1324,7 @@
     }
 
     async function _authenticate() {
-        if (!PN.active) {
+        if (!active()) {
             _finish(false);
             return;
         }
@@ -1191,6 +1378,11 @@
     }
 
     auth();
+    if (typeof document !== 'undefined' && document.addEventListener) {
+        document.addEventListener('DOMContentLoaded', function () {
+            auth();
+        }, { once: true });
+    }
     PN.authenticate = auth;
 
     const originalFetch = window.fetch;
@@ -1199,6 +1391,7 @@
             let urlText;
             try {
                 urlText = typeof input === 'string' ? input : (input && input.url ? input.url : String(input));
+                if (urlText.charAt(0) === '/') urlText = window.location.origin + urlText;
                 new URL(urlText);
             } catch (e) {
                 return originalFetch(input, init);
@@ -1206,12 +1399,15 @@
             const isLocal = (function () {
                 try { return new URL(urlText).origin === window.location.origin; } catch (e) { return false; }
             })();
-            if (!PN.active || !isLocal) return originalFetch(input, init);
+            if (!active() || !isLocal) return originalFetch(input, init);
             let p;
             try { p = new URL(urlText).pathname; } catch (e) {
                 return originalFetch(input, init);
             }
-            if (!/^\/api\/(progres|academic|onou|bus)\//.test(p) && p !== '/api/progres/login') {
+            if (!/^\/api\/(progres|academic|onou|bus)\//.test(p)) {
+                if (/^\/api\//.test(p)) {
+                    return _proxyApi(p, urlText, init || {});
+                }
                 return originalFetch(input, init);
             }
             return auth().then(function () {
@@ -1225,6 +1421,116 @@
         };
     }
 
+    // ============================================
+    // E-LEARNING LIBRARY — Moodle Master-Token Bridge
+    // ============================================
+    const MOODLE_BASE = 'https://elearning.univ-guelma.dz/webservice/rest/server.php';
+    // Master web-service token of the university's Moodle platform.
+    // Fetches public course catalog + resources. While it stays at the
+    // placeholder the library runs on bundled mock data for testing.
+    // NOTE: embedded token = anyone with the APK can read what this account
+    // can read; never fetches user-level/personal endpoints.
+    const MOODLE_MASTER_TOKEN = 'b53b00b3fa0e4a77f5fb3086affd9a1d';
+
+    function _moodleConfigured() {
+        return typeof MOODLE_MASTER_TOKEN === 'string' && MOODLE_MASTER_TOKEN && MOODLE_MASTER_TOKEN !== 'YOUR_TOKEN_HERE';
+    }
+
+    function _moodleCall(wsfunction, params) {
+        const chunks = [
+            'moodlewsrestformat=json',
+            'wstoken=' + encodeURIComponent(MOODLE_MASTER_TOKEN),
+            'wsfunction=' + encodeURIComponent(wsfunction),
+        ];
+        if (params) {
+            Object.keys(params).forEach(function (k) {
+                chunks.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
+            });
+        }
+        const url = MOODLE_BASE + '?' + chunks.join('&');
+        // Always GET: Moodle's WS answers catalog functions reliably from the
+        // query string, and the GET path travels cleanly through the
+        // relaxed-TLS client on device (a POST body turned into
+        // application/json by the bridge confused the server and hung the UI).
+        const p = _http('GET', url, { Accept: 'application/json' }, null);
+        return p.then(function (res) {
+            if (!res || !res.status) throw new Error('moodle-null');
+            if (res.status !== 200) throw new Error('moodle-http-' + res.status);
+            let data;
+            try {
+                data = _jsonParse(res.text);
+            } catch (e) {
+                throw new Error('moodle-parse');
+            }
+            if (data && data.exception) {
+                const msg = data.errorcode || data.message || 'moodle-error';
+                PN.log({ kind: 'moodle-error', ws: wsfunction, error: String(msg) });
+                throw new Error(String(msg));
+            }
+            return data;
+        });
+    }
+
+    let _moodleUserId = null;
+    let _moodleMyPromise = null;
+
+    // The enrolment-scoped list of courses this account is actually enrolled
+    // in. Moodle only grants file access inside enrolled courses, so this is
+    // the ground truth for what the library can really open. Pure read-only.
+    function _moodleMyCourses() {
+        if (_moodleMyPromise) return _moodleMyPromise;
+        _moodleMyPromise = (function () {
+            let userid = _moodleUserId;
+            const step1 = userid ? Promise.resolve({ userid: userid }) : _moodleCall('core_webservice_get_site_info', {});
+            return step1.then(function (info) {
+                userid = _moodleUserId = info && Number(info.userid);
+                if (!userid) return [];
+                return _moodleCall('core_enrol_get_users_courses', { userid: userid });
+            }).then(function (courses) {
+                const out = (courses && courses.filter) ? courses : [];
+                return out.map(function (c) {
+                    return {
+                        id: Number(c.id),
+                        category: Number(c.category) || 0,
+                        name: String(c.fullname || c.shortname || ''),
+                        short: String(c.shortname || ''),
+                    };
+                });
+            }).catch(function (e) {
+                _moodleMyPromise = null;
+                throw e;
+            });
+        })();
+        return _moodleMyPromise;
+    }
+
+    // Called after a successful self-enrolment flow so the badge list and any
+    // per-course lookups reflect the new enrolment on the next read.
+    function _moodleInvalidate() { _moodleMyPromise = null; }
+
+    const MoodleService = {
+        isConfigured: _moodleConfigured,
+
+        // Public catalog lookups ONLY — never personal / user data.
+        getCategories: function () {
+            return _moodleCall('core_course_get_categories', {});
+        },
+        getCoursesByField: function (field, value) {
+            return _moodleCall('core_course_get_courses_by_field', { field: field, value: value });
+        },
+        getCourseContents: function (courseid) {
+            return _moodleCall('core_course_get_contents', { courseid: courseid });
+        },
+        getCourseEnrolMethods: function (courseid) {
+            return _moodleCall('core_enrol_get_course_enrolment_methods', { courseid: courseid });
+        },
+        invalidateEnrolment: _moodleInvalidate,
+        // Which courses this account can actually open (enrolments). Used to
+        // tell "not enrolled" apart from "no files uploaded yet".
+        // The result is never displayed beyond a badge on the course.
+        getMyCourses: _moodleMyCourses,
+    };
+
     PN._internals = {
         http: _http,
         httpBinary: _httpBinary,
@@ -1234,4 +1540,113 @@
         route: _route,
         extraHeaders: _extraHeaders,
     };
+    // E-Learning file transport: base64 via relaxed TLS on device (expired
+    // cert), WebView fetch elsewhere.
+    function _b64ToUint8(b64) {
+        if (!b64) return new Uint8Array(0);
+        const bin = window.atob(b64);
+        const len = bin.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+        return bytes;
+    }
+
+    function _libraryFile(url) {
+        const isElearning = String(url).indexOf('elearning.univ-guelma.dz') !== -1;
+        const m = _caps();
+        if (isElearning && m && typeof m.ministry.relaxedBytes === 'function') {
+            PN.log({ kind: 'http', url: _hostOnly(url), method: 'GET', via: 'ministry-bytes' });
+            return m.ministry.relaxedBytes({ url: url, headers: { Accept: '*/*' } }).then(function (res) {
+                if (!res || !res.status) throw new Error('file-null');
+                return {
+                    status: res.status,
+                    contentType: String(res.contentType || (res.headers && res.headers['content-type']) || ''),
+                    base64: String(res.base64 || ''),
+                    bytes: null,
+                };
+            });
+        }
+        return fetch(url, { method: 'GET' }).then(function (r) {
+            return r.arrayBuffer().then(function (buf) {
+                let ct = '';
+                try { ct = r.headers.get('content-type') || ''; } catch (e) {}
+                return { status: r.status, contentType: ct, base64: '', bytes: new Uint8Array(buf) };
+            });
+        });
+    }
+
+    PN.libraryFile = _libraryFile;
+
+    // Persist / open a Moodle library file on-device. base64 comes from
+    // _libraryFile; the JS layer hands it to the native plugin which writes
+    // it to Downloads (saveFile) or opens it with the system viewer (viewFile).
+    function _saveLibraryFile(name, mime, base64) {
+        const m = _caps();
+        if (m && m.ministry && typeof m.ministry.saveFile === 'function') {
+            return m.ministry.saveFile({ name: name, mime: mime || 'application/octet-stream', base64: base64 || '' });
+        }
+        return Promise.reject(new Error('save-unavailable'));
+    }
+    function _viewLibraryFile(name, mime, base64) {
+        const m = _caps();
+        if (m && m.ministry && typeof m.ministry.viewFile === 'function') {
+            return m.ministry.viewFile({ name: name, mime: mime || 'application/octet-stream', base64: base64 || '' });
+        }
+        return Promise.reject(new Error('view-unavailable'));
+    }
+    PN.saveLibraryFile = _saveLibraryFile;
+    PN.viewLibraryFile = _viewLibraryFile;
+
+    // Pull a binary file from the open university repositories (DSpace).
+    // Routes through the native relaxed client (expired-cert safe AND free of
+    // WebView CORS), returning base64 so the JS layer can reuse saveFile /
+    // viewFile unchanged.
+    function _dspaceBytes(url) {
+        const m = _caps();
+        if (m && typeof m.ministry.relaxedBytes === 'function') {
+            return m.ministry.relaxedBytes({ url: String(url), headers: { Accept: '*/*' } }).then(function (res) {
+                if (!res || !res.status) throw new Error('ds-no-status');
+                return {
+                    status: res.status,
+                    contentType: String(res.contentType || (res.headers && res.headers['content-type']) || ''),
+                    base64: String(res.base64 || ''),
+                    bytes: null,
+                };
+            }).catch(function (e) {
+                PN.log({ kind: 'http-error', url: _hostOnly(url), method: 'GET', error: _errMsg(e) });
+                return _dspaceBytesFetch(url);
+            });
+        }
+        return _dspaceBytesFetch(url);
+    }
+    function _dspaceBytesFetch(url) {
+        return _httpBinary('GET', String(url), { 'User-Agent': GENERIC_UA, Accept: '*/*' }, null).then(function (res) {
+            if (!res || res.status !== 200) throw new Error('ds-http ' + ((res && res.status) || 'no-status'));
+            return { status: 200, contentType: 'application/pdf', base64: _bytesToB64(res.raw || new Uint8Array(0)), bytes: null };
+        });
+    }
+    function _dspaceJson(url) {
+        return _http('GET', String(url), { 'User-Agent': GENERIC_UA, Accept: 'application/json' }, null).then(function (res) {
+            if (!res || !res.status || res.status !== 200) throw new Error('ds-http ' + ((res && res.status) || 'no-status'));
+            return _jsonParse(res.text || '');
+        });
+    }
+    PN.dspaceBytes = _dspaceBytes;
+    PN.dspaceJson = _dspaceJson;
+
+    // Open any URL in the system browser. Used for courses that are not
+    // enrolled yet but allow one-click self-enrolment ("Auto-inscription"):
+    // the site's session does the enrolment and the same token works here
+    // afterwards.
+    function _openInBrowser(url) {
+        const m = _caps();
+        if (m && m.ministry && typeof m.ministry.openInBrowser === 'function') {
+            return m.ministry.openInBrowser({ url: String(url || '') });
+        }
+        if (typeof window !== 'undefined' && window.open) window.open(String(url), '_blank');
+        return Promise.resolve({ ok: true });
+    }
+    PN.openInBrowser = _openInBrowser;
+    PN.MoodleService = MoodleService;
+    if (typeof window !== 'undefined') window.MoodleService = MoodleService;
 })();

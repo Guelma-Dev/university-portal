@@ -2326,6 +2326,45 @@ input { font-family: inherit; }
     .rsc-body { gap: 12px; }
 }
 
+/* ---- Light mode: student card (invisible-text fix) ---- */
+:root[data-theme='light'] .rsc-card {
+    background: linear-gradient(160deg, #ffffff 0%, #f8f6f1 55%, #efece4 100%);
+    border-color: rgba(0, 0, 0, 0.14);
+    box-shadow:
+        0 16px 40px rgba(0, 0, 0, 0.12),
+        0 0 0 1px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    color: #1a1816;
+    --text: #1a1816;
+    --text-2: #5a5550;
+    --brand: #aa8c2c;
+    --brand-dark: #8a7023;
+}
+:root[data-theme='light'] .rsc-topbar {
+    background: rgba(0, 0, 0, 0.03);
+    border-bottom-color: rgba(0, 0, 0, 0.10);
+}
+:root[data-theme='light'] .rsc-logo { background: rgba(0, 0, 0, 0.05); }
+:root[data-theme='light'] .rsc-title {
+    background: linear-gradient(90deg, rgba(170, 140, 44, 0.08), rgba(170, 140, 44, 0.16), rgba(170, 140, 44, 0.08));
+    border-top-color: rgba(0, 0, 0, 0.08);
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+:root[data-theme='light'] .rsc-photo-box {
+    background: #f5f2ec;
+    border-color: rgba(0, 0, 0, 0.18);
+}
+:root[data-theme='light'] .rsc-photo-box::after {
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.10);
+}
+:root[data-theme='light'] .rsc-avatar { color: #8a8580; }
+:root[data-theme='light'] .rsc-qr { border-color: rgba(0, 0, 0, 0.15); }
+:root[data-theme='light'] .rsc-bus-icon { filter: none; }
+:root[data-theme='light'] .rsc-footer {
+    background: linear-gradient(135deg, #8a7023, #aa8c2c, #8a7023);
+    color: #ffffff;
+}
+
 /* ============================================================
    NATIVE APP SHELL
    ============================================================ */
@@ -2428,50 +2467,87 @@ body { overflow-x: hidden; }
     padding: 8px 12px; z-index: 890;
 }
 
-/* ---- HERO الرئيسية ---- */
+/* ---- HERO الرئيسية (بطاقة طالب فاخرة) ---- */
 .home-hero {
-    display: flex; align-items: center; gap: 14px;
-    margin: 14px 16px 18px;
-    padding: 18px;
-    border-radius: 18px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; gap: 15px;
+    margin: 14px 16px 6px; padding: 20px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, #17150f 0%, #2a2312 55%, #3a2d10 100%);
+    border: 1px solid rgba(212, 175, 55, 0.28);
+    box-shadow: 0 12px 32px -14px rgba(212, 175, 55, 0.4), var(--shadow-md);
 }
-.home-hero i { font-size: 34px; color: var(--brand); opacity: .9; }
-.hh-welcome { margin: 0; font-size: 12.5px; color: var(--text-secondary); font-weight: 500; }
-.hh-name { margin: 2px 0 0; font-size: 17px; font-weight: 800; color: var(--text-primary); }
-
-/* ---- بلاطات الداشبورد ---- */
+[data-theme="light"] .home-hero {
+    background: linear-gradient(135deg, #8a6a16 0%, #a8841d 55%, #c3992b 100%);
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 12px 30px -14px rgba(170, 132, 29, 0.55), var(--shadow-md);
+}
+.home-hero::before,
+.home-hero::after {
+    content: ''; position: absolute; border-radius: 50%;
+    pointer-events: none; will-change: transform;
+}
+.home-hero::before { width: 210px; height: 210px; left: -70px; top: -110px;
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.5), transparent 65%);
+    animation: heroOrbA 16s ease-in-out infinite alternate;
+}
+.home-hero::after { width: 180px; height: 180px; right: -60px; bottom: -120px;
+    background: radial-gradient(circle, rgba(255, 196, 60, 0.35), transparent 62%);
+    animation: heroOrbB 14s ease-in-out infinite alternate;
+}
+@keyframes heroOrbA { from { transform: translateX(0) translateY(0); } to { transform: translateX(26px) translateY(14px); } }
+@keyframes heroOrbB { from { transform: translateX(0) translateY(0); } to { transform: translateX(-20px) translateY(-12px); } }
+[data-theme="light"] .home-hero { color: #fff7e0; }
+.home-hero i { font-size: 34px; color: #f3e5ab; opacity: .95; position: relative; z-index: 1; }
+.hh-welcome { margin: 0; font-size: 12.5px; font-weight: 600; color: rgba(246, 239, 214, 0.82); position: relative; z-index: 1; }
+[data-theme="light"] .hh-welcome { color: rgba(255, 247, 224, 0.92); }
+.hh-name { margin: 2px 0 0; font-size: 17px; font-weight: 800; color: #fdf6dc; position: relative; z-index: 1; }
+[data-theme="light"] .hh-name { color: #fffdf4; }
+.hh-date {
+    margin-inline-start: auto; align-self: flex-start; position: relative; z-index: 1;
+    font-size: 11px; font-weight: 700; color: #f3e5ab;
+    background: rgba(212, 175, 55, 0.14); border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 999px; padding: 5px 10px; white-space: nowrap;
+}
+/* ---- بلاطات الداشبورد (كروت سريعة بإيقونة محيطة) ---- */
 .tile-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
-    padding: 16px;
+    padding: 14px 16px 16px;
 }
 .tile-wide {
     grid-column: span 2;
 }
 .tile {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 10px; min-height: 88px;
-    background: var(--surface);
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    border-radius: 14px;
-    cursor: pointer; font-family: inherit;
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, border-color 0.25s ease;
-    box-shadow: var(--shadow-xs);
+    position: relative;
+    display: flex; align-items: center; gap: 13px;
+    min-height: 92px; padding: 14px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    cursor: pointer; font-family: inherit; text-align: right;
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+    box-shadow: var(--shadow-sm);
 }
-.tile i { font-size: 24px; color: var(--brand); transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease; }
-.tile span { font-size: 13px; font-weight: 700; color: var(--brand); transition: color 0.2s ease; }
+.tile i {
+    flex: 0 0 auto;
+    width: 48px; height: 48px; border-radius: 15px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: var(--brand);
+    background: linear-gradient(145deg, var(--accent-light), rgba(212, 175, 55, 0.03));
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: transform 0.23s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.23s ease, border-color 0.23s ease;
+}
+.tile span { font-size: 13.5px; font-weight: 700; color: var(--text-primary); line-height: 1.25; transition: color 0.2s ease; }
 .tile:hover {
-    transform: translateY(-4px);
-    border-color: rgba(212, 175, 55, 0.6);
-    box-shadow: 0 0 20px rgba(212, 175, 55, 0.15), 0 8px 24px rgba(0, 0, 0, 0.3);
+    transform: translateY(-3px);
+    border-color: rgba(212, 175, 55, 0.45);
+    box-shadow: 0 14px 28px -12px rgba(0, 0, 0, 0.4), var(--shadow-md);
 }
-.tile:hover i { transform: scale(1.12); color: var(--brand-light); }
-.tile:hover span { color: var(--brand-light); }
-.tile:active { transform: translateY(-1px) scale(0.98); box-shadow: 0 0 10px rgba(212, 175, 55, 0.1), var(--shadow-xs); }
+.tile:hover i { transform: translateY(-2px) scale(1.07); box-shadow: 0 8px 18px -6px rgba(212, 175, 55, 0.45); }
+.tile:active { transform: translateY(0) scale(0.97); }
 
 /* ---- BOTTOM NAVIGATION ثابت أسفل ---- */
 .bottom-nav {
@@ -2620,6 +2696,26 @@ body.native-app .app-bar {
 body.native-app .main-content {
     padding-top: calc(76px + env(safe-area-inset-top));
     padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+/* ---- App-shell scrolling: only the content pane scrolls; app-bar/bottom-nav stay fixed ---- */
+body.native-app .main-app {
+    height: 100dvh;
+    overflow: hidden;
+}
+body.native-app .main-content {
+    height: 100dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scroll-behavior: auto;
+}
+body.native-app .main-content > * {
+    -webkit-backface-visibility: hidden;
+}
+body.native-app .tile,
+body.native-app .bn-inner .bn-item {
+    will-change: transform;
 }
 
 body.native-app .bottom-nav .bn-inner {

@@ -3,7 +3,15 @@
     window.getOnouSession = window.getOnouSession || function () {
         try {
             const s = (typeof getProgresSession === 'function' && getProgresSession()) || {};
-            const dia = s.selectedCard || s.idCardYear || (s.cards && s.cards[0] && (s.cards[0].id || s.cards[0])) || '';
+            let dia = s.selectedCard || s.idCardYear || (s.cards && s.cards[0] && (s.cards[0].id || s.cards[0])) || '';
+            if (!dia && s.token && s.token.indexOf('.') !== -1) {
+                try {
+                    const part = s.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                    const pad = part + '='.repeat((4 - (part.length % 4)) % 4);
+                    const claims = JSON.parse(decodeURIComponent(escape(atob(pad))));
+                    dia = String(claims.dias || '').split(',')[0].trim();
+                } catch (e) {}
+            }
             return { uuid: s.uuid || '', dia: String(dia || '') };
         } catch (e) { return { uuid: '', dia: '' }; }
     };

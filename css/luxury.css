@@ -1682,7 +1682,8 @@
     border-radius: 999px;
     background: linear-gradient(90deg, var(--lx-gold), var(--lx-gold-2), var(--lx-gold));
     box-shadow: 0 2px 10px rgba(212, 175, 55, 0.5);
-    transition: left 280ms cubic-bezier(0.22, 1, 0.36, 1), width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
     z-index: 2;
 }
 .lx-m-pane { display: none; }
@@ -1987,6 +1988,15 @@
 }
 .lx-m-errcard i { font-size: 1.7rem; color: var(--lx-bad); margin-bottom: 10px; display: block; }
 .lx-m-errcard p { margin: 0 0 14px; font-size: 0.82rem; font-weight: 700; }
+.lx-m-errsub {
+    display: block;
+    margin: -8px 0 14px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--muted);
+    direction: ltr; text-align: center;
+    word-break: break-word;
+}
 .lx-m-btn-retry {
     display: inline-flex;
     align-items: center;
@@ -2051,6 +2061,7 @@
 .lx-m-resrow.fail .lx-m-resic { color: #fff; background: var(--lx-bad); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); }
 .lx-m-restxt { flex: 1; min-width: 0; font-size: 0.79rem; font-weight: 700; line-height: 1.6; }
 .lx-m-resmsg { display: block; font-size: 0.68rem; font-weight: 500; color: var(--text-secondary); word-break: break-word; }
+.lx-m-resbadge { margin-inline-start: auto; font-size: 0.72rem; font-weight: 800; color: var(--lx-gold-2); background: rgba(212, 175, 55, 0.14); border: 1px solid rgba(212, 175, 55, 0.25); border-radius: 999px; padding: 3px 10px; }
 
 /* ---------- my reservations ---------- */
 .lx-m-datecard { padding: 13px 14px; margin-bottom: 12px; animation: lxMFadeUp 260ms ease both; }
@@ -2499,4 +2510,277 @@ html[dir="ltr"] .lx-m-switch.on::after { transform: translateX(21px); }
     .lx-m-switch::after, .lx-m-knob, .lx-m-slider { transition: none !important; }
     .lx-tr-line:hover, .lx-tr-locate:hover, .lx-tr-back:hover, .lx-m-cta:hover:not(:disabled),
     .lx-m-depot:hover, .lx-m-day:hover, .lx-m-meal:hover, .lx-m-del:hover { transform: none; }
+}
+/* ==========================================================
+   E-LEARNING DIGITAL LIBRARY — Moodle 5-Step Flow
+   Transitions use transform/opacity ONLY (GPU, 60fps).
+   ========================================================== */
+.library-view {
+    padding: 16px;
+    overflow: hidden;
+}
+.library-view .lib-step { display: none; }
+.library-view .lib-step.active { display: block; animation: libStepIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes libStepIn {
+    from { opacity: 0; transform: translateX(24px) scale(0.99); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.lib-header {
+    border-radius: 20px;
+    padding: 18px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #17150f 0%, #2a2312 60%, #3a2d10 100%);
+    border: 1px solid rgba(212, 175, 55, 0.28);
+    box-shadow: 0 12px 30px -16px rgba(212, 175, 55, 0.4);
+    position: relative; overflow: hidden;
+}
+.lib-header.slim {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; margin-bottom: 14px;
+}
+.lib-head-flex { display: flex; align-items: center; gap: 13px; }
+.lib-head-ico {
+    flex: 0 0 auto;
+    width: 46px; height: 46px; border-radius: 15px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: #f3e5ab;
+    background: rgba(212, 175, 55, 0.16);
+    border: 1px solid rgba(212, 175, 55, 0.32);
+}
+.lib-title { font-size: 17px; font-weight: 800; color: #fdf6dc; }
+.lib-sub { margin: 3px 0 0; font-size: 11.5px; font-weight: 500; color: rgba(246, 239, 214, 0.75); }
+.lib-header.slim .lib-title { font-size: 15px; }
+.lib-back {
+    flex: 0 0 auto;
+    width: 38px; height: 38px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--lx-gold-soft);
+    border: 1px solid var(--lx-gold-line);
+    color: var(--lx-gold-2);
+    cursor: pointer; font-size: 15px;
+    transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease;
+}
+.lib-back:active { transform: scale(0.92); opacity: 0.75; }
+
+.lib-section-label {
+    margin: 2px 2px 10px;
+    font-size: 12px; font-weight: 700; color: var(--text-secondary);
+}
+
+/* Specialty grid (Step 1) */
+.lib-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.lib-select {
+    position: relative;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+    padding: 15px 14px; min-height: 116px;
+    background: var(--lx-glass);
+    border: 1px solid var(--lx-gold-line);
+    border-radius: 18px;
+    cursor: pointer; font-family: inherit; text-align: right;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.lib-select .ls-ico {
+    width: 40px; height: 40px; border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; color: var(--lx-gold-2);
+    background: var(--lx-gold-soft);
+    border: 1px solid rgba(212, 175, 55, 0.22);
+}
+.lib-select .ls-name { font-size: 13.5px; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+.lib-select .ls-count { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+.lib-select:hover { transform: translateY(-3px); border-color: rgba(212, 175, 55, 0.55); }
+.lib-select:active { transform: translateY(0) scale(0.97); }
+
+/* Year / semester chips (Steps 2-3) */
+.lib-chips { display: flex; flex-direction: column; gap: 10px; }
+.lib-chip {
+    display: flex; align-items: center; gap: 12px;
+    padding: 15px 16px; width: 100%;
+    background: var(--lx-glass);
+    border: 1px solid var(--lx-gold-line);
+    border-radius: 16px;
+    cursor: pointer; font-family: inherit; text-align: right;
+    color: var(--text-primary); font-size: 14px; font-weight: 700;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease;
+}
+.lib-chip i { width: 34px; height: 34px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--lx-gold-2); background: var(--lx-gold-soft); }
+.lib-chip .lc-side { margin-inline-start: auto; font-size: 12px; color: var(--text-secondary); }
+.lib-chip:hover { border-color: rgba(212, 175, 55, 0.55); transform: translateX(-3px); }
+html[dir="ltr"] .lib-chip:hover { transform: translateX(3px); }
+.lib-chip:active { transform: scale(0.98); }
+.lib-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.lib-tabs .lib-chip { flex: 1; justify-content: center; text-align: center; }
+.lib-tabs .lib-chip i { margin-inline-end: 6px; }
+.lib-tabs .lib-chip.active { border-color: var(--lx-gold-2); background: linear-gradient(135deg, rgba(212, 175, 55, 0.28), rgba(212, 175, 55, 0.14)); }
+.lib-tabs .lib-chip.active .lc-side { color: var(--lx-gold-2); }
+
+/* Subject / resource rows (Steps 4-5) */
+.lib-list { display: flex; flex-direction: column; gap: 10px; }
+.lib-row {
+    display: flex; align-items: center; gap: 13px;
+    width: 100%; padding: 14px 15px;
+    background: var(--lx-glass);
+    border: 1px solid var(--lx-gold-line);
+    border-radius: 17px;
+    cursor: pointer; font-family: inherit; text-align: right;
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease;
+}
+.lib-row:hover { border-color: rgba(212, 175, 55, 0.55); transform: translateY(-2px); }
+.lib-row:active { transform: scale(0.98); }
+.lib-row .lr-ico {
+    flex: 0 0 auto; width: 42px; height: 42px; border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; color: var(--lx-gold-2); background: var(--lx-gold-soft);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+}
+.lib-row .lr-body { flex: 1 1 auto; min-width: 0; }
+.lib-row .lr-name { font-size: 13.5px; font-weight: 700; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.lib-row .lr-meta { margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+.lib-row .lr-meta .lr-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--lx-gold-soft); color: var(--lx-gold-deep); margin-inline-end: 6px; }
+.lib-row .lr-chev { flex: 0 0 auto; font-size: 13px; color: var(--text-secondary); }
+.lib-row .lr-ok { color: #34c47c; font-size: 14px; margin-inline-start: 6px; }
+.lib-row .lr-badge-mine { background: rgba(52, 196, 124, 0.16); color: #34c47c; }
+html[dir="rtl"] .lib-row .lr-chev { transform: scaleX(-1); }
+
+/* Resource file rows (Step 5) */
+.lib-file {
+    display: flex; align-items: center; gap: 13px;
+    width: 100%; padding: 13px 14px;
+    background: var(--lx-glass);
+    border: 1px solid var(--lx-gold-line);
+    border-radius: 17px;
+    text-align: right; color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease;
+}
+.lib-file:hover { border-color: rgba(212, 175, 55, 0.5); }
+.lib-file:active { transform: scale(0.98); }
+.lib-file .lf-ico {
+    flex: 0 0 auto; width: 42px; height: 42px; border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; color: var(--lx-bad); background: rgba(207, 102, 121, 0.12);
+    border: 1px solid rgba(207, 102, 121, 0.22);
+}
+.lib-file .lf-body { flex: 1 1 auto; min-width: 0; }
+.lib-file .lf-name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.lib-file .lf-meta { margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+.lib-file .lf-actions { flex: 0 0 auto; display: flex; gap: 8px; }
+.lib-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 11px; border-radius: 11px;
+    font-size: 11.5px; font-weight: 700; font-family: inherit;
+    cursor: pointer;
+    transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.16s ease;
+}
+.lib-btn:active { transform: scale(0.94); opacity: 0.8; }
+.lib-btn.view { background: linear-gradient(135deg, var(--lx-gold), var(--lx-gold-2)); color: #21200d; }
+.lib-btn.dl { background: var(--lx-gold-soft); color: var(--lx-gold-deep); border: 1px solid var(--lx-gold-line); }
+
+/* Skeletons (GPU shimmer via translateX only) */
+.lib-skel { position: relative; overflow: hidden; border-radius: 17px; background: var(--lx-gold-soft); }
+.lib-skel::after {
+    content: ''; position: absolute; inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.22), transparent);
+    animation: libShimmer 1.2s linear infinite;
+}
+@keyframes libShimmer {
+    to { transform: translateX(100%); }
+}
+.lib-skel-row { height: 68px; }
+.lib-skel-card { height: 116px; }
+.lib-skel-chip { height: 56px; border-radius: 14px; }
+
+.lib-empty {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 40px 16px; text-align: center; color: var(--text-secondary);
+}
+.lib-empty i { font-size: 26px; color: var(--lx-gold-2); opacity: 0.7; }
+.lib-empty p { font-size: 12.5px; font-weight: 600; margin: 0; }
+.lib-empty small { font-size: 11px; font-weight: 500; opacity: 0.8; }
+
+.lib-denied-cta {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    padding: 4px 16px 28px;
+}
+.lib-denied-cta .lib-btn { padding: 9px 12px; font-size: 12px; }
+
+/* Library source mode tabs (Moodle vs open repositories) */
+.lib-mode-tabs { display: flex; gap: 8px; padding: 2px 2px 12px; }
+.lib-tab {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px 10px; border-radius: 14px; cursor: pointer; min-height: 46px;
+    font-family: inherit; font-size: 13px; font-weight: 700; color: var(--text-secondary);
+    background: var(--lx-glass); border: 1px solid var(--lx-gold-line);
+    transition: color .2s ease, border-color .2s ease, background .2s ease;
+}
+.lib-tab:hover { border-color: rgba(212, 175, 55, 0.55); }
+.lib-tab.active {
+    color: var(--lx-gold-2);
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.28), rgba(212, 175, 55, 0.14));
+    border-color: var(--lx-gold-2);
+}
+.lib-tab i { font-size: 14px; }
+
+/* Open repositories (DSpace) */
+.ds-controls .lib-chips { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+.ds-controls .lib-chip { width: auto; min-width: 0; padding: 10px 14px; font-size: 13px; gap: 8px; }
+.ds-controls .lib-chip i { width: 28px; height: 28px; font-size: 12px; border-radius: 9px; }
+.ds-searchbar {
+    display: flex; align-items: center; gap: 10px; margin: 14px 0 4px;
+    padding: 13px 14px; border-radius: 16px;
+    background: var(--lx-glass); border: 1px solid var(--lx-gold-line);
+}
+.ds-searchbar i { color: var(--lx-gold-2); font-size: 14px; }
+.ds-searchbar input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text-primary); font-family: inherit; font-size: 13.5px; font-weight: 600;
+}
+.ds-searchbar input::placeholder { color: var(--text-secondary); opacity: 0.8; }
+.ds-note {
+    display: flex; gap: 8px; align-items: flex-start; margin: 8px 0 12px;
+    padding: 10px 12px; border-radius: 12px; font-size: 11.5px; font-weight: 600;
+    color: var(--text-secondary); background: var(--lx-gold-soft); border: 1px solid rgba(212, 175, 55, 0.18);
+}
+.ds-note i { color: var(--lx-gold-2); margin-top: 1px; }
+.ds-result {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 14px 15px; margin-bottom: 10px;
+    background: var(--lx-glass); border: 1px solid var(--lx-gold-line); border-radius: 17px;
+    box-shadow: var(--shadow-sm);
+}
+.ds-ico {
+    flex: 0 0 auto; width: 42px; height: 42px; border-radius: 13px;
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+    color: var(--lx-gold-2); background: var(--lx-gold-soft); border: 1px solid rgba(212, 175, 55, 0.2);
+}
+.ds-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ds-name { font-size: 13px; font-weight: 700; color: var(--text-primary); line-height: 1.5; }
+.ds-meta { font-size: 11px; font-weight: 500; color: var(--text-secondary); }
+
+html[data-theme="light"] .lib-header {
+    background: linear-gradient(135deg, #8a6a16 0%, #a8841d 55%, #c3992b 100%);
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 12px 30px -14px rgba(170, 132, 29, 0.55);
+}
+html[data-theme="light"] .lib-header .lib-title { color: #fffdf4; }
+html[data-theme="light"] .lib-header .lib-sub { color: rgba(255, 247, 224, 0.9); }
+html[data-theme="light"] .lib-header .lib-head-ico { color: #fff7e0; background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.35); }
+html[data-theme="light"] .lib-btn.view { color: #332a05; }
+html[data-theme="light"] .lib-row .lr-meta .lr-badge { color: #6b5310; }
+
+@media (prefers-reduced-motion: reduce) {
+    .library-view .lib-step.active { animation: none; }
+    .lib-skel::after { animation: none; }
+}
+.lib-chip[disabled] {
+    opacity: 0.45;
+    pointer-events: none;
+    filter: grayscale(0.6);
 }

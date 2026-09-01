@@ -55,9 +55,6 @@ const DataCache = {
 // Telegram config (saved in localStorage)
 let telegramConfig = JSON.parse(localStorage.getItem('tg_config') || '{}');
 
-// Auth state for password reset flow
-let authFlow = { email: '', resetToken: '', otpEmail: '' };
-
 // Visits counter
 let visits = parseInt(localStorage.getItem('visits') || '0');
 visits++;
@@ -298,6 +295,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.removeItem('user_name');
     }
 
+    // Student auto-login — restore persistent Progres session
+    const pSession = getValidProgresSession();
+    if (pSession) {
+        APP_STATE.role = 'student';
+        localStorage.setItem('user_role', 'student');
+        const uname = pSession.name || localStorage.getItem('user_name') || 'طالب';
+        localStorage.setItem('user_name', uname);
+        document.getElementById('landing-page').classList.add('hidden');
+        document.getElementById('main-app').classList.remove('hidden');
+        hideEl('admin-menu-item'); hideEl('admin-tile');
+        showEl('logout-btn-account'); showEl('logout-btn');
+        setNameEverywhere((String(`<i class="fas fa-user-graduate"></i><span>${uname}</span>`).match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
+        applyInitialRoute();
+        return;
+    }
+
     // No valid token - show landing page
     APP_STATE.role = 'guest';
     document.getElementById('landing-page').classList.remove('hidden');
@@ -313,6 +326,9 @@ function applyTheme(theme) {
     localStorage.setItem('theme', theme);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', theme === 'dark' ? '#0a0a0a' : '#FAFAF8');
+    if (window.PortalNative && window.PortalNative.setStatusBarTheme) {
+        try { window.PortalNative.setStatusBarTheme(theme); } catch (e) {}
+    }
     const icon = document.getElementById('theme-icon');
     const text = document.getElementById('theme-text');
     const iconTop = document.getElementById('theme-icon-top');
@@ -365,10 +381,7 @@ function closeAdminModal() {
 // ============================================
 function closeAllModals() {
     document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden'));
-    ['login-email', 'login-password', 'reg-email', 'reg-username', 'reg-password', 'reg-password-confirm', 'forgot-email', 'otp-code', 'new-password', 'new-password-confirm'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-    });
+    document.querySelectorAll('.modal-overlay input').forEach(el => { el.value = ''; });
 }
 
 function showStudentLogin() {
@@ -376,58 +389,9 @@ function showStudentLogin() {
     document.getElementById('student-login-modal').classList.remove('hidden');
 }
 
-function showStudentRegister() {
-    closeAllModals();
-    document.getElementById('student-register-modal').classList.remove('hidden');
-}
-
-function showForgotPassword() {
-    closeAllModals();
-    document.getElementById('forgot-password-modal').classList.remove('hidden');
-}
-
-function showOtpModal() {
-    closeAllModals();
-    document.getElementById('otp-modal').classList.remove('hidden');
-}
-
-function showResetPasswordModal() {
-    closeAllModals();
-    document.getElementById('reset-password-modal').classList.remove('hidden');
-}
-
 // ============================================
-// STUDENT AUTH - Login, Register, Forgot Password
+// STUDENT AUTH — Direct Progres gateway (no local accounts)
 // ============================================
-async function handleStudentLogin(e) {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value.trim();
-    const password = document.getElementById('login-password').value;
-    try {
-        const res = await fetch(`${API_BASE}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'login_failed');
-        localStorage.setItem('admin_token', data.token);
-        localStorage.setItem('user_role', data.role);
-        localStorage.setItem('user_name', data.username);
-        closeAllModals();
-        if (data.role === 'admin') {
-            enterAdminSession(false);
-        } else {
-            enterStudentSession(data.username);
-        }
-    } catch (err) {
-        showToast(
-            err.message === 'login_failed' ? 'بيانات الدخول غير صحيحة' : 'تعذر الاتصال بالخادم',
-            'error'
-        );
-    }
-}
-
 function enterStudentSession(username) {
     APP_STATE.role = 'student';
     localStorage.setItem('user_role', 'student');
@@ -439,127 +403,6 @@ function enterStudentSession(username) {
     showToast(`مرحباً بك ${username || ''}`, 'success');
     loadSubjectsFromAPI().then(() => { renderSubjects(); updateStats(); });
     applyInitialRoute();
-}
-
-async function handleStudentRegister(e) {
-    e.preventDefault();
-    const email = document.getElementById('reg-email').value.trim();
-    const username = document.getElementById('reg-username').value.trim();
-    const password = document.getElementById('reg-password').value;
-    const confirmPassword = document.getElementById('reg-password-confirm').value;
-    if (password !== confirmPassword) {
-        showToast('كلمتا المرور غير متطابقتين', 'error');
-        return;
-    }
-    if (password.length < 6) {
-        showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error');
-        return;
-    }
-    try {
-        const res = await fetch(`${API_BASE}/api/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, username, password }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'register_failed');
-        authFlow.otpEmail = email;
-        showToast('تم التسجيل! تحقق من بريدك (وصندوق Spam إذا لم يصل)', 'success');
-        showOtpModal();
-    } catch (err) {
-        const messages = {
-            'البريد الإلكتروني مستخدم بالفعل': 'البريد الإلكتروني مستخدم بالفعل',
-            'اسم المستخدم مستخدم بالفعل': 'اسم المستخدم مستخدم بالفعل',
-        };
-        showToast(messages[err.message] || err.message || 'حدث خطأ', 'error');
-    }
-}
-
-async function handleForgotPassword(e) {
-    e.preventDefault();
-    const email = document.getElementById('forgot-email').value.trim();
-    authFlow.otpEmail = email;
-    try {
-        await fetch(`${API_BASE}/api/auth/forgot-password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
-        });
-        showToast('تم إرسال كود التحقق. تحقق من صندوق الوارد أو مجلد Spam', 'success');
-        showOtpModal();
-    } catch (err) {
-        showToast('تعذر الاتصال بالخادم', 'error');
-    }
-}
-
-async function handleVerifyOtp(e) {
-    e.preventDefault();
-    const otp = document.getElementById('otp-code').value.trim();
-    try {
-        const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: authFlow.otpEmail, otp }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'otp_failed');
-        authFlow.resetToken = data.reset_token;
-        showToast('تم التحقق بنجاح!', 'success');
-        showResetPasswordModal();
-    } catch (err) {
-        const messages = {
-            'otp_failed': 'كود التحقق غير صحيح',
-            'انتهت صلاحية الكود، اطلب كوداً جديداً': 'انتهت صلاحية الكود',
-        };
-        showToast(messages[err.message] || err.message || 'خطأ في التحقق', 'error');
-    }
-}
-
-async function resendOtp() {
-    if (!authFlow.otpEmail) return;
-    try {
-        await fetch(`${API_BASE}/api/auth/forgot-password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: authFlow.otpEmail }),
-        });
-        showToast('تم إعادة إرسال الكود', 'success');
-    } catch (err) {
-        showToast('تعذر إعادة الإرسال', 'error');
-    }
-}
-
-async function handleResetPassword(e) {
-    e.preventDefault();
-    const newPass = document.getElementById('new-password').value;
-    const confirmPass = document.getElementById('new-password-confirm').value;
-    if (newPass !== confirmPass) {
-        showToast('كلمتا المرور غير متطابقتين', 'error');
-        return;
-    }
-    if (newPass.length < 6) {
-        showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error');
-        return;
-    }
-    try {
-        const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: authFlow.otpEmail,
-                reset_token: authFlow.resetToken,
-                new_password: newPass,
-            }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'reset_failed');
-        showToast('تم تغيير كلمة المرور بنجاح! يمكنك تسجيل الدخول الآن', 'success');
-        authFlow = { email: '', resetToken: '', otpEmail: '' };
-        closeAllModals();
-        showStudentLogin();
-    } catch (err) {
-        showToast(err.message || 'حدث خطأ', 'error');
-    }
 }
 
 async function handleAdminLogin(e) {
@@ -627,7 +470,11 @@ function handleLogout() {
     hideEl('logout-btn-account'); hideEl('logout-btn');
     setNameEverywhere((String('<i class="fas fa-eye"></i><span>ضيف</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     showToast('تم تسجيل الخروج', 'info');
-    switchSection('home');
+    document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    history.replaceState(null, '', '#/');
+    document.getElementById('landing-page').classList.remove('hidden');
+    document.getElementById('main-app').classList.add('hidden');
 }
 
 // ============================================
@@ -655,7 +502,7 @@ function updateAccountSubtitle() {
 }
 
 
-const GUEST_SECTIONS = ['home', 'schedule', 'exams', 'account'];
+const GUEST_SECTIONS = ['home', 'schedule', 'exams', 'account', 'library'];
 
 function getSectionFromHash() {
     const h = window.location.hash.replace(/^#\/?/, '').trim();
@@ -690,14 +537,11 @@ function showGuestRestriction() {
                 <i class="fas fa-lock" style="font-size: 1.8rem; color: var(--accent);"></i>
             </div>
             <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 8px;">مخصص للطلبة المسجلين</h3>
-            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 24px; line-height: 1.5;">سجّل دخولك للوصول إلى المحاضرات وملفات الـ TD/TP</p>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 24px; line-height: 1.5;">سجّل دخولك برقم تسجيل بروقرس الرسمي للوصول إلى النقاط والملف الشامل والوجبات</p>
             <button class="btn btn-primary btn-full" style="margin-bottom: 10px;" onclick="document.getElementById('guest-restriction-modal').remove(); showStudentLogin();">
-                <i class="fas fa-right-to-bracket"></i> تسجيل الدخول
+                <i class="fas fa-graduation-cap"></i> تسجيل الدخول — بروقرس
             </button>
-            <button class="btn btn-register btn-full" style="margin-bottom: 10px;" onclick="document.getElementById('guest-restriction-modal').remove(); showStudentRegister();">
-                <i class="fas fa-user-plus"></i> إنشاء حساب جديد
-            </button>
-            <button class="btn btn-ghost btn-full" onclick="document.getElementById('guest-restriction-modal').remove()">إلغاء</button>
+            <button class="btn btn-ghost btn-full" onclick="document.getElementById('guest-restriction-modal').remove(); enterAsStudent();">دخول كضيف</button>
         </div>
     `;
     document.body.appendChild(modal);
@@ -739,7 +583,7 @@ function navigateToSection(section) {
     }
     // Update topbar title
     const titles = {
-        library: 'مكتبة المواد',
+        library: 'المكتبة الرقمية',
         schedule: 'الرزنامة الأسبوعية',
         calculator: 'حاسبة المعدل',
         exams: 'تواريخ الامتحانات',
@@ -753,11 +597,18 @@ function navigateToSection(section) {
     };
     const sub = $id('appbar-subtitle');
     if (sub) sub.textContent = titles[section] || '';
-    const navKey = { home: 'home', grades: 'grades', account: 'account' }[section] || '';
+    if (section === 'library' && window.LibraryView && window.LibraryView.open) {
+        window.LibraryView.open();
+    }
+    const navKey = { home: 'home', grades: 'grades', account: 'account', library: 'library' }[section] || '';
     document.querySelectorAll('.bn-btn').forEach((b) => b.classList.toggle('active', b.dataset.nav === navKey));
     const menu = $id('app-menu'); if (menu) menu.classList.add('hidden');
     // Close sidebar on mobile
     closeSidebar();
+    // Reset scroll to top of the content pane on every section switch
+    const pane = document.querySelector('body.native-app .main-content') || document.getElementById('main-app');
+    if (pane) pane.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0; // safe fallback for any lingering body scroll
     // Auto-refresh grades data when entering the section with an active session
     if (section === 'grades' && getProgresSession()) {
         renderGradesSection();
@@ -921,8 +772,45 @@ function handleSearch(query) {
 // ============================================
 // PDF VIEWER
 // ============================================
+function isNativeShell() {
+    return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+}
+
+let fileObjectUrl = '';
+
+async function openFileInApp(filename) {
+    closeMobileSheet();
+    const url = `${API_BASE}/files/${encodeURIComponent(filename)}`;
+    try {
+        showToast('جاري تحميل الملف...', 'info');
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const blob = await res.blob();
+        const objUrl = URL.createObjectURL(blob);
+        if (fileObjectUrl) { try { URL.revokeObjectURL(fileObjectUrl); } catch (e) {} }
+        fileObjectUrl = objUrl;
+        const modal = document.getElementById('pdf-viewer-modal');
+        document.getElementById('pdf-viewer-title').textContent = filename;
+        document.getElementById('pdf-page-info').textContent = '';
+        const dlLink = document.getElementById('pdf-download-link');
+        dlLink.href = objUrl;
+        dlLink.download = filename;
+        const body = document.querySelector('.pdf-viewer-body');
+        body.innerHTML = `<iframe src="${objUrl}" title="file-viewer" style="width:100%;height:100%;border:none;background:#fff;border-radius:10px;"></iframe>`;
+        document.querySelectorAll('.pdf-viewer-actions .btn-icon:not(.btn-close-pdf)').forEach(b => b.style.display = 'none');
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    } catch (e) {
+        showToast('تعذر فتح الملف على هذه الشبكة', 'error');
+    }
+}
+
 function openPdfViewer(filename) {
     const url = `${API_BASE}/files/${encodeURIComponent(filename)}`;
+    if (isNativeShell()) {
+        openFileInApp(filename);
+        return;
+    }
     const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     if (isMobile) {
         showMobileSheet(filename, url);
@@ -961,18 +849,43 @@ function closeMobileSheet() {
 }
 
 function mobileSheetOpen() {
-    if (mobileSheetUrl) window.open(mobileSheetUrl, '_blank');
+    if (mobileSheetUrl) {
+        if (isNativeShell()) {
+            openFileInApp(mobileSheetName);
+            return;
+        }
+        window.open(mobileSheetUrl, '_blank');
+    }
     closeMobileSheet();
 }
 
-function mobileSheetDownload() {
-    if (mobileSheetUrl) {
-        const a = document.createElement('a');
-        a.href = mobileSheetUrl;
-        a.download = mobileSheetName;
-        a.click();
-    }
+async function mobileSheetDownload() {
     closeMobileSheet();
+    if (!mobileSheetUrl) return;
+    if (isNativeShell()) {
+        try {
+            showToast('جاري تحميل الملف...', 'info');
+            const res = await fetch(mobileSheetUrl);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const blob = await res.blob();
+            const objUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = objUrl;
+            a.download = mobileSheetName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => { try { URL.revokeObjectURL(objUrl); } catch (e) {} }, 30000);
+            showToast('تم تحميل الملف', 'success');
+        } catch (e) {
+            showToast('تعذر تحميل الملف على هذه الشبكة', 'error');
+        }
+        return;
+    }
+    const a = document.createElement('a');
+    a.href = mobileSheetUrl;
+    a.download = mobileSheetName;
+    a.click();
     showToast('جاري تحميل الملف...', 'info');
 }
 
@@ -982,7 +895,7 @@ function closePdfViewer() {
     document.body.style.overflow = '';
     const body = document.querySelector('.pdf-viewer-body');
     body.innerHTML = '<canvas id="pdf-canvas"></canvas>';
-    // Restore zoom/nav buttons
+    if (fileObjectUrl) { try { URL.revokeObjectURL(fileObjectUrl); } catch (e) {} fileObjectUrl = ''; }
     document.querySelectorAll('.pdf-viewer-actions .btn-icon').forEach(b => b.style.display = '');
 }
 
@@ -1071,6 +984,12 @@ function pdfZoomOut() {
 
 function downloadFile(filename) {
     const url = `${API_BASE}/files/${encodeURIComponent(filename)}`;
+    if (isNativeShell()) {
+        mobileSheetName = filename;
+        mobileSheetUrl = url;
+        mobileSheetDownload();
+        return;
+    }
     const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     if (isMobile) {
         window.open(url, '_blank');
@@ -1478,6 +1397,16 @@ function getProgresSession() {
     } catch (e) { return null; }
 }
 
+function getValidProgresSession() {
+    const s = getProgresSession();
+    if (!s || !s.token || typeof s.token !== 'string') return null;
+    try {
+        const payload = JSON.parse(atob(s.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        if (payload && payload.exp && Date.now() >= payload.exp * 1000) return null;
+    } catch (e) {}
+    return s;
+}
+
 function setProgresSession(session) {
     localStorage.setItem(PROGRES_SESSION_KEY, JSON.stringify(session));
 }
@@ -1496,17 +1425,28 @@ function progresLoginErrorMessage(res, data) {
         if (msg.toLowerCase().includes('incorrect')) return 'رقم التسجيل أو كلمة المرور غير صحيحة';
         return msg || 'رقم التسجيل أو كلمة المرور غير صحيحة';
     }
-    if ([502, 503, 504].includes(res.status)) return null; // server waking up — retried by caller
+    if ([502, 503, 504].includes(res.status)) {
+        if (document.body && document.body.classList.contains('native-app')) {
+            const detail = data && data.debug ? ': ' + String(data.debug) : '';
+            return 'تعذر الاتصال بخوادم الوزارة' + detail; // native: no wake-up retries, show real cause
+        }
+        return null; // web: server waking up — retried by caller
+    }
     return 'تعذر الاتصال بخوادم الوزارة حالياً، حاول بعد قليل';
 }
 
 async function handleProgresLogin(event) {
     event.preventDefault();
-    const btn = document.getElementById('progres-login-btn');
-    const username = document.getElementById('progres-username').value.trim();
-    const password = document.getElementById('progres-password').value;
+    const form = event.target;
+    const usernameEl = form.querySelector('[name="progres-username"]');
+    const passwordEl = form.querySelector('[name="progres-password"]');
+    const btn = form.querySelector('button[type="submit"]');
+    const username = usernameEl ? usernameEl.value.trim() : '';
+    const password = passwordEl ? passwordEl.value : '';
     if (!username || !password) return;
-    btn.disabled = true;
+    const originalBtn = btn ? btn.innerHTML : '';
+    const fromLanding = document.getElementById('main-app').classList.contains('hidden');
+    if (btn) btn.disabled = true;
 
     // Up to 3 attempts: free-tier servers sleep and the first try often wakes them
     for (let attempt = 1; attempt <= 3; attempt++) {
@@ -1514,11 +1454,14 @@ async function handleProgresLogin(event) {
             ? '<i class="fas fa-spinner fa-spin"></i> جاري الاتصال بالوزارة...'
             : `<i class="fas fa-spinner fa-spin"></i> السيرفر يستيقظ... محاولة ${attempt}/3`;
         try {
-            const res = await fetch(`${API_BASE}/api/progres/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
-            });
+            const res = await Promise.race([
+                fetch(`${API_BASE}/api/progres/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                }),
+                new Promise((resolve, reject) => setTimeout(() => reject(new Error('تجاوزت مدة الاتصال بالوزارة — أعد المحاولة')), 22000)),
+            ]);
             let data = {};
             try { data = await res.json(); } catch (e) { /* waking server returns HTML */ }
             if (!res.ok) {
@@ -1528,26 +1471,32 @@ async function handleProgresLogin(event) {
                     continue;
                 }
                 showToast(msg || 'تعذر الاتصال، حاول بعد قليل', 'error');
-                return;
+                break;
             }
-            // Keep ONLY token+uuid in sessionStorage; password is discarded here
+            // Keep ONLY token+uuid in localStorage; the password is discarded here
             setProgresSession({ token: data.token, uuid: data.uuid, etab: data.etablissementId, name: data.userName || username });
-            document.getElementById('progres-password').value = '';
-            renderGradesSection();
-            loadProgresGrades();
-            showToast('مرحباً ' + (data.userName || username), 'success');
+            if (passwordEl) passwordEl.value = '';
+            if (btn) { btn.disabled = false; btn.innerHTML = originalBtn; }
+            if (fromLanding) {
+                closeAllModals();
+                enterStudentSession(data.userName || username); // direct to #home dashboard
+            } else {
+                renderGradesSection();
+                loadProgresGrades();
+                showToast('مرحباً ' + (data.userName || username), 'success');
+            }
             return;
         } catch (e) {
+            const timedOut = e && e.message && String(e.message).indexOf('تجاوزت مدة الاتصال') !== -1;
             if (attempt < 3) {
                 await new Promise(r => setTimeout(r, 8000));
                 continue;
             }
-            showToast('تعذر الاتصال، تحقق من إنترنت هاتفك', 'error');
+            showToast(timedOut ? 'استغرق الاتصال بالوزارة وقتاً أطول من المعتاد — أعد المحاولة' : 'تعذر الاتصال، تحقق من إنترنت هاتفك', 'error');
             break;
         }
     }
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> عرض نقاطي';
+    if (btn) { btn.disabled = false; btn.innerHTML = originalBtn; }
 }
 
 async function progresFetch(path, params = '') {
@@ -2221,7 +2170,7 @@ function shareCalcResult() {
     else if (s2 !== null) gpa = s2;
 
     let text = 'حاسبة المعدل - نظام LMD\n';
-    text += 'جامعة 8 ماي 1945 قالمة\n';
+    text += 'بوابة الطالب الجامعي\n';
     text += '━━━━━━━━━━━━━━━━━━\n';
     ['sem1', 'sem2'].forEach(sem => {
         const label = sem === 'sem1' ? 'السداسي الأول' : 'السداسي الثاني';
@@ -2244,3 +2193,987 @@ function shareCalcResult() {
         navigator.clipboard.writeText(text).then(() => showToast('تم نسخ النتيجة', 'success'));
     }
 }
+
+// ============================================
+// E-LEARNING LIBRARY VIEW — Moodle 5-step flow
+// Isolated module. Does not touch login, meals, grades or sessions.
+// Uses window.PortalNative.MoodleService when a master token is
+// configured; otherwise runs on bundled mock data for testing.
+// ============================================
+window.LibraryView = (function () {
+    'use strict';
+
+    const $ = function (id) { return document.getElementById(id); };
+    const escapeHtml = function (s) {
+        return String(s || '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    };
+
+    const LEVELS = [
+        { id: 'L1', name: 'السنة الأولى', icon: 'fa-seedling', sems: [1, 2] },
+        { id: 'L2', name: 'السنة الثانية', icon: 'fa-sprout', sems: [3, 4] },
+        { id: 'L3', name: 'السنة الثالثة', icon: 'fa-tree', sems: [5, 6] },
+        { id: 'M1', name: 'ماستر 1', icon: 'fa-user-graduate', sems: [1, 2] },
+        { id: 'M2', name: 'ماستر 2', icon: 'fa-user-graduate', sems: [3, 4] },
+    ];
+    const YNAME = function (id) {
+        const f = LEVELS.filter(function (l) { return l.id === id; });
+        return f.length ? f[0].name : id;
+    };
+    const SEM_NAMES = { S1: 'السداسي الأول', S2: 'السداسي الثاني' };
+
+    // Headers: a "year" category is one whose (accent-free) name starts with a year
+    // phrase. The remainder of the name after the phrase is the actual branch
+    // (شعبة/تخصص), e.g. "Première Année Commerce international" -> "commerce international".
+    const HEAD_RE = /^(?:premiere|premier|1(?:er|ere|re)?)(?:\s+(?:er|ere|re))?\s+annee\b|^(?:deuxieme|2(?:eme|e)?)(?:\s+eme)?\s+annee\b|^(?:troisieme|3(?:eme|e)?)(?:\s+eme)?\s+annee\b|^master\s+(1|i|2|ii)\b|^1(?:er|ere|re)?\s+annee\s+master\b|^2(?:eme|e)?\s+annee\s+master\b/i;
+    const YEAR_HEAD = {
+        L1: /^(?:premiere|premier|1(?:er|ere|re)?)(?:\s+(?:er|ere|re))?\s+annee\b/i,
+        L2: /^(?:deuxieme|2(?:eme|e)?)(?:\s+eme)?\s+annee\b/i,
+        L3: /^(?:troisieme|3(?:eme|e)?)(?:\s+eme)?\s+annee\b/i,
+        M1: /^master\s+(1|i)\b|^1(?:er|ere|re)?\s+annee\s+master\b/i,
+        M2: /^master\s+(2|ii)\b|^2(?:eme|e)?\s+annee\s+master\b/i,
+    };
+    const SEM_TAG_RE = /\bsemestr|\bسداسي/i;
+    const AR_ORD = { 1: 'اول', 2: 'ثاني', 3: 'ثالث', 4: 'رابع', 5: 'خامس', 6: 'سادس' };
+
+    function normText(s) {
+        return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+    }
+    function prettyName(s) {
+        s = String(s || '');
+        return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+    }
+    function branchOf(n) {
+        return n.replace(HEAD_RE, '').replace(/^[\s:.，,;—-]+|[\s:.，,;—-]+$/g, '').trim();
+    }
+    function semKidMatch(name, num) {
+        const n = normText(name);
+        if (new RegExp('(?:semestre\\s*)?\\b' + num + '\\b', 'i').test(n)) return true;
+        if (new RegExp('السداسي\\s*(ال)?' + AR_ORD[num], 'i').test(n)) return true;
+        return n.indexOf('semestr') === -1 && n.indexOf('سداسي') === -1 ? false : false;
+    }
+    function libSize(bytes) {
+        bytes = Number(bytes) || 0;
+        if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+        if (bytes >= 1024) return (bytes / 1024).toFixed(0) + ' KB';
+        return bytes + ' B';
+    }
+    function cleanName(name) {
+        return String(name || 'file').replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim() || 'file';
+    }
+    function mimeOf(name, mime) {
+        if (mime && mime.indexOf('application/octet-stream') === -1 && mime) return mime;
+        const p = String(name || '').toLowerCase();
+        if (p.indexOf('.pdf') !== -1) return 'application/pdf';
+        if (p.indexOf('.docx') !== -1) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        if (p.indexOf('.doc') !== -1) return 'application/msword';
+        if (p.indexOf('.ppt') !== -1) return 'application/vnd.ms-powerpoint';
+        if (p.indexOf('.pptx') !== -1) return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+        if (p.indexOf('.xls') !== -1) return 'application/vnd.ms-excel';
+        if (p.indexOf('.xlsx') !== -1) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        if (p.indexOf('.zip') !== -1) return 'application/zip';
+        if (p.indexOf('.png') !== -1) return 'image/png';
+        if (p.indexOf('.jpg') !== -1 || p.indexOf('.jpeg') !== -1) return 'image/jpeg';
+        return mime || 'application/octet-stream';
+    }
+    function coursesOf(r) {
+        return Array.isArray(r) ? r : (r && r.courses) ? r.courses : [];
+    }
+    function b64ToU8(b64) {
+        if (!b64) return new Uint8Array(0);
+        const bin = window.atob(b64);
+        const len = bin.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+        return bytes;
+    }
+    function timer(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+    function MoodleService() {
+        return window.PortalNative && window.PortalNative.MoodleService ? window.PortalNative.MoodleService : null;
+    }
+    function liveEnabled() { const m = MoodleService(); return !!(m && m.isConfigured && m.isConfigured()); }
+    function libGet(url) {
+        const pn = window.PortalNative;
+        const fn = pn && pn.libraryFile ? pn.libraryFile : null;
+        if (fn) return fn(url);
+        return fetch(url).then(function (r) {
+            return r.arrayBuffer().then(function (buf) {
+                let ct = '';
+                try { ct = r.headers.get('content-type') || ''; } catch (e) {}
+                return { status: r.status, contentType: ct, bytes: new Uint8Array(buf) };
+            });
+        });
+    }
+
+    // ---- cached platform data ----
+    let CATS = [];
+    const CATMAP = {};
+    let KIDS = {};
+    const CONTENT = {};      // category ids (ancestors) that contain descendant courses
+    const LEVEL_CATS = {};   // level id -> array of year-category records
+    const LEVEL_BRANCHES = {}; // level id -> [{key,name,cats,count}]
+    let CATS_LOADED = null;
+
+    function ensureCats() {
+        if (CATS_LOADED) return CATS_LOADED;
+        CATS_LOADED = new Promise(function (resolve, reject) {
+            if (!liveEnabled()) { reject(new Error('moodle-unconfigured')); return; }
+            const m = MoodleService();
+            const fetchCats = m.getCategories();
+            Promise.race([
+                fetchCats,
+                new Promise(function (_, rej) { setTimeout(function () { rej(new Error('moodle-timeout')); }, 30000); }),
+            ]).then(function (arr) {
+                if (!Array.isArray(arr) || !arr.length) throw new Error('moodle-empty');
+                CATS = arr.filter(function (c) { return String(c.visible !== undefined ? c.visible : 1) !== '0'; });
+                CATS.forEach(function (c) {
+                    CATMAP[c.id] = c;
+                    c._cc = Number(c.coursecount) || 0;
+                    (KIDS[c.parent] = KIDS[c.parent] || []).push(c);
+                });
+                // ancestors of any category that holds courses directly have content
+                CATS.forEach(function (c) {
+                    if (!c._cc) return;
+                    let p = c.parent, depth = 0;
+                    while (p != null && p !== 0 && CATMAP[p] && depth < 10) {
+                        if (CONTENT[p]) break;
+                        CONTENT[p] = true;
+                        p = CATMAP[p].parent;
+                        depth++;
+                    }
+                });
+                LEVELS.forEach(function (lv) {
+                    const yearCats = CATS.filter(function (c) {
+                        const n = normText(c.name);
+                        const h = YEAR_HEAD[lv.id];
+                        if (!h || !h.test(n)) return false;
+                        if (SEM_TAG_RE.test(n)) return false;
+                        return true;
+                    });
+                    yearCats.forEach(function (c) { c._branch = branchOf(normText(c.name)); });
+                    LEVEL_CATS[lv.id] = yearCats;
+                    const grp = {};
+                    yearCats.forEach(function (c) {
+                        const key = c._branch || 'لم يحدد';
+                        grp[key] = grp[key] || { key: key, name: prettyName(key), cats: [], count: 0 };
+                        grp[key].cats.push(c);
+                        grp[key].count += c._cc;
+                    });
+                    LEVEL_BRANCHES[lv.id] = Object.keys(grp).map(function (k) { return grp[k]; })
+                        .filter(function (g) { return g.cats.some(function (c) { return hasContent(c); }); })
+                        .sort(function (a, b) { return b.count - a.count; });
+                });
+                // best-effort: which courses this account can actually open
+                (function () {
+                    const m = MoodleService();
+                    const mc = m && m.getMyCourses ? m.getMyCourses() : null;
+                    if (mc && mc.then) {
+                        mc.then(function (list) {
+                            (list || []).forEach(function (c) { STATE.myCourses[c.id] = true; });
+                        }).catch(function () {});
+                    }
+                })();
+                resolve(CATS);
+            }).catch(reject);
+        });
+        return CATS_LOADED;
+    }
+    function hasContent(c) {
+        return !!c._cc || CONTENT[c.id] === true;
+    }
+
+    // ---- state ----
+    const STATE = {
+        levelId: 'L1',
+        branchKey: null,
+        branchYear: 'L1',
+        sem: 'S1',
+        subjects: null,    // { S1:[...], S2:[...] }
+        coursesAll: null,
+        subject: null,
+        files: [],
+        myCourses: {},     // course.id -> true when the account is enrolled
+        busy: false,
+        mode: 'moodle',    // 'moodle' | 'dspace'
+        dsRepo: 'ummto',
+        dsChip: '',
+        dsQ: '',
+        dsResults: [],
+        dsBusy: false,
+        dsInputTimer: null,
+    };
+
+    function setTitle(n, txt) { const el = $('lib-title-' + n); if (el) el.textContent = txt; }
+    function hideAllLibSteps() {
+        for (let i = 1; i <= 5; i++) {
+            const el = $('lib-step-' + i);
+            if (el) el.classList.remove('active');
+        }
+        const d = $('lib-step-dspace');
+        if (d) d.classList.remove('active');
+    }
+    function go(step) {
+        hideAllLibSteps();
+        const el = $('lib-step-' + step);
+        if (el) el.classList.add('active');
+    }
+    function goDspace() {
+        hideAllLibSteps();
+        const el = $('lib-step-dspace');
+        if (el) el.classList.add('active');
+    }
+    function skeletonHTML(kind, n) {
+        let out = '';
+        for (let i = 0; i < n; i++) out += `<div class="lib-skel ${kind}"></div>`;
+        return out;
+    }
+
+    // ---- OPEN UNIVERSITY REPOSITORIES (DSpace, registration-free) ----
+    // Biggest-benefit / least-harm replacement for the enrolment-gated Moodle:
+    // official institutional repositories serve teacher-authored lesson PDFs to
+    // anyone via their public REST API, with no account of any kind.
+    const DS_REPOS = [
+        { key: 'ummto', name: 'مستودع تيزي وزو (الأغنى)', base: 'https://dspace.ummto.dz', desc: 'اقتصاد / حقوق / إنسانيات / علوم' },
+        { key: 'ufc', name: 'مستودع التكوين المتواصل UFC', base: 'https://dspace.ufc.dz', desc: 'حقوق / إنسانيات / تسيير' },
+    ];
+    const DS_CHIPS = [
+        { label: 'اقتصاد', q: 'economie' },
+        { label: 'محاسبة', q: 'comptabilite' },
+        { label: 'قانون', q: 'droit' },
+        { label: 'تسيير', q: 'gestion' },
+        { label: 'الإعلام والاتصال', q: 'information communication' },
+        { label: 'علم الاجتماع', q: 'sociologie' },
+        { label: 'إعلام آلي', q: 'informatique' },
+        { label: 'رياضيات', q: 'mathematiques' },
+        { label: 'جذع مشترك', q: 'tronc commun LMD' },
+    ];
+    function currentDsRepo() {
+        return DS_REPOS.filter(function (r) { return r.key === STATE.dsRepo; })[0] || DS_REPOS[0];
+    }
+    function renderModeTabs() {
+        const t = $('lib-mode-tabs');
+        if (!t) return;
+        t.innerHTML = `<button type="button" class="lib-tab${STATE.mode === 'moodle' ? ' active' : ''}" onclick="LibraryView.setMode('moodle')"><i class="fas fa-graduation-cap"></i>مقررات جامعتي</button>
+            <button type="button" class="lib-tab${STATE.mode === 'dspace' ? ' active' : ''}" onclick="LibraryView.setMode('dspace')"><i class="fas fa-university"></i>المستودعات المفتوحة</button>`;
+    }
+    function setMode(mode) {
+        STATE.mode = mode;
+        renderModeTabs();
+        if (mode === 'dspace') {
+            goDspace();
+            renderDsPanel();
+            if (STATE.dsQ) dsRun(STATE.dsQ);
+        } else {
+            go(1);
+            setTitle(1, '');
+            renderStep1();
+        }
+    }
+    function renderDsPanel() {
+        const repoBox = $('ds-repos');
+        if (repoBox) {
+            repoBox.innerHTML = DS_REPOS.map(function (r) {
+                return `<button type="button" class="lib-chip${STATE.dsRepo === r.key ? ' active' : ''}" onclick="LibraryView.dsChooseRepo('${r.key}')">${escapeHtml(r.name)}</button>`;
+            }).join('');
+        }
+        const chipBox = $('ds-chips');
+        if (chipBox) {
+            chipBox.innerHTML = DS_CHIPS.map(function (c) {
+                return `<button type="button" class="lib-chip${STATE.dsChip === c.q ? ' active' : ''}" onclick="LibraryView.dsChip('${escapeHtml(c.q.replace(/'/g, ''))}')">${escapeHtml(c.label)}</button>`;
+            }).join('');
+        }
+        const inp = $('ds-input');
+        if (inp) {
+            inp.value = STATE.dsQ;
+            if (!inp.dataset.wired) {
+                inp.dataset.wired = '1';
+                inp.addEventListener('keyup', function () {
+                    if (inp.value.trim() !== STATE.dsQ) {
+                        if (STATE.dsInputTimer) clearTimeout(STATE.dsInputTimer);
+                        STATE.dsInputTimer = setTimeout(function () { dsRun(inp.value); }, 600);
+                    }
+                });
+                inp.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') { e.preventDefault(); dsRun(inp.value); }
+                });
+            }
+        }
+    }
+    function dsChooseRepo(key) {
+        STATE.dsRepo = key;
+        renderDsPanel();
+        if (STATE.dsQ) dsRun(STATE.dsQ);
+        else { const r = $('ds-results'); if (r) r.innerHTML = ''; }
+    }
+    function dsChip(q) {
+        STATE.dsChip = String(q || '');
+        renderDsPanel();
+        const inp = $('ds-input');
+        if (inp) inp.value = STATE.dsChip;
+        dsRun(STATE.dsChip);
+    }
+    async function dsJson(url) {
+        const pn = window.PortalNative;
+        if (pn && typeof pn.dspaceJson === 'function') return pn.dspaceJson(url);
+        const r = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    }
+    async function dsRun(q) {
+        q = String(q || '').trim();
+        STATE.dsQ = q;
+        const res = $('ds-results');
+        if (!res) return;
+        if (!q) { res.innerHTML = ''; return; }
+        if (STATE.dsBusy) return;
+        STATE.dsBusy = true;
+        const repo = currentDsRepo();
+        res.innerHTML = skeletonHTML('lib-skel-row', 4);
+        try {
+            const url = repo.base + '/server/api/discover/search/objects?query=' + encodeURIComponent(q) + '&size=20&page=0';
+            const json = await dsJson(url);
+            const objWrap = (json && json._embedded && json._embedded.searchResult && json._embedded.searchResult._embedded && json._embedded.searchResult._embedded.objects) || [];
+            const items = [];
+            objWrap.forEach(function (o) {
+                const it = o && o._embedded && o._embedded.indexableObject;
+                if (!it || !it.uuid) return;
+                const md = it.metadata || {};
+                const author = ((md['dc.contributor.author'] || [])[0] || {}).value || '';
+                const year = String(((md['dc.date.issued'] || [])[0] || {}).value || '').slice(0, 4);
+                const type = String(((md['dc.type'] || [])[0] || {}).value || '');
+                items.push({ uuid: it.uuid, name: it.name, author: author, year: year, type: type });
+            });
+            STATE.dsResults = items;
+            renderDsResults(repo, items, res);
+        } catch (e) {
+            res.innerHTML = `<div class="lib-empty"><i class="fas fa-triangle-exclamation"></i><p>تعذر الوصول إلى المستودع</p><small>${escapeHtml(String((e && e.message) || 'خطأ غير معروف'))} — تحقق من اتصال الإنترنت</small></div>
+                <div class="lib-denied-cta"><button class="lib-btn view pressable" onclick="LibraryView.dsChooseRepo('${repo.key}')"><i class="fas fa-rotate-right"></i>إعادة المحاولة</button></div>`;
+        }
+        STATE.dsBusy = false;
+    }
+    function dsEmptyHint() {
+        return `<div class="lib-empty"><i class="fas fa-folder-open"></i><p>لا نتائج مطابقة</p><small>المستودعات مفهرسة بالفرنسية — جرّب كلمة أخرى (economie، droit، sociologie...) أو اختر تخصصاً من الأعلى</small></div>`;
+    }
+    function renderDsResults(repo, items, res) {
+        if (!items.length) { res.innerHTML = dsEmptyHint(); return; }
+        const head = `<div class="ds-note"><i class="fas fa-info-circle"></i>${items.length} وثيقة من ${escapeHtml(repo.name)} — الملفات رسمية (مطبوعات الأساتذة) وتُحمَّل مباشرة بدون تسجيل</div>`;
+        res.innerHTML = head + items.map(function (d, i) {
+            return `<div class="ds-result">
+                <span class="ds-ico"><i class="fas fa-file-pdf"></i></span>
+                <span class="ds-body">
+                    <span class="ds-name">${escapeHtml(d.name)}</span>
+                    <span class="ds-meta">${escapeHtml(d.author || 'أستاذ(ة) معروف')}${d.year ? ' · ' + escapeHtml(d.year) : ''}${d.type ? ' · ' + escapeHtml(d.type) : ''}</span>
+                </span>
+                <span class="lf-actions">
+                    <button class="lib-btn view pressable" onclick="LibraryView.dsView(${i})"><i class="fas fa-eye"></i>عرض</button>
+                    <button class="lib-btn dl pressable" onclick="LibraryView.dsDownload(${i})"><i class="fas fa-download"></i>تنزيل</button>
+                </span>
+            </div>`;
+        }).join('');
+    }
+    async function resolveDsBitstream(repo, itemUuid) {
+        const bundles = await dsJson(repo.base + '/server/api/core/items/' + itemUuid + '/bundles');
+        const bundle = ((bundles._embedded || {}).bundles || []).filter(function (b) { return b.name === 'ORIGINAL'; })[0];
+        if (!bundle) return null;
+        const bts = await dsJson(repo.base + '/server/api/core/bundles/' + bundle.uuid + '/bitstreams?size=50');
+        const list = ((bts._embedded || {}).bitstreams || []);
+        const pdf = list.filter(function (b) { return /\.pdf$/i.test(b.name || ''); })[0] || list[0];
+        if (!pdf) return null;
+        return {
+            url: repo.base + '/server/api/core/bitstreams/' + pdf.uuid + '/content',
+            name: pdf.name || 'document.pdf',
+            size: Number(pdf.sizeBytes) || 0,
+        };
+    }
+    function bytesToB64Local(bytes) {
+        const CH = 0x8000;
+        let s = '';
+        for (let i = 0; i < bytes.length; i += CH) s += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+        return window.btoa(s);
+    }
+    async function dsOpen(i, mode) {
+        const d = (STATE.dsResults || [])[i];
+        if (!d) return;
+        showToast(mode === 'view' ? 'جاري تجهيز الملف للعرض...' : 'جاري التنزيل...', 'info');
+        const repo = currentDsRepo();
+        let bs;
+        try { bs = await resolveDsBitstream(repo, d.uuid); } catch (e) { bs = null; }
+        if (!bs) { showToast('تعذر العثور على ملف مرفق في هذه الوثيقة', 'error'); return; }
+        const pn = window.PortalNative;
+        try {
+            let b64 = null;
+            if (pn && typeof pn.dspaceBytes === 'function') {
+                const r = await pn.dspaceBytes(bs.url);
+                b64 = r.base64;
+            } else {
+                const fb = await fetch(bs.url);
+                if (!fb.ok) throw new Error('HTTP ' + fb.status);
+                b64 = bytesToB64Local(new Uint8Array(await fb.arrayBuffer()));
+            }
+            const mime = mimeOf(bs.name, 'application/pdf');
+            const clean = cleanName(bs.name);
+            if (mode === 'view' && pn && typeof pn.viewLibraryFile === 'function') {
+                await pn.viewLibraryFile({ name: clean, mime: mime, base64: b64 });
+                showToast('تم فتح الملف بعارض النظام', 'success');
+            } else if (mode === 'download' && pn && typeof pn.saveLibraryFile === 'function') {
+                await pn.saveLibraryFile({ name: clean, mime: mime, base64: b64 });
+                showToast('حُفظ الملف في مجلد التنزيلات', 'success');
+            } else {
+                showToast(mode === 'view' ? 'العرض غير متاح هنا - جرّب زر التنزيل' : 'الحفظ غير متاح هنا', 'error');
+            }
+        } catch (e) {
+            showToast(mode === 'view' ? 'تعذر فتح الملف' : 'تعذر التنزيل, حاول مجدداً', 'error');
+        }
+    }
+    function dsView(i) { dsOpen(i, 'view'); }
+    function dsDownload(i) { dsOpen(i, 'download'); }
+
+    function isLibraryActive() {
+        const s = document.getElementById('section-library');
+        return !!(s && s.classList.contains('active'));
+    }
+    function exitApp() {
+        const cap = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+        if (cap && cap.exitApp) {
+            const r = cap.exitApp();
+            if (r && r.catch) r.catch(function () {});
+        }
+    }
+
+    // ---- public navigation ----
+    function open() {
+        STATE.levelId = 'L1';
+        STATE.branchKey = null;
+        STATE.branchYear = 'L1';
+        STATE.sem = 'S1';
+        STATE.subject = null;
+        STATE.files = [];
+        renderModeTabs();
+        go(1);
+    }
+
+    async function selectLevel(i) {
+        const lv = LEVELS[i];
+        if (!lv) return;
+        STATE.levelId = lv.id;
+        STATE.branchKey = null;
+        STATE.branchYear = lv.id;
+        go(2);
+        setTitle(2, 'شعب ' + lv.name);
+        await renderStep2();
+    }
+
+    async function selectBranch(i) {
+        const arr = LEVEL_BRANCHES[STATE.levelId] || [];
+        const b = arr[i];
+        if (!b) return;
+        STATE.branchKey = b.key;
+        STATE.branchYear = STATE.levelId;
+        STATE.sem = 'S1';
+        STATE.subject = null;
+        go(3);
+        setTitle(3, b.name);
+        await renderStep3();
+    }
+
+    async function selectBranchYear(id) {
+        const lv = LEVELS.filter(function (l) { return l.id === id; })[0];
+        if (!lv) return;
+        STATE.branchYear = lv.id;
+        STATE.sem = 'S1';
+        STATE.subject = null;
+        go(4);
+        setTitle(4, (STATE.branchKey ? prettyName(STATE.branchKey) : '') + ' — ' + lv.name);
+        await renderStep4();
+    }
+
+    async function setSem(s) {
+        STATE.sem = s;
+        go(4);
+        setTitle(4, (STATE.branchKey ? prettyName(STATE.branchKey) : '') + ' — ' + YNAME(STATE.branchYear) + ' — ' + SEM_NAMES[s]);
+        renderSubjectsFromCache();
+    }
+
+    async function openSubject(i) {
+        const co = ((STATE.coursesAll || {})[STATE.sem] || [])[i];
+        if (!co) return;
+        await openSubjectCo(co);
+    }
+
+    async function openSubjectCo(co) {
+        if (!co) return;
+        STATE.subject = co;
+        go(5);
+        setTitle(5, co.fullname || co.displayname || co.shortname || 'مادة');
+        await renderStep5(co);
+    }
+
+    function findSubjectById(id) {
+        const n = Number(id);
+        const all = STATE.coursesAll || {};
+        for (const s of Object.keys(all)) {
+            const arr = all[s] || [];
+            for (let i = 0; i < arr.length; i++) {
+                if (Number(arr[i].id) === n) return arr[i];
+            }
+        }
+        return null;
+    }
+
+    async function openSubjectById(id) {
+        await openSubjectCo(findSubjectById(id));
+    }
+
+    function enrolCourse(courseid) {
+        const url = 'https://elearning.univ-guelma.dz/course/view.php?id=' + Number(courseid);
+        const pn = window.PortalNative;
+        if (pn && pn.openInBrowser) {
+            pn.openInBrowser(url).catch(function () {
+                if (window.open) window.open(url, '_blank');
+            });
+        } else if (window.open) {
+            window.open(url, '_blank');
+        }
+        showToast('افتح الصفحة، سجّل ذاتياً بنقرة، ثم عد واضغط "إعادة المحاولة"', 'info');
+    }
+
+    // ---- rendering ----
+    async function renderStep1() {
+        const box = $('lib-specialties');
+        if (!box) return;
+        box.innerHTML = skeletonHTML('lib-skel-card', 5);
+        try {
+            await ensureCats();
+            await timer(350);
+            box.innerHTML = LEVELS.map(function (lv, i) {
+                const n = (LEVEL_BRANCHES[lv.id] || []).length;
+                return `<button class="lib-select pressable" onclick="LibraryView.selectLevel(${i})">
+                    <span class="ls-ico"><i class="fas ${lv.icon}"></i></span>
+                    <span class="ls-name">${lv.name}</span>
+                    <span class="ls-count">${n ? n + ' شعبة' : ''}</span>
+                </button>`;
+            }).join('');
+        } catch (e) {
+            box.innerHTML = `<div class="lib-empty"><i class="fas fa-plug-circle-xmark"></i><p>تعذر الاتصال بمنصة التعلم الإلكتروني</p><small>تأكد من اتصالك بالإنترنت وحاول مجدداً</small></div>`;
+        }
+    }
+
+    async function renderStep2() {
+        const box = $('lib-years');
+        if (!box) return;
+        box.className = 'lib-list';
+        box.innerHTML = skeletonHTML('lib-skel-row', 6);
+        try {
+            await ensureCats();
+            const arr = LEVEL_BRANCHES[STATE.levelId] || [];
+            await timer(300);
+            if (!arr.length) {
+                box.innerHTML = `<div class="lib-empty"><i class="fas fa-folder-open"></i><p>لا توجد شعب مسجلة لهذا المستوى</p><small>لا توجد محتويات لهذه السنة على المنصة حالياً</small></div>`;
+                return;
+            }
+            box.innerHTML = arr.map(function (b, i) {
+                return `<button class="lib-row pressable" onclick="LibraryView.selectBranch(${i})">
+                    <span class="lr-ico"><i class="fas fa-graduation-cap"></i></span>
+                    <span class="lr-body">
+                        <span class="lr-name">${escapeHtml(b.name)}</span>
+                        <span class="lr-meta"><span class="lr-badge">شعبة</span>${b.name ? '' : ''}</span>
+                    </span>
+                    <i class="fas fa-chevron-left lr-chev"></i>
+                </button>`;
+            }).join('');
+        } catch (e) {
+            box.innerHTML = `<div class="lib-empty"><i class="fas fa-plug-circle-xmark"></i><p>تعذر الاتصال بالمنصة</p><small>تأكد من اتصالك ثم أعد المحاولة</small></div>`;
+        }
+    }
+
+    async function renderStep3() {
+        const box = $('lib-semesters');
+        if (!box) return;
+        box.className = 'lib-chips';
+        box.innerHTML = skeletonHTML('lib-skel-chip', 3);
+        try {
+            await ensureCats();
+            const key = STATE.branchKey;
+            const avail = LEVELS.filter(function (lv) {
+                const cats = (LEVEL_CATS[lv.id] || []).filter(function (c) { return c._branch === key; });
+                return cats.some(function (c) { return hasContent(c); });
+            });
+            await timer(250);
+            const arr = avail.map(function (lv) {
+                const n = (LEVEL_CATS[lv.id] || []).filter(function (c) {
+                    return c._branch === key && hasContent(c);
+                }).reduce(function (acc, c) { return acc + c._cc; }, 0);
+                return { lv: lv, n: n };
+            });
+            box.innerHTML = arr.map(function (e) {
+                return `<button class="lib-chip pressable" onclick="LibraryView.selectBranchYear('${e.lv.id}')">
+                    <i class="fas ${e.lv.icon}"></i>
+                    <span>${e.lv.name}</span>
+                    <span class="lc-side">${e.n ? e.n + ' مقرر' : 'متوفر'}</span>
+                </button>`;
+            }).join('');
+        } catch (e) {
+            box.innerHTML = `<div class="lib-empty"><i class="fas fa-plug-circle-xmark"></i><p>تعذر الاتصال بالمنصة</p></div>`;
+        }
+    }
+
+    async function renderStep4() {
+        const box = $('lib-subjects');
+        if (!box) return;
+        box.innerHTML = skeletonHTML('lib-skel-row', 5);
+        try {
+            await ensureCats();
+            const key = STATE.branchKey;
+            const lvId = STATE.branchYear;
+            const semNums = [1, 2];
+            const cfg = LEVELS.filter(function (l) { return l.id === lvId; })[0];
+            if (cfg) semNums[0] = cfg.sems[0];
+            if (cfg) semNums[1] = cfg.sems[1];
+
+            const yearCats = (LEVEL_CATS[lvId] || []).filter(function (c) { return c._branch === key && hasContent(c); });
+
+            // sources per semester
+            const sources = { S1: [], S2: [] };
+            yearCats.forEach(function (c) {
+                const kids = (KIDS[c.id] || []).filter(function (k) { return SEM_TAG_RE.test(normText(k.name)); });
+                [['S1', semNums[0]], ['S2', semNums[1]]].forEach(function (pair) {
+                    const s = pair[0], num = pair[1];
+                    const match = kids.filter(function (k) { return semKidMatch(k.name, num); }).map(function (k) { return k.id; });
+                    if (match.length) {
+                        sources[s] = sources[s].concat(match);
+                        if (c._cc > 0) sources[s].push(c.id);
+                    } else {
+                        sources[s].push(c.id);
+                    }
+                });
+            });
+
+            const m = MoodleService();
+            const out = { S1: [], S2: [] };
+            for (const s of Object.keys(sources)) {
+                const ids = sources[s].filter(function (v, i, a) { return a.indexOf(v) === i; });
+                const fetchAll = Promise.all(ids.map(function (id) { return m.getCoursesByField('category', id); }));
+                const rss = await Promise.race([fetchAll, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 25000); })]);
+                const seen = {};
+                rss.forEach(function (r) {
+                    coursesOf(r).forEach(function (co) {
+                        if (String(co.visible !== undefined ? co.visible : 1) === '0') return;
+                        const k = String(co.id || co.fullname);
+                        if (seen[k]) return;
+                        seen[k] = true;
+                        out[s].push(co);
+                    });
+                });
+            }
+            STATE.coursesAll = out;
+            await timer(300);
+            renderSubjectsFromCache();
+        } catch (e) {
+            box.innerHTML = `<div class="lib-empty"><i class="fas fa-plug-circle-xmark"></i><p>تعذر تحميل المواد</p><small>تحقق من الاتصال وأعد المحاولة</small></div>`;
+        }
+    }
+
+    function renderSubjectsFromCache() {
+        const box = $('lib-subjects');
+        if (!box) return;
+        const list = ((STATE.coursesAll || {})[STATE.sem] || []);
+        const tabs = ['S1', 'S2'].map(function (s) {
+            const cnt = ((STATE.coursesAll || {})[s] || []).length;
+            return `<button class="lib-chip pressable${STATE.sem === s ? ' active' : ''}" onclick="LibraryView.setSem('${s}')">
+                <i class="fas ${s === 'S1' ? 'fa-snowflake' : 'fa-sun'}"></i>
+                <span>${SEM_NAMES[s]}</span>
+                <span class="lc-side">${cnt || ''}</span>
+            </button>`;
+        }).join('');
+        if (!list.length) {
+            box.innerHTML = `<div class="lib-tabs">${tabs}</div>
+                <div class="lib-empty"><i class="fas fa-folder-open"></i><p>لا توجد مواد مسجلة لهذه السنة والسداسي</p><small>قد تكون المادة موجودة في سداسي آخر — بدّل من الأعلى</small></div>`;
+            return;
+        }
+        box.innerHTML = `<div class="lib-tabs">${tabs}</div>` + list.map(function (co, i) {
+            const mine = STATE.myCourses[Number(co.id)] === true;
+            return `<button class="lib-row pressable" onclick="LibraryView.openSubject(${i})">
+                <span class="lr-ico"><i class="fas fa-book"></i></span>
+                <span class="lr-body">
+                    <span class="lr-name">${escapeHtml(co.fullname || co.displayname || co.shortname || 'مادة')}${mine ? ' <i class="fas fa-circle-check lr-ok" title="مسجّل بها"></i>' : ''}</span>
+                    <span class="lr-meta"><span class="lr-badge">${escapeHtml(co.shortname || 'مقرر')}</span>${mine ? '<span class="lr-badge lr-badge-mine">متاح لي</span>' : ''}</span>
+                </span>
+                <i class="fas fa-chevron-left lr-chev"></i>
+            </button>`;
+        }).join('');
+    }
+
+    async function renderStep5(co) {
+        const box = $('lib-resources');
+        if (!box) return;
+        box.innerHTML = skeletonHTML('lib-skel-row', 3);
+        let files = [];
+        let denied = false;
+        let mlib = null;
+        try {
+            if (liveEnabled()) {
+                mlib = MoodleService();
+                let sections = [];
+                try {
+                    const fetched = mlib.getCourseContents(co.id);
+                    sections = await Promise.race([fetched, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 25000); })]);
+                    if (sections && !Array.isArray(sections) && (sections.errorcode || sections.exception)) {
+                        const msg = String((sections.errorcode || sections.message || sections.exception) || '');
+                        if (/errorcoursecontextnotvalid|access|disponible|notvalid/i.test(msg)) {
+                            denied = true;
+                        }
+                    }
+                } catch (e2) {
+                    const msg = String((e2 && e2.message) || e2 || '');
+                    if (/errorcoursecontextnotvalid|access|disponible|notvalid/i.test(msg)) {
+                        denied = true;
+                    }
+                }
+                if (Array.isArray(sections) && !denied) {
+                    sections.forEach(function (sec) {
+                        (sec.modules || []).forEach(function (mod) {
+                            (mod.contents || []).forEach(function (f) {
+                                if (f && (f.type === 'file' || f.fileurl)) {
+                                    files.push({
+                                        name: String(f.filename || f.filepath || mod.name || 'ملف'),
+                                        url: String(f.fileurl || ''),
+                                        size: f.filesize ? libSize(f.filesize) : '',
+                                        mime: String(f.mimetype || ''),
+                                    });
+                                }
+                            });
+                        });
+                    });
+                    const seen = {};
+                    files = files.filter(function (f) { const k = f.url || f.name; if (seen[k]) return false; seen[k] = true; return true; });
+                }
+            }
+        } catch (e) { files = []; }
+        await timer(300);
+        if (!files.length) {
+            const mine = STATE.myCourses[Number(co.id)] === true;
+            let p, sm, cta = '';
+            if (denied && !mine) {
+                let openEnrol = false;
+                let hasSelf = false;
+                try {
+                    if (mlib) {
+                        const meths = await Promise.race([mlib.getCourseEnrolMethods(co.id), new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 15000); })]);
+                        if (Array.isArray(meths)) {
+                            meths.forEach(function (em) {
+                                if (!em || !em.status) return;
+                                if (em.type === 'self') hasSelf = true;
+                                if (em.type === 'self' || em.type === 'guest') openEnrol = true;
+                            });
+                        }
+                    }
+                } catch (e3) { /* leave flags false */ }
+                if (mlib && mlib.invalidateEnrolment) mlib.invalidateEnrolment();
+                if (openEnrol) {
+                    p = 'هذه المادة تتطلب تسجيلاً سريعاً';
+                    if (hasSelf) {
+                        sm = 'المنصة تتيح التسجيل الذاتي (Auto-Inscription) لهذه المادة — افتحها على المنصة، سجّل بنقرة واحدة، ثم اضغط "إعادة المحاولة" لتظهر ملفاتها هنا';
+                    } else {
+                        sm = 'المنصة تتيح الدخول كضيف لهذه المادة — افتحها على المنصة ثم اضغط "إعادة المحاولة"';
+                    }
+                    STATE.deniedCourse = co;
+                    cta = `<div class="lib-denied-cta">
+                        <button class="lib-btn view pressable" onclick="LibraryView.enrolCourse(${co.id})"><i class="fas fa-globe"></i>فتح صفحة المادة على المنصة</button>
+                        <button class="lib-btn dl pressable" onclick="LibraryView.openSubjectById(${co.id})"><i class="fas fa-sync-alt"></i>إعادة المحاولة</button>
+                    </div>`;
+                } else {
+                    p = 'هذه المادة غير متاحة لحسابك';
+                    sm = 'التسجيل الذاتي غير مفتوح لها على المنصة — يمكنك فتحها بالمتصفح إن أردت';
+                    STATE.deniedCourse = co;
+                    cta = `<div class="lib-denied-cta">
+                        <button class="lib-btn view pressable" onclick="LibraryView.enrolCourse(${co.id})"><i class="fas fa-globe"></i>فتح صفحة المادة على المنصة</button>
+                        <button class="lib-btn dl pressable" onclick="LibraryView.openSubjectById(${co.id})"><i class="fas fa-sync-alt"></i>إعادة المحاولة</button>
+                    </div>`;
+                }
+            } else if (denied && mine) {
+                p = 'تعذر جلب الملفات حالياً';
+                sm = 'يبدو أن خدمة الملفات غير متاحة الآن — حاول مجدداً';
+            } else {
+                p = 'لا توجد ملفات في هذه المادة';
+                sm = 'لم تُرفع ملفات بعد في هذه المادة على المنصة';
+            }
+            box.innerHTML = `<div class="lib-empty"><i class="fas fa-folder-open"></i><p>${p}</p><small>${sm}</small></div>${cta}`;
+            return;
+        }
+        STATE.files = files;
+        box.innerHTML = files.map(function (f, i) {
+            const isPdf = /pdf/i.test(f.mime) || /\.pdf$/i.test(f.name) || !f.mime;
+            return `<div class="lib-file">
+                <span class="lf-ico"><i class="fas ${isPdf ? 'fa-file-pdf' : 'fa-file'}"></i></span>
+                <span class="lf-body">
+                    <span class="lf-name">${escapeHtml(f.name)}</span>
+                    <span class="lf-meta">${escapeHtml(f.size || 'ملف')}</span>
+                </span>
+                <span class="lf-actions">
+                    <button class="lib-btn view pressable" onclick="LibraryView.viewFile(${i})"><i class="fas fa-eye"></i>عرض</button>
+                    <button class="lib-btn dl pressable" onclick="LibraryView.downloadFile(${i})"><i class="fas fa-download"></i>تنزيل</button>
+                </span>
+            </div>`;
+        }).join('');
+    }
+
+    // ---- file open / download (- real files from the platform) ----
+    async function viewFile(i) {
+        const f = (STATE.files || [])[i];
+        if (!f) return;
+        try {
+            showToast('جاري فتح الملف...', 'info');
+            const res = await libGet(f.url);
+            if (!res || !res.status || res.status !== 200) throw new Error('HTTP ' + (res && res.status));
+            const pn = window.PortalNative;
+            const mime = mimeOf(f.name, f.mime);
+            if (pn && pn.viewLibraryFile && (res.base64 || res.bytes)) {
+                await pn.viewLibraryFile(cleanName(f.name), mime, res.base64 || arrayBufB64(res));
+                showToast('تم فتح الملف', 'success');
+                return;
+            }
+            // web fallback preview
+            const bytes = res.bytes || b64ToU8(res.base64);
+            const blob = new Blob([bytes], { type: mime });
+            useWebViewer(f.name, blob);
+        } catch (e) {
+            showToast('تعذر فتح الملف', 'error');
+        }
+    }
+    function arrayBufB64(res) {
+        if (!res.bytes || !res.bytes.length) return '';
+        const bytes = res.bytes;
+        let bin = '';
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        }
+        return window.btoa(bin);
+    }
+
+    async function downloadFile(i) {
+        const f = (STATE.files || [])[i];
+        if (!f) return;
+        try {
+            showToast('جاري تحميل الملف...', 'info');
+            const res = await libGet(f.url);
+            if (!res || !res.status || res.status !== 200) throw new Error('HTTP ' + (res && res.status));
+            const pn = window.PortalNative;
+            const mime = mimeOf(f.name, f.mime);
+            if (pn && pn.saveLibraryFile && (res.base64 || res.bytes)) {
+                const r = await pn.saveLibraryFile(cleanName(f.name), mime, res.base64 || arrayBufB64(res));
+                showToast('تم التنزيل: ' + (r && r.path ? r.path : 'Downloads'), 'success');
+                return;
+            }
+            const bytes = res.bytes || b64ToU8(res.base64);
+            const objUrl = URL.createObjectURL(new Blob([bytes], { type: mime }));
+            const a = document.createElement('a');
+            a.href = objUrl;
+            a.download = cleanName(f.name);
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(function () { try { URL.revokeObjectURL(objUrl); } catch (e) {} }, 30000);
+            showToast('تم تحميل الملف', 'success');
+        } catch (e) {
+            showToast('تعذر تحميل الملف', 'error');
+        }
+    }
+
+    function useWebViewer(name, blob) {
+        const objUrl = URL.createObjectURL(blob);
+        const modal = $('pdf-viewer-modal');
+        if (!modal) return;
+        $('pdf-viewer-title').textContent = name;
+        $('pdf-page-info').textContent = '';
+        const dl = $('pdf-download-link');
+        if (dl) { dl.href = objUrl; dl.download = name; dl.style.display = ''; }
+        const body = document.querySelector('.pdf-viewer-body');
+        const ifr = document.createElement('iframe');
+        ifr.src = objUrl;
+        ifr.title = 'library-viewer';
+        ifr.style.cssText = 'width:100%;height:100%;border:none;background:#fff;border-radius:10px;';
+        body.innerHTML = '';
+        body.appendChild(ifr);
+        document.querySelectorAll('.pdf-viewer-actions .btn-icon:not(.btn-close-pdf)').forEach(function (b) { b.style.display = 'none'; });
+        if (dl) dl.style.display = '';
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // ---- back navigation: one step at a time ----
+    function back() {
+        if (!isLibraryActive()) { exitApp(); return; }
+        const dspace = $('lib-step-dspace');
+        if (dspace && dspace.classList.contains('active')) {
+            setMode('moodle');
+            return;
+        }
+        if (STATE.subject && $('lib-step-5') && $('lib-step-5').classList.contains('active')) {
+            STATE.subject = null;
+            go(4);
+            return;
+        }
+        const active = [1, 2, 3, 4, 5].filter(function (i) { const el = $('lib-step-' + i); return el && el.classList.contains('active'); })[0] || 1;
+        if (active > 1) {
+            const prev = active - 1;
+            go(prev);
+            if (prev === 4) { setTitle(4, (STATE.branchKey ? prettyName(STATE.branchKey) : '') + ' — ' + YNAME(STATE.branchYear)); renderSubjectsFromCache(); }
+            if (prev === 3) { setTitle(3, STATE.branchKey ? prettyName(STATE.branchKey) : ''); renderStep3(); }
+            if (prev === 2) { setTitle(2, 'شعب ' + YNAME(STATE.levelId)); renderStep2(); }
+            if (prev === 1) { open(); renderStep1(); }
+            return;
+        }
+        // at the very first library step -> leave the library
+        if (typeof switchSection === 'function') switchSection('home');
+        else { go(1); }
+    }
+
+    function registerBack() {
+        const cap = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+        if (cap && cap.addListener) {
+            cap.addListener('backButton', function () {
+                if (isLibraryActive()) { back(); }
+                else { exitApp(); }
+            }).catch(function () {});
+        } else {
+            window.addEventListener('popstate', function () {
+                if (isLibraryActive()) back();
+            });
+        }
+    }
+
+    function init() {
+        registerBack();
+        open();
+        renderStep1();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { init(); });
+    } else {
+        init();
+    }
+
+    return {
+        init: init,
+        open: open,
+        back: back,
+        selectLevel: selectLevel,
+        selectBranch: selectBranch,
+        selectBranchYear: selectBranchYear,
+        setSem: setSem,
+        openSubject: openSubject,
+        openSubjectById: openSubjectById,
+        enrolCourse: enrolCourse,
+        viewFile: viewFile,
+        downloadFile: downloadFile,
+        setMode: setMode,
+        dsChooseRepo: dsChooseRepo,
+        dsChip: dsChip,
+        dsView: dsView,
+        dsDownload: dsDownload,
+    };
+})();

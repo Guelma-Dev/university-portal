@@ -1,0 +1,209 @@
+/* ============================================================
+   NATIVE.CSS — Capacitor shell polish
+   Edge-to-edge full screen · safe-area insets · light & fast
+   Loaded last. Only applies when body.native-app (Capacitor).
+   ============================================================ */
+
+body.native-app {
+    background: var(--bg);
+}
+
+/* Landing must bleed to the very top edge (no black strip under status bar) */
+body.native-app .landing-page {
+    padding-top: 0;
+    border-top: 0;
+}
+
+/* Status-bar-aware offsets — hybrid env() + Capacitor-injected vars */
+:root {
+    --sat: max(env(safe-area-inset-top), var(--safe-area-inset-top, 0px));
+    --sab: max(env(safe-area-inset-bottom), var(--safe-area-inset-bottom, 0px));
+}
+
+body.native-app .app-bar {
+    padding-top: var(--sat);
+}
+
+body.native-app .lc-theme {
+    top: calc(var(--sat) + 12px);
+}
+
+body.native-app .app-menu {
+    top: calc(var(--sat) + 60px);
+}
+
+body.native-app .offline-banner {
+    top: calc(var(--sat) + 64px);
+}
+
+body.native-app .mobile-sheet-card {
+    padding-bottom: calc(28px + var(--sab));
+}
+
+body.native-app .modal-overlay {
+    padding-top: calc(20px + var(--sat));
+    padding-bottom: calc(20px + var(--sab));
+}
+
+/* Scrolling fluidity */
+body.native-app .main-content {
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Buttons with instant press feedback on touch */
+body.native-app button,
+body.native-app [role='button'],
+body.native-app .pressable,
+body.native-app input,
+body.native-app select {
+    touch-action: manipulation;
+}
+
+/* Smooth section transitions (like a native app, not a page jump) */
+body.native-app .section.active {
+    animation: secIn 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes secIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+body.native-app .section.active .tile {
+    animation: tileIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+body.native-app .section.active .tile:nth-child(2) { animation-delay: 0.03s; }
+body.native-app .section.active .tile:nth-child(3) { animation-delay: 0.06s; }
+body.native-app .section.active .tile:nth-child(4) { animation-delay: 0.09s; }
+body.native-app .section.active .tile:nth-child(5) { animation-delay: 0.12s; }
+body.native-app .section.active .tile:nth-child(6) { animation-delay: 0.15s; }
+body.native-app .section.active .tile:nth-child(7) { animation-delay: 0.18s; }
+body.native-app .section.active .tile:nth-child(8) { animation-delay: 0.21s; }
+@keyframes tileIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.native-app .section.active,
+    body.native-app .section.active .tile {
+        animation: none;
+    }
+}
+
+/* ============================================================
+   PHASE 3 — PREMIUM GLASS FIXED SURFACES (Liquid Glass)
+   App bar + bottom nav: translucent + backdrop blur, compositor-only.
+   Fallback = opaque (ignored property) when blur unsupported.
+   ============================================================ */
+body.native-app .app-bar {
+    background: rgba(13, 13, 17, 0.84);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.14);
+    will-change: transform;
+}
+html[data-theme="light"] body.native-app .app-bar {
+    background: rgba(250, 250, 248, 0.86);
+    border-bottom: 1px solid rgba(161, 98, 7, 0.16);
+}
+
+body.native-app .bottom-nav .bn-inner {
+    background: rgba(13, 13, 17, 0.88);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    backdrop-filter: blur(16px) saturate(150%);
+    border-top: 1px solid rgba(212, 175, 55, 0.10);
+}
+html[data-theme="light"] body.native-app .bottom-nav .bn-inner {
+    background: rgba(250, 250, 248, 0.90);
+    border-top: 1px solid rgba(161, 98, 7, 0.12);
+}
+
+/* Compositor hint for every frequently-animated surface (transform/opacity only) */
+body.native-app .app-menu,
+body.native-app .modal-overlay,
+body.native-app .modal-card,
+body.native-app .mobile-sheet-card,
+body.native-app .search-overlay,
+body.native-app .offline-banner,
+body.native-app .lhero,
+body.native-app .lhero-orbs,
+body.native-app .lx-m-slider {
+    will-change: transform, opacity;
+}
+
+/* ============================================================
+   PHASE 3 — IMMEDIATE TOUCH FEEDBACK (ripple-free, transform-only)
+   Press = instant squash (120ms), release slides back on the element's
+   own transition. Never animates layout geometry.
+   ============================================================ */
+body.native-app button:active,
+body.native-app [role='button']:active,
+body.native-app .pressable:active,
+body.native-app .tile:active,
+body.native-app .bn-btn:active,
+body.native-app .mobile-sheet-btn:active,
+body.native-app .lx-m-tab:active,
+body.native-app .lx-m-depot:active,
+body.native-app .lx-m-meal:active,
+body.native-app .lx-m-day:active,
+body.native-app .subject-card:active,
+body.native-app .list-card:active,
+body.native-app .sec-card:active {
+    transform: scale(0.97);
+    transition-duration: 120ms;
+}
+
+/* Keyboard-visible focus (accessibility): never hide focus rings */
+body.native-app button:focus-visible,
+body.native-app .tile:focus-visible,
+body.native-app .subject-card:focus-visible {
+    outline: 2px solid var(--lx-gold, #d4af37);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.native-app button:active,
+    body.native-app [role='button']:active,
+    body.native-app .pressable:active,
+    body.native-app .tile:active,
+    body.native-app .bn-btn:active,
+    body.native-app .mobile-sheet-btn:active,
+    body.native-app .lx-m-tab:active,
+    body.native-app .lx-m-depot:active,
+    body.native-app .lx-m-meal:active,
+    body.native-app .lx-m-day:active,
+    body.native-app .subject-card:active,
+    body.native-app .list-card:active,
+    body.native-app .sec-card:active {
+        transform: none;
+        transition-duration: 0ms;
+    }
+}
+@media (max-width: 640px) {
+    body.native-app .app-bar,
+    body.native-app .bottom-nav .bn-inner,
+    body.native-app .mobile-sheet-card,
+    body.native-app .app-menu,
+    body.native-app .lhero,
+    body.native-app .search-overlay {
+        -webkit-backdrop-filter: blur(14px) saturate(150%);
+        backdrop-filter: blur(14px) saturate(150%);
+    }
+    body.native-app section.section > *,
+    body.native-app .modal-card,
+    body.native-app .sheet-card,
+    body.native-app .subject-card,
+    body.native-app .list-card,
+    body.native-app .sec-card,
+    body.native-app .grade-card,
+    body.native-app .exam-card,
+    body.native-app .library-card,
+    body.native-app .recours-card,
+    body.native-app .lx-m-glass,
+    body.native-app .tile {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+    body.native-app .home-hero::before,
+    body.native-app .home-hero::after { animation-play-state: paused; }
+}

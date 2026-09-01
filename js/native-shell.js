@@ -26,9 +26,21 @@
             var sb = C && C.Plugins && C.Plugins.StatusBar;
             if (!sb || !sb.setOverlaysWebView || !sb.setBackgroundColor) return;
             sb.setOverlaysWebView({ overlay: true }).catch(function () {});
-            sb.setBackgroundColor({ color: '#0a0a0a' }).catch(function () {});
-            if (sb.setStyle) sb.setStyle({ style: 'LIGHT' }).catch(function () {});
+            var dark = themeIsDark();
+            sb.setBackgroundColor({ color: dark ? '#0a0a0a' : '#F6F2E9' }).catch(function () {});
+            if (sb.setStyle) sb.setStyle({ style: dark ? 'LIGHT' : 'DARK' }).catch(function () {});
         }
+
+        function themeIsDark() {
+            var th = '';
+            try { th = String(document.documentElement.getAttribute('data-theme') || ''); } catch (e) {}
+            if (!th) {
+                try { th = String(window.localStorage.getItem('theme') || ''); } catch (e) {}
+            }
+            return th !== 'light';
+        }
+
+        window.PortalNative.setStatusBarTheme = statusBar;
 
         if (C && C.Plugins && C.Plugins.StatusBar) {
             statusBar();
@@ -38,9 +50,21 @@
 
         var splash = C && C.Plugins && C.Plugins.SplashScreen;
         if (splash && splash.hide) {
-            setTimeout(function () {
+            var tryHide = function () {
                 splash.hide().catch(function () {});
-            }, 600);
+            };
+            // Hide as soon as the first content frame is painted (login UI visible).
+            // Fail-safe at 4s so the screen never sticks black if the bridge is late.
+            var painted = false;
+            var onPaint = function () {
+                if (painted) return;
+                painted = true;
+                setTimeout(tryHide, 80);
+            };
+            window.requestAnimationFrame(function () {
+                window.requestAnimationFrame(onPaint);
+            });
+            setTimeout(tryHide, 4000);
         }
 
         var firstTouch = 0;

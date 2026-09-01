@@ -1,0 +1,28 @@
+{
+  "appId": "dz.guelma.portal",
+  "appName": "بوابة الطالب",
+  "webDir": "www",
+  "androidScheme": "https",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "cleartext": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2200,
+      "launchAutoHide": true,
+      "backgroundColor": "#0a0a0a",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "androidScaleType": "CENTER_CROP",
+      "layoutName": "lay_splash"
+    },
+    "StatusBar": {
+      "overlaysWebView": true,
+      "backgroundColor": "#0a0a0a",
+      "style": "LIGHT"
+    }
+  }
+}

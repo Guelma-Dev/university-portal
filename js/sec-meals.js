@@ -10,6 +10,7 @@
     const MEAL_ORDER = [1, 2, 3];
     const WD_FMT = new Intl.DateTimeFormat('ar', { weekday: 'long' });
     const DATE_FMT = new Intl.DateTimeFormat('ar', { day: 'numeric', month: 'long' });
+    const API_BASE = window.location.origin;
 
     const state = {
         ctx: null,
@@ -61,7 +62,7 @@
     }
 
     async function jfetch(url, opts = {}) {
-        const res = await fetch(url, opts);
+        const res = await fetch(API_BASE + url, opts);
         let data = null;
         try { data = await res.json(); } catch (e) { /* non-json */ }
         if (!res.ok) {
@@ -161,8 +162,8 @@
         const act = tabs && tabs.querySelector('.lx-m-tab.active');
         const sl = tabs && tabs.querySelector('.lx-m-slider');
         if (!act || !sl) return;
-        sl.style.left = `${act.offsetLeft}px`;
         sl.style.width = `${act.offsetWidth}px`;
+        sl.style.transform = `translateX(${act.offsetLeft}px)`;
     }
 
     function switchTab(tab) {
@@ -185,6 +186,8 @@
         if (p && !state.showingResults) p.innerHTML = skCards();
         try {
             const data = await jfetch(`/api/onou/context?${authQS()}`);
+            if (state.ctxRetryTimer) { clearTimeout(state.ctxRetryTimer); state.ctxRetryTimer = null; }
+            state.ctxHard = false;
             state.ctx = Array.isArray(data.depots) ? data : { ...data, depots: [] };
             if (state.ctx.wilaya && typeof setUserWilaya === 'function') setUserWilaya(String(state.ctx.wilaya).trim());
             const pref = state.prefs && Number(state.prefs.depot);
@@ -193,9 +196,17 @@
             renderNewPane();
         } catch (e) {
             const msg = String(e && e.message || '');
+            state.ctxHard = /^gs-5\d\d|server error|kaboom/i.test(msg);
             if (/انتهيت الجلسة|401/.test(msg)) state.ctxReason = 'login';
             else if (/uuid مطلوب/.test(msg)) state.ctxReason = 'login';
+            state.ctxDetail = msg;
             state.ctxError = true;
+            if (state.ctxHard && !state.ctxRetryTimer) {
+                state.ctxRetryTimer = setTimeout(function () {
+                    state.ctxRetryTimer = null;
+                    loadContext(true);
+                }, 45000);
+            }
             renderNewPane();
         }
     }
@@ -220,13 +231,23 @@
         if (state.showingResults) return;
         if (state.ctxError) {
             const loginNeeded = state.ctxReason === 'login';
+            const hard = state.ctxHard;
+            let mainMsg = 'تعذر الوصول لخدمة الوجبات، أعد المحاولة بعد قليل';
+            let sub = '';
+            if (loginNeeded) {
+                mainMsg = 'تتطلب خدمة الوجبات جلسة Progres نشطة — سجّل دخولك أولاً';
+            } else if (hard) {
+                mainMsg = 'خدمة الوجبات معطلة حالياً لدى الخادم الرسمي — ليست مشكلة في التطبيق';
+                sub = `<span class="lx-m-errsub">الخطأ قادم من الموقع نفسه (gs-api.onou.dz): HTTP 500. سنحاول تلقائياً كل 45 ثانية حتى تعود الخدمة.</span>`;
+            } else if (state.ctxDetail) {
+                sub = `<span class="lx-m-errsub">${esc(state.ctxDetail)}</span>`;
+            }
             p.innerHTML = `
                 <div class="lx-m-wrap-pad" style="margin-top:16px">
                     <div class="lx-m-errcard">
                         <i class="fas ${loginNeeded ? 'fa-right-to-bracket' : 'fa-triangle-exclamation'}"></i>
-                        <p>${loginNeeded
-                            ? 'تتطلب خدمة الوجبات جلسة Progres نشطة — سجّل دخولك أولاً'
-                            : 'تعذر الوصول لخدمة الوجبات، أعد المحاولة بعد قليل'}</p>
+                        <p>${mainMsg}</p>
+                        ${sub}
                         ${loginNeeded
                             ? `<button type="button" class="lx-m-btn-retry" data-action="goto-progres-login"><i class="fas fa-right-to-bracket"></i> تسجيل دخول Progres</button>`
                             : `<button type="button" class="lx-m-btn-retry" data-action="retry-ctx"><i class="fas fa-rotate-right"></i> إعادة المحاولة</button>`}
@@ -327,24 +348,54 @@
         const session = getSession();
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحجز...';
+        const wanted = [];
+        groups.forEach((g) => g.dates.forEach((d) => wanted.push({ menu_type: g.menu_type, date: String(d).slice(0, 10) })));
+        let items = [];
+        let sendError = null;
         try {
             const responses = await Promise.all(groups.map((g) => jfetch('/api/onou/reserve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ uuid: session.uuid, dia: session.dia, menu_type: g.menu_type, idDepot: depot.id, dates: g.dates }),
             })));
-            const items = responses.flatMap((r) => normalizeItems(r));
-            state.sel = {};
-            state.showingResults = true;
-            renderResults(items);
-            loadReservations(true).catch(() => {});
-            const ok = items.filter((it) => it._ok).length;
-            if (ok === items.length && items.length) toast(`تم تأكيد ${items.length} ${items.length === 1 ? 'وجبة' : 'وجبات'} بنجاح`, 'success');
-            else if (ok > 0) toast('تم حجز بعض الوجبات، راجع النتائج', 'info');
-            else toast('لم يتم تأكيد أي حجز', 'error');
+            items = responses.flatMap((r) => normalizeItems(r));
         } catch (e) {
-            toast(e.message === 'Failed to fetch' ? 'تعذر الاتصال بالخادم' : (e.message || 'فشل الحجز، حاول مجدداً'), 'error');
+            sendError = e;
+        }
+        // Verify against the authoritative reservations list, not the reply shape
+        let fresh = null;
+        try {
+            const data = await jfetch(`/api/onou/reservations?${authQS()}`);
+            fresh = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+        } catch (e) { /* keep null -> fall back to reply items */ }
+        if (sendError) {
+            btn.disabled = false;
+            toast(sendError.message === 'Failed to fetch' ? 'تعذر الاتصال بالخادم' : (sendError.message || 'فشل الحجز، حاول مجدداً'), 'error');
             renderNewPane();
+            return;
+        }
+        let confirmed = 0;
+        if (Array.isArray(fresh)) {
+            state.res = fresh;
+            state.resLoaded = true;
+            wanted.forEach((w) => {
+                if (fresh.some((r) => String(r.date_reserve || '').slice(0, 10) === w.date && mealIdFromFr(r.mealtype_fr || '') === w.menu_type)) confirmed++;
+            });
+        } else {
+            confirmed = items.filter((it) => it._ok).length;
+        }
+        state.sel = {};
+        state.showingResults = true;
+        renderResults(items, confirmed, wanted.length);
+        loadReservations(true).catch(() => {});
+        if (confirmed > 0) {
+            toast(confirmed === wanted.length
+                ? `تم تأكيد ${confirmed} ${confirmed === 1 ? 'وجبة' : 'وجبات'} بنجاح`
+                : `تم تأكيد ${confirmed} من ${wanted.length}`, 'success');
+        } else {
+            const failMsgs = items.map((it) => it.message).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).slice(0, 2);
+            if (failMsgs.length) toast(failMsgs.join(' · '), 'error');
+            else toast('لم يتم تأكيد أي حجز — تحقق من رسالة الوزارة في النتيجة', 'error');
         }
     }
 
@@ -356,16 +407,26 @@
             else arr = [arr];
         }
         if (!Array.isArray(arr)) arr = [];
-        return arr.map((it) => ({
-            date: it.date || it.date_reserve || '',
-            meal: it.meal ?? it.meal_type ?? '',
-            status: it.status,
-            message: it.message || '',
-            _ok: it.status === true || it.status === 'true' || /^(ok|success|confirmed|reserved|done)/i.test(String(it.status ?? '')),
-        }));
+        return arr.map((it) => {
+            let ok = false;
+            const st = String(it.status ?? it.statut ?? '');
+            if (it && typeof it === 'object') {
+                ok = it.status === true || it.status === 1 || it.status === '1' || it.status === 200
+                    || Number(it.statusCode) === 200 || it.statusCode === '200'
+                    || it.success === true || it.success === 'true'
+                    || /^(ok|success|confirmed|reserved|done|succeed|effectue)/i.test(st);
+            }
+            return {
+                date: it.date || it.date_reserve || '',
+                meal: it.meal ?? it.meal_type ?? '',
+                status: st,
+                message: it.message || it.error || (typeof it === 'string' ? it : ''),
+                _ok: ok,
+            };
+        });
     }
 
-    function renderResults(items) {
+    function renderResults(items, confirmed, total) {
         const p = paneEl('new');
         if (!p) return;
         const rows = items.map((it, i) => {
@@ -381,8 +442,11 @@
                 </span>
             </div>`;
         }).join('');
+        const badge = typeof confirmed === 'number'
+            ? `<span class="lx-m-resbadge">${confirmed}/${total || items.length}</span>`
+            : '';
         p.innerHTML = `
-            <div class="lx-m-h"><i class="fas fa-receipt"></i> نتيجة الحجز</div>
+            <div class="lx-m-h"><i class="fas fa-receipt"></i> نتيجة الحجز ${badge}</div>
             <div class="lx-m-results">${rows}</div>
             <div class="lx-m-sumbar">
                 <span class="lx-m-count"><i class="fas fa-circle-info"></i> يمكنك مراجعة حجوزاتك في تبويب «حجوزاتي»</span>
@@ -410,6 +474,7 @@
         } catch (e) {
             const msg = String(e && e.message || '');
             if (/انتهيت الجلسة|401|uuid مطلوب/.test(msg)) state.resReason = 'login';
+            state.resDetail = msg;
             state.resError = true;
             renderMinePane();
         }
@@ -420,6 +485,7 @@
         if (!p) return;
         if (state.resError) {
             const loginNeeded = state.resReason === 'login';
+            const sub = loginNeeded ? '' : (state.resDetail ? `<span class="lx-m-errsub">${esc(state.resDetail)}</span>` : '');
             p.innerHTML = `
                 <div style="margin-top:16px">
                     <div class="lx-m-errcard">
@@ -427,6 +493,7 @@
                         <p>${loginNeeded
                             ? 'تتطلب خدمة الوجبات جلسة Progres نشطة — سجّل دخولك أولاً'
                             : 'تعذر جلب الحجوزات حالياً'}</p>
+                        ${sub}
                         ${loginNeeded
                             ? `<button type="button" class="lx-m-btn-retry" data-action="goto-progres-login"><i class="fas fa-right-to-bracket"></i> تسجيل دخول Progres</button>`
                             : `<button type="button" class="lx-m-btn-retry" data-action="retry-res"><i class="fas fa-rotate-right"></i> إعادة المحاولة</button>`}
@@ -718,7 +785,7 @@
             if (typeof navigateToSection === 'function') {
                 navigateToSection('grades');
                 setTimeout(() => {
-                    const inp = document.getElementById('progres-username');
+                    const inp = document.querySelector('#section-grades [name="progres-username"]');
                     if (inp) inp.focus();
                     toast('أدخل بيانات Progres ثم عد إلى قسم الوجبات', 'info');
                 }, 350);
