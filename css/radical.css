@@ -164,7 +164,6 @@
 /* --------------------------------------------------------------------------
    L2 — SEMANTIC / global (زجاجية ناعمة)
 -------------------------------------------------------------------------- */
-* { border-radius: 0 !important; }
 html { background: var(--bg); }
 
 body {
@@ -655,6 +654,12 @@ body {
 @keyframes refine-skel { to { background-position: -120% 0; } }
 @media (prefers-reduced-motion: reduce) {
     [class*="skel"] { animation: none !important; background: var(--surface) !important; }
+    * { transition: none !important; animation-duration: 0.001s !important; }
+    .tile:hover, .tile.pressable:hover, .tile:active,
+    .subject-card:hover, .lib-row:hover, .lib-file:hover, .lib-select:hover,
+    .ds-result:hover, .lx-p-card:hover, .lx-p-qcard:hover {
+        transform: none !important;
+    }
 }
 
 /* ---------------- الوجبات (lx-m-) ---------------- */
