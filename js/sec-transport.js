@@ -566,25 +566,6 @@
         return sec;
     }
 
-    function injectTile() {
-        if (document.getElementById('lx-tile-transport')) return;
-        const grid = document.querySelector('#section-home .grid');
-        if (!grid) return;
-        const exists = [...grid.querySelectorAll('.tile')].some(t =>
-            (t.getAttribute('onclick') || '').includes("switchSection('transport')") ||
-            (t.textContent || '').includes('النقل الحي'));
-        if (exists) return;
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'tile pressable';
-        b.id = 'lx-tile-transport';
-        b.innerHTML = '<i class="fas fa-bus"></i><span>النقل الحي</span>';
-        b.addEventListener('click', () => {
-            if (typeof switchSection === 'function') switchSection('transport');
-        });
-        grid.appendChild(b);
-    }
-
     window.PortalSections = window.PortalSections || [];
     window.PortalSections.push({
         id: 'transport',
@@ -596,7 +577,6 @@
 
     function boot() {
         const sec = ensureSection();
-        injectTile();
         if (sec && !S.mounted) mount(sec);
     }
 

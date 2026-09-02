@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="css/luxury.css?v=20260901r">
     <link rel="stylesheet" href="css/auth.css?v=20260901r">
     <link rel="stylesheet" href="css/native.css?v=20260901r">
-    <link rel="stylesheet" href="css/radical.css?v=20260901t">
+    <link rel="stylesheet" href="css/radical.css?v=20260901u">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -187,52 +187,104 @@
             <!-- ===== MAIN CONTENT قابل للتمرير ===== -->
             <main class="main-content" id="app-main">
 
-            <!-- ========== الشاشة الرئيسية (Dashboard) ========== -->
+            <!-- ========== الشاشة الرئيسية (Dashboard — Bento) ========== -->
             <section id="section-home" class="section active">
+                <!-- Hero Header Card -->
                 <div class="home-hero">
-                    <i class="fas fa-circle-user"></i>
-                    <div>
+                    <div class="hh-icon"><i class="fas fa-graduation-cap"></i></div>
+                    <div class="hh-text">
                         <p class="hh-welcome" id="hero-welcome">مرحباً بك</p>
                         <p class="hh-name" id="hero-name">طالب مالية ومحاسبة 2</p>
+                        <span class="hh-status"><i class="fas fa-circle"></i> نظام LMD — التحضير لدراستك الجامعية</span>
                     </div>
                     <span class="hh-date" id="hh-date"></span>
                 </div>
-                <div class="tile-grid">
-                    <button class="tile pressable" onclick="switchSection('grades')">
-                        <i class="fas fa-file-lines"></i><span>كشف النقاط</span>
+
+                <!-- Bento Grid -->
+                <div class="bento">
+
+                    <!-- الصف الأول: بطاقات أساسية كبيرة/عريضة -->
+                    <button class="bento-card bento-grade pressable" onclick="switchSection('grades')" aria-label="كشف النقاط">
+                        <span class="bc-icon"><i class="fas fa-file-lines"></i></span>
+                        <div class="bc-body">
+                            <strong class="bc-title">كشف النقاط</strong>
+                            <small class="bc-sub">نقاطي من بروقرس</small>
+                        </div>
+                        <span class="bc-arrow"><i class="fas fa-arrow-left"></i></span>
                     </button>
-                    <button class="tile pressable" onclick="goStudentCard()">
-                        <i class="fas fa-id-card"></i><span>بطاقة الطالب</span>
+
+                    <button class="bento-card bento-library pressable" onclick="switchSection('library')" aria-label="المكتبة">
+                        <span class="bc-icon"><i class="fas fa-book-open"></i></span>
+                        <div class="bc-body">
+                            <strong class="bc-title">المكتبة</strong>
+                            <small class="bc-sub">مقرراتي + المستودعات المفتوحة</small>
+                        </div>
+                        <span class="bc-arrow"><i class="fas fa-arrow-left"></i></span>
                     </button>
-                    <button class="tile pressable" onclick="switchSection('schedule')">
-                        <i class="fas fa-calendar-week"></i><span>الرزنامة</span>
+
+                    <button class="bento-card bento-meals pressable" onclick="switchSection('meals')" aria-label="الوجبات">
+                        <span class="bc-icon"><i class="fas fa-utensils"></i></span>
+                        <div class="bc-body">
+                            <strong class="bc-title">الوجبات</strong>
+                            <small class="bc-sub">حجز الوجبات والاستفادة</small>
+                        </div>
+                        <span class="bc-arrow"><i class="fas fa-arrow-left"></i></span>
                     </button>
-                    <button class="tile pressable" onclick="switchSection('exams')">
-                        <i class="fas fa-calendar-days"></i><span>الامتحانات</span>
+
+                    <!-- الصف الثاني: أعمدة عريضة -->
+                    <button class="bento-card bento-wide pressable" onclick="switchSection('profile360')" aria-label="ملفي الشامل">
+                        <span class="bc-icon"><i class="fas fa-id-badge"></i></span>
+                        <div class="bc-body">
+                            <strong class="bc-title">ملفي الشامل</strong>
+                            <small class="bc-sub">الملف الجامعي الكامل والتحويلات</small>
+                        </div>
+                        <span class="bc-arrow"><i class="fas fa-arrow-left"></i></span>
                     </button>
-                    <button class="tile pressable" onclick="goCC()">
-                        <i class="fas fa-pen-ruler"></i><span>التقييم المستمر</span>
+
+                    <button class="bento-card bento-wide pressable" onclick="switchSection('schedule')" aria-label="الرزنامة">
+                        <span class="bc-icon"><i class="fas fa-calendar-week"></i></span>
+                        <div class="bc-body">
+                            <strong class="bc-title">الرزنامة</strong>
+                            <small class="bc-sub">الجدول الأسبوعي</small>
+                        </div>
+                        <span class="bc-arrow"><i class="fas fa-arrow-left"></i></span>
                     </button>
-                    <button class="tile pressable" onclick="switchSection('calculator')">
-                        <i class="fas fa-calculator"></i><span>حاسبة المعدل</span>
+
+                    <!-- الصف الثالث: إجراءات سريعة مدمجة -->
+                    <button class="bento-card bento-ghost pressable" onclick="switchSection('calculator')" aria-label="حاسبة المعدل">
+                        <span class="bc-icon"><i class="fas fa-calculator"></i></span>
+                        <div class="bc-body"><strong class="bc-title">حاسبة المعدل</strong></div>
                     </button>
-                    <button class="tile pressable" onclick="switchSection('library')">
-                        <i class="fas fa-book-open"></i><span>المكتبة</span>
+
+                    <button class="bento-card bento-ghost pressable" onclick="switchSection('exams')" aria-label="الامتحانات">
+                        <span class="bc-icon"><i class="fas fa-calendar-days"></i></span>
+                        <div class="bc-body"><strong class="bc-title">الامتحانات</strong></div>
                     </button>
-                    <button class="tile pressable" onclick="switchSection('transport')">
-                        <i class="fas fa-bus"></i><span>النقل الحي</span>
+
+                    <button class="bento-card bento-ghost pressable" onclick="goStudentCard()" aria-label="بطاقة الطالب">
+                        <span class="bc-icon"><i class="fas fa-id-card"></i></span>
+                        <div class="bc-body"><strong class="bc-title">بطاقة الطالب</strong></div>
                     </button>
-                    <button class="tile pressable" onclick="switchSection('meals')">
-                        <i class="fas fa-utensils"></i><span>الوجبات</span>
+
+                    <button class="bento-card bento-ghost pressable" onclick="switchSection('transport')" aria-label="النقل">
+                        <span class="bc-icon"><i class="fas fa-bus"></i></span>
+                        <div class="bc-body"><strong class="bc-title">النقل</strong></div>
                     </button>
-                    <button class="tile pressable" onclick="goExamMarks()">
-                        <i class="fas fa-clipboard-check"></i><span>علامات الامتحانات</span>
+
+                    <button class="bento-card bento-ghost pressable" onclick="goCC()" aria-label="التقييم المستمر">
+                        <span class="bc-icon"><i class="fas fa-pen-ruler"></i></span>
+                        <div class="bc-body"><strong class="bc-title">التقييم المستمر</strong></div>
                     </button>
-                    <button class="tile pressable tile-wide" onclick="switchSection('profile360')">
-                        <i class="fas fa-id-badge"></i><span>ملفي الشامل</span>
+
+                    <button class="bento-card bento-ghost pressable" onclick="goExamMarks()" aria-label="علامات الامتحانات">
+                        <span class="bc-icon"><i class="fas fa-clipboard-check"></i></span>
+                        <div class="bc-body"><strong class="bc-title">علامات الامتحانات</strong></div>
                     </button>
-                    <button class="tile pressable tile-wide" onclick="switchSection('admin')" id="admin-tile" style="display:none;">
-                        <i class="fas fa-cog"></i><span>لوحة التحكم</span>
+
+                    <!-- إدارة (مخفية لغير المسؤول) -->
+                    <button class="bento-card bento-ghost pressable" onclick="switchSection('admin')" id="admin-tile" aria-label="لوحة التحكم" style="display:none;">
+                        <span class="bc-icon"><i class="fas fa-cog"></i></span>
+                        <div class="bc-body"><strong class="bc-title">لوحة التحكم</strong></div>
                     </button>
                 </div>
             </section>
