@@ -112,6 +112,48 @@
 -------------------------------------------------------------------------- */
 html { background: var(--bg); }
 
+/* ---- LAYOUT RESET: حدود صارمة ----
+   box-sizing عالمي + منع التمرير الأفقي + إطار جوال في المنتصف.
+   يُطبَّق أخيراً فيتجاوز أي قواعد قديمة متضاربة. */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    width: 100%;
+}
+.main-app,
+.main-content,
+.section,
+.app-bar,
+.bottom-nav {
+    width: 100%;
+}
+
+/* إطار الجوال محاذى في المنتصف على الشاشات الكبيرة */
+.main-app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+}
+.main-content {
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 76px;
+    padding-bottom: 104px;
+}
+.app-bar,
+.bottom-nav {
+    max-width: 480px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
 body {
     background:
         radial-gradient(1200px 620px at 15% -10%, rgba(231, 184, 75, 0.08), transparent 55%),
@@ -273,123 +315,99 @@ body {
 .bn-btn.active::after { display: none; }
 
 /* ==========================================================================
-   L3 — DASHBOARD: HERO + BENTO  (قلب إعادة البناء)
+   L3 — DASHBOARD: HERO + CLEAN 2-COLUMN GRID
    ========================================================================== */
-.main-content {
-    padding: 76px clamp(16px, 4vw, 40px) 108px;
-}
-@media (min-width: 1100px) {
-    .main-content { padding-inline: clamp(24px, 8vw, 88px); }
-}
 
-.home-hero {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 22px 24px;
-    margin-bottom: 18px;
-    background: var(--lx-glass);
-    backdrop-filter: blur(22px) saturate(1.25);
-    -webkit-backdrop-filter: blur(22px) saturate(1.25);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.06);
-    position: relative;
-    overflow: hidden;
-}
-.home-hero::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(600px 200px at 80% -20%, var(--accent-glow), transparent 60%);
-    pointer-events: none;
-}
-.hh-icon {
-    flex-shrink: 0;
-    width: 58px; height: 58px;
-    display: grid; place-items: center; border-radius: 18px;
-    color: #1c1403; font-size: 26px;
-    background: linear-gradient(150deg, var(--gold-soft), var(--gold) 45%, var(--gold-deep));
-    box-shadow: 0 12px 30px -10px var(--accent-glow);
-}
-.hh-text { flex: 1; min-width: 0; position: relative; z-index: 1; }
-.hh-welcome { font: 800 13px/1.4 var(--font-ar); color: var(--text-2); letter-spacing: 0.04em; }
-.hh-name { font: 900 24px/1.2 var(--font-ar); color: var(--text); }
-.hh-status { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font: 600 12px/1 var(--font-ar); color: var(--text-2); }
-.hh-status i { color: var(--success); font-size: 8px; animation: pulse 2s infinite; }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
-.hh-date {
-    flex-shrink: 0; align-self: start;
-    background: var(--glass-strong); border: 1px solid var(--border);
-    padding: 7px 14px; border-radius: 999px;
-    font: 700 11px/1.5 var(--font-ar); color: var(--text-2); white-space: nowrap;
-}
-
-/* Bento grid */
-.bento {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-}
-@media (max-width: 720px) { .bento { grid-template-columns: repeat(2, 1fr); } }
-
-.bento-card {
+/* ---- Hero Card ---- */
+.hero-card {
     display: flex;
     align-items: center;
     gap: 13px;
-    padding: 18px 16px;
-    text-align: right;
-    background: var(--glass);
-    backdrop-filter: blur(16px) saturate(1.2);
-    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    padding: 16px;
+    margin: 0 16px 16px;
+    background: var(--lx-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.05);
-    color: var(--text);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    position: relative;
     overflow: hidden;
-    transition: var(--transition-spring);
-    will-change: transform, box-shadow;
 }
-.bento-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(150deg, rgba(231,184,75,0.12), transparent 55%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-    z-index: 0;
-}
-.bento-card:hover, .bento-card:active {
-    transform: translateY(-4px);
-    border-color: var(--gold);
-    background: var(--glass-strong);
-    box-shadow: var(--shadow-md), 0 20px 48px -18px var(--accent-glow);
-}
-.bento-card:hover::before { opacity: 1; }
-.bc-icon {
+.hc-ico {
     flex-shrink: 0;
-    width: 46px; height: 46px;
-    display: grid; place-items: center; border-radius: 14px;
-    background: var(--accent-light);
-    color: var(--gold);
-    font-size: 20px;
-    transition: var(--transition-spring);
-    position: relative; z-index: 1;
+    width: 44px; height: 44px;
+    display: grid; place-items: center;
+    border-radius: 12px;
+    color: #1c1403;
+    background: linear-gradient(150deg, var(--gold-soft), var(--gold) 45%, var(--gold-deep));
+    box-shadow: 0 10px 24px -10px var(--accent-glow);
 }
-.bento-card:hover .bc-icon { transform: scale(1.08); box-shadow: 0 0 20px -4px var(--accent-glow); }
-.bc-body { flex: 1; min-width: 0; position: relative; z-index: 1; }
-.bc-title { display: block; font: 800 16px/1.3 var(--font-ar); color: var(--text); }
-.bc-sub { display: block; margin-top: 3px; font: 500 12px/1.4 var(--font-ar); color: var(--text-3); }
-.bc-arrow { flex-shrink: 0; position: relative; z-index: 1; color: var(--text-3); font-size: 13px; transition: var(--transition-spring); }
-.bento-card:hover .bc-arrow { color: var(--gold); transform: translateX(4px); }
+.hc-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.hc-welcome { font: 700 12px/1.4 var(--font-ar); color: var(--text-2); font-style: normal; }
+.hc-name { font: 900 19px/1.2 var(--font-ar); color: var(--text); }
+.hc-date {
+    flex-shrink: 0;
+    background: var(--glass-strong);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font: 700 11px/1.5 var(--font-ar);
+    color: var(--text-2);
+    white-space: nowrap;
+}
 
-/* مستويات bento */
-.bento-card.bento-grade, .bento-card.bento-library, .bento-card.bento-meals { grid-column: span 1; }
-.bento-card.bento-wide { grid-column: span 2; }
-@media (max-width: 720px) {
-    .bento-card.bento-wide { grid-column: span 2; }
+/* ---- 2-Column Grid (صرامة مضمونة) ---- */
+.menu-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    padding: 16px;
 }
+
+.menu-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+    padding: 16px 12px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    color: var(--text);
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.menu-card:hover {
+    border-color: var(--gold);
+    background: rgba(255, 255, 255, 0.09);
+}
+.menu-card i {
+    font-size: 24px;
+    margin-bottom: 8px;
+    color: #f59e0b;
+    line-height: 1;
+}
+.menu-card span {
+    font-size: 13px;
+    font-weight: 600;
+    color: #f3f4f6;
+    line-height: 1.3;
+}
+.menu-card:active { transform: scale(0.97); }
+
+/* ريبّل فقط على أزرار القائمة (اكبح عناصر ::after التي قد تكسر التصميم) */
+.menu-card::after { content: none; }
+.pressable::after { display: none; }
+.menu-card:active::after { display: none; }
 
 /* ==========================================================================
    L3 — أزرار / حقول / مودالات / جداول
@@ -519,7 +537,7 @@ input[type="text"], input[type="password"], input[type="number"], select {
 @media (prefers-reduced-motion: reduce) {
     [class*="skel"] { animation: none !important; background: var(--glass) !important; }
     * { transition: none !important; animation-duration: 0.001s !important; }
-    .bento-card:hover, .tile:hover, .subject-card:hover, .lib-row:hover, .lib-file:hover,
+    .menu-card:hover, .tile:hover, .subject-card:hover, .lib-row:hover, .lib-file:hover,
     .lib-select:hover, .ds-result:hover, .btn:hover { transform: none !important; }
 }
 
@@ -540,7 +558,7 @@ input[type="text"], input[type="password"], input[type="number"], select {
 }
 .lx-m-meal-name, .lx-m-rname, .lx-m-setlabel, .lx-m-depot-name, .lx-p-head-tx, .lx-p-sect,
 .rsc-value, .rsc-reg-num, .rsc-title, .stat-number, .calc-result-val, .pomo-time,
-.bc-title, .file-name, .subject-card-name, .calc-module-name, .lib-row .lr-name { color: var(--text); font-weight: 800; }
+.file-name, .subject-card-name, .calc-module-name, .lib-row .lr-name { color: var(--text); font-weight: 800; }
 .lx-m-meal-slot, .lx-m-restxt, .lx-m-depot-latin, .lx-p-label, .rsc-label, .rsc-meta,
 .calc-result-label, .stat-label, .file-meta, .annual-credit, .empty-msg { color: var(--text-2); }
 .lx-m-button, .lx-m-btn-xs, .lx-m-btn-retry, .lx-p-btn, .lx-p-refresh, .rsc-quick, .rsc-action,
