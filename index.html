@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="css/luxury.css?v=20260901r">
     <link rel="stylesheet" href="css/auth.css?v=20260901r">
     <link rel="stylesheet" href="css/native.css?v=20260901r">
-    <link rel="stylesheet" href="css/radical.css?v=20260901s">
+    <link rel="stylesheet" href="css/radical.css?v=20260901t">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -828,6 +828,19 @@
             hero.addEventListener('mouseleave', function () {
                 logo.style.transform = 'rotate(-4deg)';
             });
+        })();
+    </script>
+    <script>
+        (function () {
+            // تموّج ذهبي عند النقر — يحسب موقع النقر في كل عنصر قابل للضغط (GPU-only)
+            var sel = '.pressable, .tile, .btn, .lib-row, .lib-select, .lib-file, .ds-result, .bn-btn, .appbar-btn, .account-list button, .stat-card, .calc-module-card, .file-card, .subject-card';
+            document.addEventListener('pointerdown', function (e) {
+                var t = e.target.closest ? e.target.closest(sel) : null;
+                if (!t) return;
+                var r = t.getBoundingClientRect();
+                t.style.setProperty('--rx', ((e.clientX - r.left) / r.width * 100) + '%');
+                t.style.setProperty('--ry', ((e.clientY - r.top) / r.height * 100) + '%');
+            }, { passive: true });
         })();
     </script>
 </body>
