@@ -201,6 +201,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     // ---------- Static CSS/JS checks ----------
     // ---------- Phase 4: in-app update system ----------
     const puJs = fs.readFileSync(path.join(ROOT, 'js', 'portal-update.js'), 'utf8');
+    check(puJs.includes('fallbackFetch') && puJs.includes('getReader'), 'fetch fallback with real byte progress');
+    check(puJs.includes('preflight'), 'server preflight before system download');
     check(puJs.includes('window.PortalUpdate') && puJs.includes('window.PortalUpdateUI'), 'update service + UI exist');
     check(puJs.includes('versionCode') && puJs.includes('apkUrl') && puJs.includes('sha256'), 'manifest contract (code/url/hash)');
     check(puJs.includes('m.versionCode > inst.versionCode'), 'numeric versionCode comparison');
@@ -224,11 +226,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const mani4 = fs.readFileSync(path.join(ROOT, 'android', 'app', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
     check(mani4.includes('REQUEST_INSTALL_PACKAGES') && mani4.includes('.UpdateInstallReceiver'), 'install permission + status receiver');
     const beManifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'backend', 'flask_backend', 'update.json'), 'utf8'));
-    check(beManifest.versionCode === 4 && beManifest.versionName === '1.4.0', 'production manifest advertises 1.4.0 (code 4)');
-    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-4\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
-    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-4.apk')), 'release APK present for hosting');
+    check(beManifest.versionCode === 5 && beManifest.versionName === '1.4.1', 'production manifest advertises 1.4.1 (code 5)');
+    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-5\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
+    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-5.apk')), 'release APK present for hosting');
     check(!upJava.includes('setDestinationUri(Uri.fromFile') && !upJava.includes('VISIBILITY_HIDDEN'), 'no banned download destination/visibility');
     check(upJava.includes('setDestinationInExternalFilesDir') && upJava.includes('VISIBILITY_VISIBLE'), 'store-compliant download target + visible progress');
+    check(upJava.includes('installFromBase64'), 'fetch-fallback installer exists');
     check(/^[0-9a-f]{64}$/.test(beManifest.sha256 || ''), 'manifest carries real sha256');
     const beApp = fs.readFileSync(path.join(ROOT, 'backend', 'flask_backend', 'app.py'), 'utf8');
     check(beApp.includes("Access-Control-Allow-Origin'] = '*'") && beApp.includes('/app/update.json'), 'manifest + apk served with CORS for WebView');

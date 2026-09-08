@@ -121,10 +121,10 @@ public class UpdatePlugin extends Plugin {
             // A system progress notification: hiding it needs a signature-level
             // permission regular apps cannot hold (SecurityException).
             req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE);
-            // file:// destinations are rejected since Android 7 — use the
-            // app-private external dir (no storage permission needed).
+            // Flat filename: some firmware rejects subdirectories in the
+            // download destination. Cleanup still sweeps legacy subdirs.
             req.setDestinationInExternalFilesDir(ctx, android.os.Environment.DIRECTORY_DOWNLOADS,
-                "updates/app-" + versionCode + ".apk");
+                "portal-update-" + versionCode + ".apk");
             req.setMimeType("application/vnd.android.package-archive");
             DownloadManager dm = (DownloadManager) ctx.getSystemService(Context.DOWNLOAD_SERVICE);
             if (dm == null) {
@@ -226,27 +226,35 @@ public class UpdatePlugin extends Plugin {
             base = ctx.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS);
         } catch (Exception ignored) {}
         if (base == null) base = ctx.getCacheDir();
-        return new File(new File(base, "updates"), "app-" + versionCode + ".apk");
+        return new File(base, "portal-update-" + versionCode + ".apk");
     }
 
     static void cleanupExcept(Context ctx, long keepVersionCode) {
-        for (File dir : new File[]{updatesDir(ctx), new File(ctx.getCacheDir(), "updates")}) {
+        String keep = "portal-update-" + keepVersionCode + ".apk";
+        String legacyKeep = "app-" + keepVersionCode + ".apk";
+        java.util.List<File> dirs = new java.util.ArrayList<>();
+        try {
+            File ext = ctx.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS);
+            if (ext != null) {
+                dirs.add(ext);
+                dirs.add(new File(ext, "updates"));
+            }
+        } catch (Exception ignored) {}
+        try {
+            dirs.add(ctx.getCacheDir());
+            dirs.add(new File(ctx.getCacheDir(), "updates"));
+        } catch (Exception ignored) {}
+        for (File dir : dirs) {
             File[] fs = dir == null ? null : dir.listFiles();
             if (fs == null) continue;
             for (File f : fs) {
-                if (!f.getName().equals("app-" + keepVersionCode + ".apk")) {
+                String n = f.getName();
+                boolean ours = (n.startsWith("portal-update-") || n.startsWith("app-")) && n.endsWith(".apk");
+                if (ours && !n.equals(keep) && !n.equals(legacyKeep)) {
                     try { f.delete(); } catch (Exception ignored) {}
                 }
             }
         }
-    }
-
-    private static File updatesDir(Context ctx) {
-        try {
-            File base = ctx.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS);
-            if (base != null) return new File(base, "updates");
-        } catch (Exception ignored) {}
-        return null;
     }
 
     @PluginMethod
@@ -271,7 +279,66 @@ public class UpdatePlugin extends Plugin {
 
     // ---------- verify + install (PackageInstaller session API) ----------
 
+    /** Fallback installer: JS fetched the bytes itself (WebView HTTPS,
+     *  which provably works wherever the manifest check works). Writes them
+     *  to the same verified location, then follows the identical
+     *  verify → compatibility → PackageInstaller path as verifyAndInstall. */
     @PluginMethod
+    public void installFromBase64(PluginCall call) {
+        long versionCode = 0;
+        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        String b64 = call.getString("base64", "");
+        String sha256 = call.getString("sha256", "");
+        if (versionCode <= 0 || b64 == null || b64.length() < 1024 * 1024) {
+            call.reject("bad install payload");
+            return;
+        }
+        try {
+            Context ctx = getContext();
+            cleanupExcept(ctx, versionCode);
+            File apk = destFile(ctx, versionCode);
+            if (apk.getParentFile() != null) apk.getParentFile().mkdirs();
+            byte[] raw = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+            java.io.FileOutputStream fos = null;
+            try {
+                fos = new java.io.FileOutputStream(apk);
+                fos.write(raw);
+            } finally {
+                if (fos != null) { try { fos.close(); } catch (Exception ignored) {} }
+            }
+            String problem = verifyApkFile(ctx, apk, versionCode, sha256);
+            if (problem != null) {
+                call.reject(problem);
+                return;
+            }
+            UpdateInstaller.commit(ctx, apk);
+            JSObject r = new JSObject();
+            r.put("status", "pending_user_action");
+            call.resolve(r);
+        } catch (SecurityException se) {
+            call.reject("installation blocked by Android");
+        } catch (Exception e) {
+            call.reject("install failed: " + e.getMessage());
+        }
+    }
+
+    /** Shared gate: size → checksum → compatibility. Null = installable. */
+    static String verifyApkFile(Context ctx, File apk, long versionCode, String sha256) {
+        if (!apk.exists() || apk.length() <= 1024 * 1024) return "apk missing or incomplete";
+        try {
+            if (sha256 != null && !sha256.trim().isEmpty()) {
+                String actual = sha256Of(apk);
+                if (!sha256.trim().equalsIgnoreCase(actual)) {
+                    try { apk.delete(); } catch (Exception ignored) {}
+                    return "checksum mismatch";
+                }
+            }
+        } catch (Exception e) {
+            return "checksum mismatch";
+        }
+        return compatibilityProblem(ctx, apk, versionCode);
+    }
+
     public void verifyAndInstall(PluginCall call) {
         long versionCode = 0;
         try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
@@ -283,19 +350,7 @@ public class UpdatePlugin extends Plugin {
         try {
             Context ctx = getContext();
             File apk = destFile(ctx, versionCode);
-            if (!apk.exists() || apk.length() <= 1024 * 1024) {
-                call.reject("apk missing or incomplete");
-                return;
-            }
-            if (sha256 != null && !sha256.trim().isEmpty()) {
-                String actual = sha256Of(apk);
-                if (!sha256.trim().equalsIgnoreCase(actual)) {
-                    try { apk.delete(); } catch (Exception ignored) {}
-                    call.reject("checksum mismatch");
-                    return;
-                }
-            }
-            String problem = compatibilityProblem(ctx, apk, versionCode);
+            String problem = verifyApkFile(ctx, apk, versionCode, sha256);
             if (problem != null) {
                 call.reject(problem);
                 return;

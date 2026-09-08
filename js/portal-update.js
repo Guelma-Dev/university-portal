@@ -169,6 +169,22 @@ window.PortalUpdate = (function () {
         } catch (e) { return false; }
     }
 
+    var fallbackCtrl = null;
+
+    // HEAD preflight: warms a sleeping server and proves the file URL is
+    // reachable before involving the system downloader.
+    async function preflight(url) {
+        try {
+            var ctrl = new AbortController();
+            var t = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 20000);
+            var res = await fetch(url, { method: 'HEAD', signal: ctrl.signal, cache: 'no-store' });
+            clearTimeout(t);
+            return res.ok;
+        } catch (e) {
+            return false;
+        }
+    }
+
     async function startDownload() {
         if (state.name === 'downloading' || state.name === 'installing') return state;
         var m = state.remote;
@@ -179,6 +195,9 @@ window.PortalUpdate = (function () {
             return state;
         }
         setState({ name: 'downloading', progress: { pct: null, soFar: 0, total: 0 }, error: '' });
+        if (!(await preflight(m.apkUrl))) {
+            return fallbackFetch(m);
+        }
         try {
             var r = await pl.downloadUpdate({ url: m.apkUrl, versionCode: m.versionCode });
             var id = r && (r.downloadId != null ? Number(r.downloadId) : 0);
@@ -186,8 +205,68 @@ window.PortalUpdate = (function () {
             saveDl({ downloadId: id, versionCode: m.versionCode, sha256: m.sha256, apkUrl: m.apkUrl });
             pollLoop(id, m.versionCode);
         } catch (e) {
+            return fallbackFetch(m);
+        }
+        return state;
+    }
+
+    // Fallback when the system downloader fails on a device: stream the APK
+    // over WebView HTTPS (proven by the manifest check) with REAL byte
+    // progress, then hand the bytes to the same verified native installer.
+    async function fallbackFetch(m) {
+        var pl = plugin();
+        if (!pl) {
             saveDl(null);
             setState({ name: 'error', error: 'تعذر تنزيل التحديث', progress: null });
+            return state;
+        }
+        setState({ name: 'downloading', progress: { pct: null, soFar: 0, total: 0 }, error: '' });
+        try { if (fallbackCtrl) fallbackCtrl.abort(); } catch (e) {}
+        fallbackCtrl = new AbortController();
+        try {
+            var res = await fetch(m.apkUrl, { signal: fallbackCtrl.signal, cache: 'no-store' });
+            if (!res.ok || !res.body || typeof res.body.getReader !== 'function') throw new Error('http-' + (res && res.status));
+            var total = Number(res.headers.get('content-length') || 0);
+            var reader = res.body.getReader();
+            var chunks = [];
+            var received = 0;
+            for (;;) {
+                var part = await reader.read();
+                if (part.done) break;
+                chunks.push(part.value);
+                received += part.value.length;
+                setState({ name: 'downloading', progress: { pct: total > 0 ? Math.min(99, Math.round((received / total) * 100)) : null, soFar: received, total: total } });
+            }
+            var blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
+            var b64 = await new Promise(function (resolve, reject) {
+                var fr = new FileReader();
+                fr.onload = function () {
+                    var s = String(fr.result || '');
+                    var i = s.indexOf(',');
+                    resolve(i === -1 ? '' : s.slice(i + 1));
+                };
+                fr.onerror = function () { reject(new Error('encode')); };
+                fr.readAsDataURL(blob);
+            });
+            chunks = null;
+            if (!b64) throw new Error('encode');
+            saveDl({ downloadId: 0, versionCode: m.versionCode, sha256: m.sha256, apkUrl: m.apkUrl });
+            var r = await pl.installFromBase64({ base64: b64, versionCode: m.versionCode, sha256: m.sha256 || '' });
+            if (r && r.status === 'pending_user_action') {
+                setState({ name: 'installing', progress: { pct: 100, soFar: 0, total: 0 }, error: '' });
+            } else {
+                throw new Error('install-rejected');
+            }
+        } catch (e) {
+            if (e && e.name === 'AbortError') {
+                saveDl(null);
+                setState({ name: 'update_available', progress: null, error: '' });
+            } else {
+                saveDl(null);
+                setState({ name: 'error', error: 'تعذر تنزيل التحديث', progress: null });
+            }
+        } finally {
+            fallbackCtrl = null;
         }
         return state;
     }
@@ -214,11 +293,15 @@ window.PortalUpdate = (function () {
                 } else if (st === 'failed' || st === 'unknown') {
                     stopPoll();
                     saveDl(null);
+                    var rm = state.remote;
+                    if (rm && rm.versionCode === versionCode) { fallbackFetch(rm); return; }
                     setState({ name: 'error', error: 'تعذر تنزيل التحديث', progress: null });
                 }
             } catch (e) {
                 stopPoll();
                 saveDl(null);
+                var rm2 = state.remote;
+                if (rm2 && rm2.versionCode === versionCode) { fallbackFetch(rm2); return; }
                 setState({ name: 'error', error: 'تعذر تنزيل التحديث', progress: null });
             }
         };
@@ -228,6 +311,8 @@ window.PortalUpdate = (function () {
 
     async function cancelDownload() {
         stopPoll();
+        try { if (fallbackCtrl) fallbackCtrl.abort(); } catch (e) {}
+        fallbackCtrl = null;
         var dl = readDl();
         var pl = plugin();
         if (pl && dl && dl.downloadId) {
