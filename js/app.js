@@ -2284,11 +2284,18 @@ function sidBindFit() {
     } catch (e) {}
 }
 
-function _sidRow(lbl, inner) {
-    return inner ? `<div class="sid-row"><span class="sid-lbl">${lbl}</span><span class="sid-val">${inner}</span></div>` : '';
+function _sidLbl(t, wide) {
+    return t ? `<div class="sid-frow"><span class="sid-flbl${wide ? ' sid-flbl-w' : ''}">${t}</span></div>` : '';
 }
-function _sidLat(t) {
-    return t ? `<span class="sid-lat" dir="ltr">${t}</span>` : '';
+function _sidVal(ar, lat) {
+    // Official: arabic + latin share one row-reverse row, each capped at 60%.
+    const parts = [];
+    if (ar) parts.push(`<span class="sid-v">${ar}</span>`);
+    if (lat) parts.push(`<span class="sid-v sid-vlat" dir="ltr">${lat}</span>`);
+    return parts.length ? `<div class="sid-frow">${parts.join('')}</div>` : '';
+}
+function _sidVal1(html) {
+    return html ? `<div class="sid-frow sid-frow-1"><span class="sid-v sid-vfull">${html}</span></div>` : '';
 }
 
 function _sidPersonRows(card, esc) {
@@ -2301,11 +2308,11 @@ function _sidPersonRows(card, esc) {
     const nbsp = '&nbsp;'.repeat(8);
     const birth = [bDate ? `<span dir="ltr">${bDate}</span>` : '', bPlace ? `<span>${bPlace}</span>` : ''].filter(Boolean).join(nbsp);
     return ''
-        + _sidRow('اللقب', _sidLat(nomLt) + (nomAr ? `<span>${nomAr}</span>` : ''))
-        + _sidRow('الاسم', _sidLat(prnLt) + (prnAr ? `<span>${prnAr}</span>` : ''))
-        + _sidRow('تاريخ و مكان الميلاد', birth)
-        + _sidRow('الميدان', field ? `<span>${field}</span>` : '')
-        + _sidRow('الفرع', branch ? `<span>${branch}</span>` : '');
+        + _sidLbl('اللقب', true) + _sidVal(nomAr, nomLt)
+        + _sidLbl('الاسم') + _sidVal(prnAr, prnLt)
+        + _sidLbl('تاريخ و مكان الميلاد') + _sidVal1(birth)
+        + _sidLbl('الميدان') + _sidVal1(field ? `<span>${field}</span>` : '')
+        + (branch ? _sidLbl('الفرع') + _sidVal1(`<span>${branch}</span>`) : '');
 }
 
 let _sidResCache = null;
@@ -2333,8 +2340,8 @@ function sidResFill() {
         if (bt) bt.textContent = dou;
     }
     body.innerHTML = ''
-        + (hname ? _sidRow('الإقامة', `<span>${_sidEsc(hname)}</span>`) : '')
-        + (affect ? `<div class="sid-row"><span class="sid-lbl">الجناح و الغرفة</span><span class="sid-val sid-black"><span>${_sidEsc(affect)}</span></span></div>` : '')
+        + (hname ? _sidLbl('الإقامة') + _sidVal1(`<span>${_sidEsc(hname)}</span>`) : '')
+        + (affect ? `<div class="sid-frow"><span class="sid-flbl sid-flbl-b">الجناح و الغرفة</span><span class="sid-v sid-v900"><span>${_sidEsc(affect)}</span></span></div>` : '')
         || '<span class="sid-res-empty">لا يوجد سكن جامعي مرتبط بالحساب بعد</span>';
 }
 
