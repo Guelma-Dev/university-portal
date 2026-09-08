@@ -389,6 +389,11 @@
         renderResults(items, confirmed, wanted.length);
         loadReservations(true).catch(() => {});
         if (confirmed > 0) {
+            try {
+                const dep = currentDepot();
+                const um = [...new Set(wanted.map(w => w.menu_type))];
+                if (window.PortalNotify && dep) window.PortalNotify.rememberCtx(dep.id, dep.nameAR, um);
+            } catch (e) {}
             toast(confirmed === wanted.length
                 ? `تم تأكيد ${confirmed} ${confirmed === 1 ? 'وجبة' : 'وجبات'} بنجاح`
                 : `تم تأكيد ${confirmed} من ${wanted.length}`, 'success');

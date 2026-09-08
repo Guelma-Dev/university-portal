@@ -1,8 +1,6 @@
 (() => {
     'use strict';
 
-    const API_BASE = window.location.origin;
-
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
     }[c]));
@@ -22,32 +20,56 @@
         return null;
     }
 
+    const pick = (...vals) => {
+        for (const v of vals) {
+            if (typeof v === 'string' && v.trim()) return v.trim();
+            if (v !== null && v !== undefined && v !== '') return v;
+        }
+        return '';
+    };
+
+    // يقرأ بطاقات DIA مباشرة من خوادم الوزارة (نفس مصدر أقسام النقاط) —
+    // عبر progresFetch('cards') الذي يقبضه native.js في الأندرويد ويوجهه إلى
+    // api-webetu دون أي وسيط، وفي الويب يُعالج عبر نقطة /api/progres.
     async function fetchInscriptions(force) {
         if (state.loaded && !force) return state;
         state.loaded = false; state.error = false; state.cards = [];
         const session = getSession();
         if (!session) { state.error = true; state.reason = 'no-session'; return state; }
         try {
-            const res = await fetch(
-                `${API_BASE}/api/inscription?uuid=${encodeURIComponent(session.uuid)}`,
-                { headers: { Authorization: session.token } },
-            );
-            let data = null;
-            try { data = await res.json(); } catch (e) { /* non-json */ }
-            if (!res.ok) {
-                const msg = data && (data.error || data.message);
-                state.error = true;
-                state.reason = (res.status === 401) ? 'expired'
-                    : (msg || `status-${res.status}`);
-                return state;
+            let cards = Array.isArray(session.cards) ? session.cards : null;
+            if (!cards && typeof window.progresFetch === 'function') {
+                cards = await window.progresFetch('cards');
+                if (Array.isArray(cards)) {
+                    const s = window.getProgresSession();
+                    if (s) { s.cards = cards; if (typeof window.setProgresSession === 'function') window.setProgresSession(s); }
+                }
             }
-            state.cards = Array.isArray(data && data.cards) ? data.cards : [];
+            if (!Array.isArray(cards) || cards.length === 0) { state.error = true; state.reason = 'no-cards'; return state; }
+            state.cards = cards.map(simplifyDia);
             state.loaded = true;
         } catch (e) {
             state.error = true;
-            state.reason = e.message === 'Failed to fetch' ? 'network' : String(e.message || e);
+            state.reason = (e && e.message === 'Failed to fetch') ? 'network' : String((e && e.message) || e);
         }
         return state;
+    }
+
+    // يحوّل بطاقة DIA واحدة إلى حقول العرض المتوافقة مع واجهة "تسجيلاتي"
+    function simplifyDia(c) {
+        c = c || {};
+        return {
+            anneeAcademiqueCode: pick(c.anneeAcademiqueCode, c.anneeAcademique, c.codeAnneeAcademique),
+            anneeAcademique: pick(c.anneeAcademique, c.anneeAcademiqueLibelle),
+            etablissement: pick(c.etablissementLibelleAr, c.etablissementLibelle, c.etablissementLibelleLt, c.llEtablissementArabe, c.llEtablissementLatin),
+            wilaya: pick(c.etablissementWilaya, c.wilayaLibelle, c.wilaya),
+            domaine: pick(c.ofLlDomaineArabe, c.ofLlDomaine),
+            filiere: pick(c.ofLlFiliereArabe, c.ofLlFiliere, c.filiere, c.filiereLibelleAr),
+            specialite: pick(c.ofLlSpecialiteArabe, c.ofLlSpecialite, c.specialiteLibelleAr, c.specialty),
+            niveau: pick(c.niveauLibelleLongAr, c.niveauLibelleLongLt, c.niveauLibelleAr, c.niveau),
+            numeroInscription: pick(c.numeroInscription),
+            situationId: c.situationId,
+        };
     }
 
     // ---------- العرض ----------
@@ -58,42 +80,64 @@
         return '<span class="ins-badge ins-warn"><i class="fas fa-circle-exclamation"></i> قيد المعالجة</span>';
     }
 
-    function kv(label, value, icon) {
+    function chip(label, value) {
         const v = esc(value);
         if (!v) return '';
+        return `<span class="ins-chip"><em>${esc(label)}</em><b>${v}</b></span>`;
+    }
+
+    function dataRow(label, value) {
+        const v = esc(value);
+        if (!v) return '';
+        return `<div class="data-row"><span class="label">${esc(label)}:</span><strong class="value">${v}</strong></div>`;
+    }
+
+    // بطاقة التسجيل الحالي — مضغوطة: عمود مرن بفجوة 8px، وصفوف أفقية
+    // label/value بدون أي صناديق متداخلة (لا border ولا background داخلية)
+    function currentCardHTML(c) {
+        const year = c.anneeAcademiqueCode || c.anneeAcademique || 'سنة دراسية';
         return `
-            <div class="ins-kv">
-                <span class="ins-kv-label">${icon ? `<i class="fas fa-${icon}"></i> ` : ''}${esc(label)}</span>
-                <span class="ins-kv-value">${v}</span>
+            <div class="ins-card ins-current">
+                <div class="ins-current-head">
+                    <span class="ins-current-tag"><i class="fas fa-star"></i>التسجيل الحالي</span>
+                    ${statusBadge(c.situationId)}
+                </div>
+                <div class="ins-main">
+                    ${dataRow('المؤسسة', c.etablissement || c.wilaya)}
+                    ${dataRow('السنة الدراسية', year)}
+                    ${dataRow('المستوى', c.niveau)}
+                    ${dataRow('الميدان', c.domaine)}
+                    ${dataRow('الشعبة', c.filiere)}
+                    ${dataRow('التخصص', c.specialite || c.filiere)}
+                    ${dataRow('الولاية', c.wilaya)}
+                    ${dataRow('رقم التسجيل', c.numeroInscription)}
+                </div>
             </div>`;
     }
 
-    function cardHTML(c, isFirst) {
-        const year = c.anneeAcademiqueCode || c.anneeAcademique || 'سنة دراسية';
-        const rows = [
-            kv('رقم التسجيل', c.numeroInscription, 'hashtag'),
-            kv('المؤسسة', c.etablissement, 'building-columns'),
-            kv('الولاية', c.wilaya, 'location-dot'),
-            kv('الميدان', c.domaine, 'layer-group'),
-            kv('الشعبة', c.filiere, 'graduation-cap'),
-            kv('التخصص', c.specialite, 'flask'),
-            kv('السلك', c.cycle, 'arrow-up-wide-short'),
-            kv('المستوى', c.niveau, 'chart-column'),
-        ].join('');
-
-        const body = rows || '<p class="ins-empty">لا توجد تفاصيل إضافية لهذه السنة.</p>';
-        return `
-            <div class="ins-card ${isFirst ? 'ins-current' : ''}">
-                <div class="ins-card-head">
-                    <div class="ins-year">
-                        <i class="fas fa-calendar-days"></i>
-                        <span>${esc(year)}</span>
+    // التسجيلات السابقة — قائمة أكورديون مدمجة
+    function prevListHTML(cards) {
+        const rows = cards.map(c => {
+            const year = c.anneeAcademiqueCode || c.anneeAcademique || 'سنة دراسية';
+            const etab = c.etablissement || '';
+            const spec = c.specialite || c.filiere || '';
+            return `
+                <details class="ins-prev">
+                    <summary>
+                        <span class="ins-prev-year"><i class="fas fa-calendar-days"></i>${esc(year)}</span>
+                        <span class="ins-prev-spec">${esc(spec)}</span>
+                        ${statusBadge(c.situationId)}
+                    </summary>
+                    <div class="ins-prev-body">
+                        ${chip('المؤسسة', etab)}
+                        ${chip('الشعبة', c.filiere)}
+                        ${chip('الولاية', c.wilaya)}
+                        ${chip('المستوى', c.niveau)}
+                        ${chip('رقم التسجيل', c.numeroInscription)}
                     </div>
-                    ${isFirst ? '<span class="ins-current-tag"><i class="fas fa-star"></i> التسجيل الحالي</span>' : ''}
-                    ${statusBadge(c.situationId)}
-                </div>
-                <div class="ins-kv-grid">${body}</div>
-            </div>`;
+                </details>`;
+        }).join('');
+        return `<div class="ins-prev-wrap"><h4 class="ins-prev-title"><i class="fas fa-clock-rotate-left"></i>التسجيلات السابقة</h4>${rows}</div>`;
     }
 
     function render() {
@@ -173,16 +217,18 @@
             return;
         }
 
-        // البيانات
-        const cardsHtml = state.cards
-            .map((c, i) => cardHTML(c, i === 0))
-            .join('');
+        // البيانات — بطاقة التسجيل الحالي + قائمة التسجيلات السابقة
+        const first = state.cards[0];
+        const prev = state.cards.slice(1);
+        const currentHtml = currentCardHTML(first);
+        const prevHtml = prev.length ? prevListHTML(prev) : '';
         root.innerHTML = `
             <div class="grades-container">
                 <div class="calculator-header"><i class="fas fa-clipboard-list"></i><h3>تسجيلاتي</h3></div>
                 <div class="ins-body">
                     <p class="ins-note"><i class="fas fa-circle-info"></i> تعكس هذه المعلومات مسارك الأكاديمي الرسمي من المنصة الوطنية.</p>
-                    ${cardsHtml}
+                    <div class="ins-current-wrap">${currentHtml}</div>
+                    ${prevHtml}
                 </div>
             </div>`;
     }

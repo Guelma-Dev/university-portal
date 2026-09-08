@@ -583,12 +583,21 @@
             var hebHtml = sectTitle('fa-building-columns', 'الإقامة الجامعية');
             if (r[2].status === 'fulfilled' && r[2].value != null && r[2].value !== '') {
                 var hd = r[2].value;
+                if (Array.isArray(hd)) {
+                    var hpick = null;
+                    for (var hi = 0; hi < hd.length; hi++) {
+                        var hit = hd[hi];
+                        if (hit && typeof hit === 'object' && (hit.llResidanceArabe || hit.llResidanceLatin || hit.residenceName || hit.residence)) { hpick = hit; break; }
+                    }
+                    hd = hpick || hd[hd.length - 1];
+                }
                 var isObj = hd && typeof hd === 'object';
-                var hid = isObj ? pickAny(hd, ['residenceId', 'residence_id', 'idResidence', 'id']) : hd;
-                var hname = isObj ? String(pickAny(hd, ['residenceName', 'residenceNomAr', 'nomResidence', 'residenceAr', 'residence', 'libelle'])).trim() : '';
+                var hid = isObj ? pickAny(hd, ['idResidance', 'residenceId', 'residence_id', 'idResidence', 'id']) : hd;
+                var hname = isObj ? String(pickAny(hd, ['llResidanceArabe', 'llResidanceLatin', 'residenceName', 'residenceNomAr', 'nomResidence', 'residenceAr', 'residence', 'libelle'])).trim() : '';
                 var pav = isObj ? String(pickAny(hd, ['pavillon', 'pav', 'pavNum'])).replace(/^pav[-_]?/i, '').trim() : '';
                 var room = isObj ? String(pickAny(hd, ['chambre', 'room', 'numChambre'])).trim() : '';
-                var affect = (pav || room) ? ('pav-' + (pav || '—') + (room ? ' · ' + room : '')) : '';
+                var affectRaw = isObj ? String(pickAny(hd, ['llAffectation']) || '').trim() : '';
+                var affect = affectRaw || ((pav || room) ? ('pav-' + (pav || '—') + (room ? ' · ' + room : '')) : '');
                 hebHtml += '<div class="lx-p-mini lx-p-in" style="--d:120ms">' + miniTitle('fa-bed', 'سكنك الحالي') +
                     mnRow('الإقامة', hname ? esc(hname) : '—') +
                     (affect ? mnRow('التخصيص', '<span dir="ltr" class="aff">' + esc(affect) + '</span>') : '') +
@@ -828,6 +837,53 @@
             }
         });
     }
+
+    window.PortalProfile = window.PortalProfile || {};
+    window.PortalProfile.getResidence = function (uuid) {
+        if (!uuid) return Promise.resolve(null);
+        function norm(v) {
+            if (v == null || v === '') return null;
+            var d = v;
+            if (d && typeof d === 'object' && !Array.isArray(d)) {
+                if (d.hebergement && typeof d.hebergement === 'object') d = d.hebergement;
+                else if (d.result && typeof d.result === 'object') d = d.result;
+                else if (d.data && typeof d.data === 'object') d = d.data;
+            }
+            // Real API returns a LIST of demandes — pick the current one
+            if (Array.isArray(d)) {
+                var pick = null;
+                for (var i = 0; i < d.length; i++) {
+                    var it = d[i];
+                    if (it && typeof it === 'object' && (it.llResidanceArabe || it.llResidanceLatin || it.residenceName || it.residence)) { pick = it; break; }
+                }
+                d = pick || d[d.length - 1] || null;
+            }
+            if (d == null || d === '') return null;
+            var isObj = d && typeof d === 'object' && !Array.isArray(d);
+            var id = isObj ? pickAny(d, ['idResidance', 'residenceId', 'residence_id', 'idResidence', 'id']) : d;
+            var name = isObj ? String(pickAny(d, ['llResidanceArabe', 'llResidanceLatin', 'residenceName', 'residenceNomAr', 'nomResidence', 'residenceAr', 'residence', 'libelle', 'cite', 'citeAr', 'citeUniversitaire']) || '').trim() : '';
+            var pav = isObj ? String(pickAny(d, ['pavillon', 'pav', 'pavNum', 'bloc']) || '').replace(/^pav[-_]?/i, '').trim() : '';
+            var room = isObj ? String(pickAny(d, ['chambre', 'room', 'numChambre', 'noChambre', 'nChambre']) || '').trim() : '';
+            var affect = isObj ? String(pickAny(d, ['llAffectation']) || '').trim() : '';
+            var dou = isObj ? String(pickAny(d, ['llDouArabe', 'llDouLatin']) || '').trim() : '';
+            return { id: String(id).trim(), name: name, pav: pav, room: room, affect: affect, dou: dou, raw: v };
+        }
+        return apiGet('hebergement', { uuid: uuid }).then(norm).then(function (res) {
+            var snapKey = 'progres_hebergement_' + uuid;
+            try {
+                if (res) localStorage.setItem(snapKey, JSON.stringify({ t: Date.now(), v: res }));
+                else localStorage.removeItem(snapKey);
+            } catch (e) {}
+            return res;
+        }).catch(function () { return null; });
+    };
+    window.PortalProfile.getCachedResidence = function (uuid) {
+        if (!uuid) return null;
+        try {
+            var raw = localStorage.getItem('progres_hebergement_' + uuid);
+            return raw ? (JSON.parse(raw).v || null) : null;
+        } catch (e) { return null; }
+    };
 
     window.PortalSections = window.PortalSections || [];
     window.PortalSections.push({

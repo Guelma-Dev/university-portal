@@ -24,11 +24,12 @@
 
         function statusBar() {
             var sb = C && C.Plugins && C.Plugins.StatusBar;
-            if (!sb || !sb.setOverlaysWebView || !sb.setBackgroundColor) return;
+            if (!sb || !sb.setOverlaysWebView) return;
+            // Transparent overlay ONLY — never paint an opaque color here.
+            // An opaque strip would cut off the app's own background glow
+            // and read as a horizontal boundary under the system icons.
             sb.setOverlaysWebView({ overlay: true }).catch(function () {});
-            var dark = themeIsDark();
-            sb.setBackgroundColor({ color: dark ? '#0a0a0a' : '#F6F2E9' }).catch(function () {});
-            if (sb.setStyle) sb.setStyle({ style: dark ? 'LIGHT' : 'DARK' }).catch(function () {});
+            if (sb.setStyle) sb.setStyle({ style: themeIsDark() ? 'LIGHT' : 'DARK' }).catch(function () {});
         }
 
         function themeIsDark() {

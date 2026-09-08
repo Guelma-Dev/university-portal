@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل الدخول — معاينة 21st</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Tajawal', sans-serif;
+    background: #121212;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    color: #fff;
+  }
+  /* subtle gold ambient glow */
+  body::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(38rem 38rem at 85% -10%, rgba(228,183,92,.10), transparent 60%),
+      radial-gradient(30rem 30rem at -10% 110%, rgba(228,183,92,.06), transparent 55%);
+  }
+
+  .card {
+    position: relative; z-index: 10;
+    width: 100%; max-width: 390px;
+    border-radius: 28px;
+    padding: 34px 30px 30px;
+    background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(18,18,18,.4));
+    border: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 30px 60px rgba(0,0,0,.55);
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  .logo {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: grid; place-items: center; margin-bottom: 22px;
+    background: rgba(255,255,255,.14);
+    box-shadow: 0 8px 20px rgba(0,0,0,.35);
+    font-size: 1.5rem; color: #E4B75C;
+  }
+  .title { font-size: 1.5rem; font-weight: 800; margin-bottom: 24px; color: #fff; }
+
+  form { width: 100%; display: flex; flex-direction: column; gap: 13px; }
+  .field { width: 100%; }
+  .field label { display: block; font-size: .8rem; font-weight: 500; color: #b9b9b9; margin-bottom: 6px; }
+  .input {
+    width: 100%; padding: 14px 16px; border-radius: 13px;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.06);
+    color: #fff; font-family: inherit; font-size: .92rem; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .input::placeholder { color: #8a8a8a; }
+  .input:focus { border-color: rgba(228,183,92,.5); box-shadow: 0 0 0 3px rgba(228,183,92,.12); }
+
+  .divider { width: 100%; border: none; border-top: 1px solid rgba(255,255,255,.08); margin: 8px 0 6px; }
+
+  .btn-signin {
+    width: 100%; padding: 15px; border-radius: 999px; border: none; cursor: pointer;
+    background: rgba(255,255,255,.10); color: #fff; font-family: inherit;
+    font-size: .95rem; font-weight: 700;
+    transition: background .2s, transform .1s;
+    margin-bottom: 11px;
+  }
+  .btn-signin:hover { background: rgba(255,255,255,.2); }
+  .btn-signin:active { transform: scale(.98); }
+
+  .btn-google {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 15px; border-radius: 999px; border: none; cursor: pointer;
+    background: linear-gradient(to bottom, #232526, #2d2e30); color: #fff; font-family: inherit;
+    font-size: .95rem; font-weight: 700;
+    transition: filter .2s, transform .1s;
+  }
+  .btn-google:hover { filter: brightness(1.15); }
+  .btn-google:active { transform: scale(.98); }
+
+  .foot { width: 100%; text-align: center; margin-top: 12px; }
+  .foot a { color: rgba(255,255,255,.85); font-size: .82rem; text-decoration: underline; }
+  .foot span { color: #9a9a9a; font-size: .82rem; }
+
+  .bottom {
+    position: relative; z-index: 10;
+    margin-top: 34px; text-align: center;
+  }
+  .bottom p { color: #9a9a9a; font-size: .84rem; margin-bottom: 10px; }
+  .bottom p b { color: #fff; font-weight: 500; }
+  .avatars { display: flex; justify-content: center; }
+  .avatars img {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 2px solid #181824; object-fit: cover;
+  }
+  .avatars img + img { margin-inline-start: -8px; }
+
+  .back {
+    position: fixed; top: 18px; inset-inline-start: 18px; z-index: 20;
+    color: #fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1);
+    padding: 8px 14px; border-radius: 999px; font-size: .8rem; font-weight: 700;
+    text-decoration: none; transition: background .2s;
+  }
+  .back:hover { background: rgba(255,255,255,.18); }
+</style>
+</head>
+<body>
+  <a class="back" href="dashboard.html"><i class="fa-solid fa-gauge-high"></i> لوحة التحكم</a>
+
+  <div class="card">
+    <div class="logo"><i class="fa-solid fa-graduation-cap"></i></div>
+    <h1 class="title">بوابة الطالب</h1>
+    <form onsubmit="return doLogin(event)">
+      <div class="field">
+        <label>رقم التسجيل / البريد</label>
+        <input class="input" id="uid" type="text" placeholder="example@univ.dz" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>كلمة المرور</label>
+        <input class="input" id="pass" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <hr class="divider">
+      <button class="btn-signin" type="submit">تسجيل الدخول</button>
+      <button class="btn-google" type="button">
+        <img width="18" height="18" alt="Google"
+             src="https://cdn.21st.dev/assets/mirror/38/38146bfd9eff6dbf0d74771f2e625c70d87d3770e0d080dbb6e50db1d5403f46.svg">
+        المتابعة بحساب Google
+      </button>
+      <div class="foot">
+        <span>ليس لديك حساب؟ </span><a href="#">سجّل — إنه مجاني!</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="bottom">
+    <p>انضم إلى <b>آلاف</b> الطلاب الذين يستخدمون بوابة الطالب</p>
+    <div class="avatars">
+      <img src="https://cdn.21st.dev/assets/mirror/a6/a634d4f02fe5b77804943c1d74b8d70e35ffe26454e0e9af9717432a2c72bfde.jpg" alt="u">
+      <img src="https://cdn.21st.dev/assets/mirror/d8/d8dab29a5736d5c2b0084d720d3db02c785560071609be501541922928fdf831.jpg" alt="u">
+      <img src="https://cdn.21st.dev/assets/mirror/d1/d1a3e08d4e37d6ee2b7de1db8df87c1dc7acd8ffb004caaf980917de518a60c9.jpg" alt="u">
+      <img src="https://cdn.21st.dev/assets/mirror/f0/f07b84f12ef125cbb837a7bd64da401992f5f62bd55fee10d01cd3dcc8abae80.jpg" alt="u">
+    </div>
+  </div>
+
+  <script>
+    function doLogin(e) {
+      e.preventDefault();
+      document.querySelector('.btn-signin').textContent = 'جارٍ الدخول...';
+      setTimeout(function () {
+        alert('تم تسجيل الدخول (معاينة)');
+        window.location.href = 'dashboard.html';
+      }, 900);
+      return false;
+    }
+  </script>
+</body>
+</html>

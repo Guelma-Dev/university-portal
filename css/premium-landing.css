@@ -1,0 +1,289 @@
+/* ==========================================================================
+   PREMIUM-LANDING v2 — University Portal site, redesigned from zero
+   Scope: #landing-page ONLY. Never touches #main-app / backend / js logic.
+   Method: ui-ux-pro-max (Minimalism & Swiss, centered, subtle, spacious,
+   premium black + gold) + apple-design (restraint, materials & depth,
+   press feedback, size-specific type, reduced-motion/transparency).
+   Single centered card. No stats. No orbs. No floating chips.
+   ========================================================================== */
+
+/* ---- Tokens ---- */
+#landing-page {
+    --au-bg-glow: rgba(217, 180, 91, 0.10);
+    --au-gold: #D9B45B;
+    --au-gold-soft: #EED9A0;
+    --au-gold-deep: #9A7A2E;
+    --au-ink: #F7F4ED;
+    --au-ink-2: #B8B2A7;
+    --au-ink-3: #7E786E;
+    --au-card: rgba(22, 22, 28, 0.58);
+    --au-line: rgba(247, 244, 237, 0.10);
+    --au-field: rgba(247, 244, 237, 0.05);
+    --au-shadow: 0 32px 80px rgba(0, 0, 0, 0.55);
+    --au-spring: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme='light'] #landing-page {
+    --au-bg-glow: rgba(138, 109, 27, 0.10);
+    --au-gold: #8A6D1B;
+    --au-gold-soft: #A9882F;
+    --au-gold-deep: #6E5614;
+    --au-ink: #1B1710;
+    --au-ink-2: #57503F;
+    --au-ink-3: #8A8172;
+    --au-card: rgba(255, 255, 255, 0.82);
+    --au-line: rgba(27, 23, 16, 0.12);
+    --au-field: rgba(27, 23, 16, 0.04);
+    --au-shadow: 0 32px 80px rgba(27, 23, 16, 0.16);
+}
+
+/* ---- Canvas: one calm light source, nothing moving ---- */
+#landing-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 96px 16px 56px;
+    background:
+        radial-gradient(ellipse 90% 55% at 50% -10%, var(--au-bg-glow) 0%, transparent 60%),
+        linear-gradient(180deg, #0A0A0E 0%, #0C0C11 100%);
+}
+
+:root[data-theme='light'] #landing-page {
+    background:
+        radial-gradient(ellipse 90% 55% at 50% -10%, var(--au-bg-glow) 0%, transparent 60%),
+        linear-gradient(180deg, #FAF8F4 0%, #F3EFE6 100%);
+}
+
+/* ---- The single card: frosted material, bright top edge ---- */
+#landing-page .lhero {
+    position: relative;
+    z-index: 1;
+    width: min(400px, 100%);
+    margin: 0;
+    padding: 44px 32px 26px;
+    text-align: center;
+    border-radius: 30px;
+    background: var(--au-card);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid var(--au-line);
+    box-shadow: var(--au-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    animation: au-enter 480ms var(--au-spring) both;
+}
+
+@keyframes au-enter {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+#landing-page .lhero-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ---- Seal: quiet champagne disc ---- */
+#landing-page .lhero-logo {
+    width: 76px;
+    height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.7rem;
+    color: #211A0B;
+    background: linear-gradient(150deg, #F0DDA6 0%, var(--au-gold) 55%, var(--au-gold-deep) 100%);
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 12px 32px rgba(217, 180, 91, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    transform: none;
+    margin-bottom: 22px;
+}
+
+:root[data-theme='light'] #landing-page .lhero-logo { color: #fff; }
+
+/* ---- Type: tight display, generous body (Arabic leading) ---- */
+#landing-page .lb-title {
+    margin: 0 0 8px;
+    font-size: clamp(1.65rem, 6vw, 2.1rem);
+    font-weight: 800;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+    color: var(--au-ink);
+}
+
+#landing-page .lb-sub {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+    line-height: 1.9;
+    letter-spacing: 0;
+    color: var(--au-ink-2);
+}
+
+#landing-page .lhero-badge {
+    margin-top: 16px;
+    padding: 7px 16px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--au-ink-2);
+    background: var(--au-field);
+    border: 1px solid var(--au-line);
+    border-radius: 999px;
+}
+
+/* ---- Actions: one hero, two quiet ---- */
+#landing-page .lhero-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 30px 0 20px;
+}
+
+#landing-page .lhero-actions .btn {
+    width: 100%;
+    min-height: 56px;
+    padding: 0 20px;
+    border-radius: 18px;
+    font-size: 0.98rem;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 220ms var(--au-spring), box-shadow 220ms var(--au-spring),
+                background 220ms ease, filter 220ms ease;
+}
+
+/* Apple response: feedback on press, instant */
+#landing-page .lhero-actions .btn:active {
+    transform: scale(0.97);
+    transition-duration: 100ms;
+}
+
+#landing-page .lhero-actions .btn-student {
+    background: linear-gradient(160deg, #E8CB85 0%, var(--au-gold) 55%, var(--au-gold-deep) 130%);
+    border: none;
+    color: #211A0B;
+    box-shadow: 0 14px 34px rgba(217, 180, 91, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+#landing-page .lhero-actions .btn-student:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+}
+
+#landing-page .lhero-actions .btn-quick {
+    background: var(--au-field);
+    border: 1px solid var(--au-line);
+    color: var(--au-ink);
+    box-shadow: none;
+}
+
+#landing-page .lhero-actions .btn-quick:hover {
+    border-color: var(--au-gold);
+    transform: translateY(-1px);
+}
+
+#landing-page .lhero-actions .btn-admin {
+    min-height: 48px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--au-ink-3);
+}
+
+#landing-page .lhero-actions .btn-admin:hover { color: var(--au-gold-soft); }
+
+/* ---- Microcopy: quiet, one line each ---- */
+#landing-page .lc-trust {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.9;
+    color: var(--au-ink-3);
+    border: none;
+    background: none;
+    padding: 0;
+}
+
+#landing-page .lc-trust i { color: var(--au-gold); font-size: 0.78rem; }
+
+#landing-page .lc-footer {
+    margin: 10px 0 0;
+    font-size: 0.75rem;
+    line-height: 1.9;
+    color: var(--au-ink-3);
+}
+
+/* ---- Theme switch: small material disc ---- */
+#landing-page .lc-theme {
+    position: absolute;
+    top: 22px;
+    inset-inline-end: 22px;
+    z-index: 3;
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: var(--au-gold-soft);
+    background: var(--au-card);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--au-line);
+    border-radius: 50%;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 220ms var(--au-spring);
+}
+
+#landing-page .lc-theme:active { transform: scale(0.92); transition-duration: 100ms; }
+#landing-page .lc-theme .fa-sun { display: none; }
+#landing-page .lc-theme .fa-moon { display: inline-block; }
+
+:root[data-theme='light'] #landing-page .lc-theme .fa-sun { display: inline-block; }
+:root[data-theme='light'] #landing-page .lc-theme .fa-moon { display: none; }
+
+/* ---- Focus: visible gold ring ---- */
+#landing-page .btn:focus-visible,
+#landing-page .lc-theme:focus-visible {
+    outline: 2px solid var(--au-gold);
+    outline-offset: 3px;
+}
+
+/* ---- Reduced motion: cross-fade only ---- */
+@media (prefers-reduced-motion: reduce) {
+    #landing-page .lhero { animation: none; }
+    #landing-page .lhero-actions .btn,
+    #landing-page .lc-theme { transition: none; }
+    #landing-page .lhero-actions .btn:active,
+    #landing-page .lc-theme:active { transform: none; }
+}
+
+/* ---- Reduced transparency: solid surfaces ---- */
+@media (prefers-reduced-transparency: reduce) {
+    #landing-page .lhero { background: #141419; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    :root[data-theme='light'] #landing-page .lhero { background: #ffffff; }
+    #landing-page .lc-theme { -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+
+/* ---- More contrast: defined borders ---- */
+@media (prefers-contrast: more) {
+    #landing-page .lhero { border: 2px solid var(--au-gold); }
+    #landing-page .lb-title,
+    #landing-page .lb-sub { color: var(--au-ink); }
+}
+
+/* ---- Small screens ---- */
+@media (max-width: 480px) {
+    #landing-page { padding: 84px 14px 44px; }
+    #landing-page .lhero { padding: 38px 22px 22px; border-radius: 26px; }
+    #landing-page .lc-theme { top: 16px; inset-inline-end: 16px; }
+}

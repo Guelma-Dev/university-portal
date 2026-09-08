@@ -442,6 +442,58 @@ def serve_uploaded_file(filename):
 # ============================================
 # PUBLIC API (no auth)
 # ============================================
+
+# ---- In-app update manifest -------------------------------------------
+# HOW TO PUBLISH AN UPDATE (same signing identity is MANDATORY):
+#   1. Bump versionCode (+1) and versionName in android/app/build.gradle.
+#   2. Build the release APK with the SAME keystore (android/keystore.properties).
+#   3. Copy the APK to backend/flask_backend/releases/app-<versionCode>.apk
+#      and compute its SHA-256.
+#   4. Update backend/flask_backend/update.json with the new versionCode,
+#      versionName, apkUrl (/app/releases/app-<versionCode>.apk) and sha256.
+# Until then update.json mirrors the current build: clients stay up to date.
+UPDATE_MANIFEST_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'update.json')
+
+
+@app.route('/app/update.json', methods=['GET'])
+def app_update_manifest():
+    try:
+        with open(UPDATE_MANIFEST_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        return jsonify({'error': 'update manifest unavailable'}), 502
+    if not isinstance(data, dict):
+        return jsonify({'error': 'update manifest unavailable'}), 502
+    try:
+        vc = int(data.get('versionCode') or 0)
+    except (TypeError, ValueError):
+        vc = 0
+    if vc <= 0:
+        return jsonify({'error': 'update manifest unavailable'}), 502
+    return jsonify({
+        'versionName': str(data.get('versionName') or ('v' + str(vc))),
+        'versionCode': vc,
+        'apkUrl': str(data.get('apkUrl') or ''),
+        'sha256': str(data.get('sha256') or ''),
+        'mandatory': data.get('mandatory') is True,
+    })
+
+
+@app.route('/app/releases/<path:filename>', methods=['GET'])
+def app_update_apk(filename):
+    if '/' in filename or '\\' in filename or filename.startswith('.'):
+        return jsonify({'error': 'not found'}), 404
+    if not filename.lower().endswith('.apk'):
+        return jsonify({'error': 'not found'}), 404
+    releases = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'releases')
+    full = os.path.join(releases, filename)
+    if not os.path.isfile(full):
+        return jsonify({'error': 'not found'}), 404
+    resp = send_from_directory(releases, filename, mimetype='application/vnd.android.package-archive')
+    resp.headers['Accept-Ranges'] = 'bytes'
+    return resp
+
+
 @app.route('/api/subjects', methods=['GET'])
 @auth_required
 def get_subjects():

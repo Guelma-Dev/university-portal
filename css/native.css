@@ -96,26 +96,26 @@ body.native-app .section.active .tile:nth-child(8) { animation-delay: 0.21s; }
    Fallback = opaque (ignored property) when blur unsupported.
    ============================================================ */
 body.native-app .app-bar {
-    background: rgba(13, 13, 17, 0.84);
+    background: rgba(17, 17, 21, 0.93);
     -webkit-backdrop-filter: blur(18px) saturate(150%);
     backdrop-filter: blur(18px) saturate(150%);
-    border-bottom: 1px solid rgba(212, 175, 55, 0.14);
+    border-bottom: 1px solid rgba(41, 41, 46, 0.95);
     will-change: transform;
 }
 html[data-theme="light"] body.native-app .app-bar {
-    background: rgba(250, 250, 248, 0.86);
-    border-bottom: 1px solid rgba(161, 98, 7, 0.16);
+    background: rgba(255, 255, 255, 0.96);
+    border-bottom: 1px solid rgba(221, 217, 208, 0.95);
 }
 
 body.native-app .bottom-nav .bn-inner {
-    background: rgba(13, 13, 17, 0.88);
+    background: rgba(9, 9, 11, 0.98);
     -webkit-backdrop-filter: blur(16px) saturate(150%);
     backdrop-filter: blur(16px) saturate(150%);
-    border-top: 1px solid rgba(212, 175, 55, 0.10);
+    border-top: 1px solid rgba(41, 41, 46, 0.95);
 }
 html[data-theme="light"] body.native-app .bottom-nav .bn-inner {
-    background: rgba(250, 250, 248, 0.90);
-    border-top: 1px solid rgba(161, 98, 7, 0.12);
+    background: rgba(246, 244, 239, 0.98);
+    border-top: 1px solid rgba(221, 217, 208, 0.95);
 }
 
 /* Compositor hint for every frequently-animated surface (transform/opacity only) */

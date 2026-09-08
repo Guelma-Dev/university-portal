@@ -246,21 +246,29 @@ let pdfPagePending = null;
 // ============================================
 // INITIALIZATION
 // ============================================
+// Background data phase (subjects/schedule/exams/grades UI). Runs without
+// blocking the auth decision so a stored session restores instantly.
+function bootDataPhase() {
+    Promise.all([loadSubjectsFromAPI(), loadScheduleFromAPI()]).then(() => {
+        renderSubjects();
+        renderSchedule();
+        renderAdminSubjects();
+        renderScheduleEditor();
+        updateStats();
+        initSidebarOverlay();
+        renderCalcModules('sem1');
+        renderCalcModules('sem2');
+        loadExams();
+        renderGradesSection();
+        trackVisit();
+    }).catch(() => {});
+}
 document.addEventListener('DOMContentLoaded', async () => {
     applyTheme(APP_STATE.theme);
     loadProgresCache();
-    await Promise.all([loadSubjectsFromAPI(), loadScheduleFromAPI()]);
-    renderSubjects();
-    renderSchedule();
-    renderAdminSubjects();
-    renderScheduleEditor();
-    updateStats();
-    initSidebarOverlay();
-    renderCalcModules('sem1');
-    renderCalcModules('sem2');
-    loadExams();
-    renderGradesSection();
-    trackVisit();
+    // Slow data loads run in the background so the auth decision below
+    // (synchronous local check) paints first — no login-screen flash.
+    bootDataPhase();
 
     const token = localStorage.getItem('admin_token');
     const role = localStorage.getItem('user_role');
@@ -287,6 +295,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     setNameEverywhere((String(`<i class="fas fa-user-graduate"></i><span>${uname}</span>`).match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
                 }
                 applyInitialRoute();
+                updatePomoVisibility();
                 return;
             }
         } catch (e) { /* token invalid */ }
@@ -308,6 +317,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         showEl('logout-btn-account'); showEl('logout-btn');
         setNameEverywhere((String(`<i class="fas fa-user-graduate"></i><span>${uname}</span>`).match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
         applyInitialRoute();
+        updatePomoVisibility();
+        try { if (window.PortalNotify) window.PortalNotify.restore(); } catch (e) {}
         return;
     }
 
@@ -315,6 +326,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     APP_STATE.role = 'guest';
     document.getElementById('landing-page').classList.remove('hidden');
     document.getElementById('main-app').classList.add('hidden');
+    updatePomoVisibility();
 });
 
 // ============================================
@@ -325,7 +337,7 @@ function applyTheme(theme) {
     APP_STATE.theme = theme;
     localStorage.setItem('theme', theme);
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0a0a0a' : '#FAFAF8');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0A0A0C' : '#F6F4EF');
     if (window.PortalNative && window.PortalNative.setStatusBarTheme) {
         try { window.PortalNative.setStatusBarTheme(theme); } catch (e) {}
     }
@@ -353,6 +365,20 @@ function toggleTheme() {
 // ============================================
 // AUTHENTICATION
 // ============================================
+// Pomodoro is an authenticated-app feature: visible only after login,
+// hidden on login/guest/logout screens. Timer logic itself is untouched.
+function updatePomoVisibility() {
+    let authed = false;
+    try {
+        authed = (APP_STATE.role === 'student' || APP_STATE.role === 'admin')
+            && !document.getElementById('main-app').classList.contains('hidden');
+    } catch (e) {}
+    const fab = document.getElementById('appbar-pomo');
+    const panel = document.getElementById('pomo-panel');
+    if (fab) fab.classList.toggle('hidden', !authed);
+    if (panel && !authed) panel.classList.add('hidden');
+}
+
 function enterAsStudent() {
     APP_STATE.role = 'guest';
     localStorage.setItem('user_role', 'guest');
@@ -362,6 +388,7 @@ function enterAsStudent() {
     hideEl('logout-btn-account'); hideEl('logout-btn');
     setNameEverywhere((String('<i class="fas fa-eye"></i><span>ضيف</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     showToast('مرحباً بك في المنصة (وضع الضيف)', 'info');
+    updatePomoVisibility();
     applyInitialRoute();
 }
 
@@ -385,8 +412,14 @@ function closeAllModals() {
 }
 
 function showStudentLogin() {
+    // Standalone login modal is gone (landing shows the form directly);
+    // legacy callers land on the login screen instead.
     closeAllModals();
-    document.getElementById('student-login-modal').classList.remove('hidden');
+    handleLogout();
+    requestAnimationFrame(() => {
+        const u = document.getElementById('login-reg');
+        if (u) u.focus({ preventScroll: true });
+    });
 }
 
 // ============================================
@@ -400,9 +433,38 @@ function enterStudentSession(username) {
     hideEl('admin-menu-item'); hideEl('admin-tile');
     showEl('logout-btn-account'); showEl('logout-btn');
     setNameEverywhere((String(`<i class="fas fa-user-graduate"></i><span>${username || 'طالب'}</span>`).match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
-    showToast(`مرحباً بك ${username || ''}`, 'success');
+    greetStudent();
+    updatePomoVisibility();
+    try { if (window.PortalNotify) window.PortalNotify.restore(); } catch (e) {}
     loadSubjectsFromAPI().then(() => { renderSubjects(); updateStats(); });
     applyInitialRoute();
+}
+
+// Welcome banner with the student's REAL name (never the registration number).
+async function greetStudent() {
+    let full = '';
+    try {
+        const s = getProgresSession();
+        if (s && s.uuid && s.token) {
+            const res = await fetch(`${API_BASE}/api/progres/me?uuid=${encodeURIComponent(s.uuid)}`, {
+                headers: { Authorization: s.token },
+            });
+            if (res.ok) {
+                const me = await res.json();
+                const fn = String(me.prenomArabe || me.prenomLatin || '').trim();
+                const ln = String(me.nomArabe || me.nomLatin || '').trim();
+                full = (fn + ' ' + ln).trim();
+            }
+        }
+    } catch (e) { /* fall back below */ }
+    if (!full) {
+        try {
+            const s = getProgresSession();
+            const fb = String((s && s.name) || localStorage.getItem('user_name') || '').trim();
+            if (fb && !/^\d+$/.test(fb)) full = fb;
+        } catch (e) {}
+    }
+    showToast(full ? `مرحبًا، ${full}` : 'مرحبًا بك', 'success');
 }
 
 async function handleAdminLogin(e) {
@@ -442,6 +504,7 @@ function enterAdminSession(restored = false) {
     updateStats();
     prefillTelegramConfig();
     loadSubjectsFromAPI().then(() => { renderSubjects(); renderAdminSubjects(); updateStats(); });
+    updatePomoVisibility();
     applyInitialRoute();
     showToast(restored ? 'تم استعادة جلسة المسؤول' : 'مرحباً بك أيها المسؤول', 'success');
 }
@@ -470,6 +533,8 @@ function handleLogout() {
     hideEl('logout-btn-account'); hideEl('logout-btn');
     setNameEverywhere((String('<i class="fas fa-eye"></i><span>ضيف</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     showToast('تم تسجيل الخروج', 'info');
+    updatePomoVisibility();
+    try { if (window.PortalNotify) window.PortalNotify.onLogout(); } catch (e) {}
     document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
     history.replaceState(null, '', '#/');
@@ -486,12 +551,11 @@ const $id = (i) => document.getElementById(i);
 function showEl(id, disp = 'flex') { const e = $id(id); if (e) e.style.display = disp; }
 function hideEl(id) { const e = $id(id); if (e) e.style.display = 'none'; }
 function setNameEverywhere(name) {
-    const displayName = name || localStorage.getItem('user_name') || 'طالب';
-    const welcomeEl = $id('hero-welcome');
-    if (welcomeEl) welcomeEl.textContent = displayName === 'طالب' || displayName === 'مسؤول' || displayName === 'ضيف'
-        ? 'مرحباً بك' : 'مرحباً ' + displayName;
-    ['acc-name', 'hero-name'].forEach((i) => { const e = $id(i); if (e) e.textContent = displayName; });
+    const raw = String(name || localStorage.getItem('user_name') || '').trim();
+    const displayName = /^\d+$/.test(raw) ? '' : raw;
+    ['acc-name', 'hero-name'].forEach((i) => { const e = $id(i); if (e) e.textContent = displayName || 'طالب'; });
     updateAccountSubtitle();
+    renderDhIdentity();
 }
 
 function updateAccountSubtitle() {
@@ -499,6 +563,77 @@ function updateAccountSubtitle() {
     if (!el) return;
     const subtitle = (typeof getProfileSubtitle === 'function') ? getProfileSubtitle() : '';
     el.textContent = subtitle || 'طالب جامعي';
+}
+
+// ---- حسابي: الاسم العربي الكامل + الصورة من بروقرس ----
+function progresFullNameAr(me) {
+    me = me || {};
+    const pick = (...vs) => { for (const v of vs) { const s = String(v ?? '').trim(); if (s) return s; } return ''; };
+    let nom = pick(me.nomAr, me.nom, me.nomLatin);
+    let prenom = pick(me.prenomAr, me.prenom, me.prenomLatin);
+    if (!nom || !prenom) {
+        try {
+            const s = getProgresSession();
+            const cards = (s && Array.isArray(s.cards)) ? s.cards : [];
+            const c = cards[0] || {};
+            if (!nom) nom = pick(c.individuNomArabe, c.individuNomLatin);
+            if (!prenom) prenom = pick(c.individuPrenomArabe, c.individuPrenomLatin);
+        } catch (e) {}
+    }
+    const full = [nom, prenom].filter(Boolean).join(' ').trim();
+    if (full) return full;
+    try { return (getProgresSession() || {}).name || ''; } catch (e) { return ''; }
+}
+
+function applyAccountName(fullName) {
+    if (!fullName) return;
+    const el = document.getElementById('acc-name');
+    if (el) el.textContent = fullName;
+    renderDhIdentity();
+}
+
+function applyAccountPhoto(dataUrl) {
+    if (!dataUrl) return;
+    const img = document.getElementById('acc-photo');
+    if (!img) return;
+    img.src = dataUrl;
+    const box = img.closest('.account-avatar');
+    if (box) box.classList.add('has-photo');
+}
+
+async function loadAccountProfile() {
+    const session = getProgresSession();
+    if (!session) return;
+    // 1) Name — instant from cache, refresh in background (401-safe via progresFetch)
+    try {
+        const cached = DataCache.get('profile_me');
+        if (cached) applyAccountName(progresFullNameAr(cached));
+    } catch (e) {}
+    progresFetch('me').then(
+        me => { try { DataCache.set('profile_me', me); } catch (e) {} applyAccountName(progresFullNameAr(me)); },
+        () => { /* offline — cached name stays */ }
+    );
+    // 2) Photo — instant from cache, refresh in background (Bearer token inside helper)
+    try {
+        const cachedPhoto = localStorage.getItem('progres_photo_' + session.uuid);
+        if (cachedPhoto) applyAccountPhoto(cachedPhoto);
+    } catch (e) {}
+    fetchProgresPhotoWithRetry(session).then(blob => {
+        if (!blob) return;
+        try {
+            const rd = new FileReader();
+            rd.onload = () => {
+                try {
+                    const url = String(rd.result || '');
+                    if (url.indexOf('data:image/') === 0) {
+                        try { localStorage.setItem('progres_photo_' + session.uuid, url); } catch (e) {}
+                        applyAccountPhoto(url);
+                    }
+                } catch (e) {}
+            };
+            rd.readAsDataURL(blob);
+        } catch (e) {}
+    });
 }
 
 
@@ -547,6 +682,102 @@ function showGuestRestriction() {
     document.body.appendChild(modal);
 }
 
+// ============================================
+// BACK NAVIGATION — section stack (Android back gesture)
+// Detail → Section → Home → Exit
+// ============================================
+let navBackStack = [];
+let navPopInProgress = false;
+
+function navGo(section) {
+    if (!VALID_SECTIONS.includes(section)) section = 'home';
+    if (getSectionFromHash() === section) {
+        navigateToSection(section);
+        navPopInProgress = false;
+    } else {
+        window.location.hash = '/' + section;
+    }
+}
+
+function portalCloseTopOverlay() {
+    const mealsModal = document.querySelector('.lx-m-modal:not(.hidden)');
+    if (mealsModal) {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        return true;
+    }
+    const modal = document.querySelector('.modal-overlay:not(.hidden)');
+    if (modal) { closeAllModals(); return true; }
+    return false;
+}
+
+window.__portalBackHandlers = window.__portalBackHandlers || [];
+
+function portalNavBack() {
+    if (portalCloseTopOverlay()) return true;
+    for (let i = window.__portalBackHandlers.length - 1; i >= 0; i--) {
+        if (window.__portalBackHandlers[i]()) return true;
+    }
+    if (APP_STATE.currentSection === 'grades' && progresCurrentView && ['card', 'exams', 'cc'].includes(progresCurrentView)) {
+        openProgresView('overview');
+        return true;
+    }
+    const prev = navBackStack.pop();
+    if (prev && prev !== APP_STATE.currentSection) {
+        navPopInProgress = true;
+        navGo(prev);
+        return true;
+    }
+    if (APP_STATE.currentSection && APP_STATE.currentSection !== 'home') {
+        navPopInProgress = true;
+        navGo('home');
+        return true;
+    }
+    return false;
+}
+
+function exitAppPortal() {
+    const cap = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+    if (cap && cap.exitApp) { const r = cap.exitApp(); if (r && r.catch) r.catch(function () {}); }
+}
+
+function portalBackButton() {
+    if (portalNavBack()) return true;
+    exitAppPortal();
+    return false;
+}
+
+function goBackPortal() {
+    if (!portalNavBack()) {
+        try { history.back(); } catch (e) {}
+    }
+}
+
+function registerPortalBack() {
+    if (navBackStack._registered) return;
+    navBackStack._registered = true;
+    const cap = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+    if (cap && cap.addListener) {
+        cap.addListener('backButton', portalBackButton).catch(function () {});
+    } else {
+        window.addEventListener('popstate', function () {
+            if (portalCloseTopOverlay()) history.pushState(null, '', window.location.href);
+        });
+    }
+}
+
+function updateBnActive() {
+    let navKey = { home: 'home', grades: 'grades', account: 'account', library: 'library' }[APP_STATE.currentSection] || '';
+    if (APP_STATE.currentSection === 'grades' && progresCurrentView === 'card') navKey = 'card';
+    document.querySelectorAll('.bn-btn').forEach((b) => b.classList.toggle('active', b.dataset.nav === navKey));
+}
+
+function setGradesCardView(cardMode) {
+    const gs = document.getElementById('section-grades');
+    if (gs) gs.classList.toggle('view-card', !!cardMode);
+    const sub = $id('appbar-subtitle');
+    if (sub) sub.textContent = cardMode ? 'بطاقة الطالب' : 'نقاطي — بروقرس';
+}
+
 function switchSection(section) {
     let target = VALID_SECTIONS.includes(section) ? section : 'home';
     if (target === 'admin' && APP_STATE.role !== 'admin') {
@@ -556,6 +787,11 @@ function switchSection(section) {
     if (!canAccessSection(target)) {
         showGuestRestriction();
         return;
+    }
+    const cur = APP_STATE.currentSection;
+    if (cur && cur !== target && !navPopInProgress) {
+        navBackStack.push(cur);
+        if (navBackStack.length > 30) navBackStack.shift();
     }
     if (getSectionFromHash() === target) {
         navigateToSection(target);
@@ -597,11 +833,19 @@ function navigateToSection(section) {
     };
     const sub = $id('appbar-subtitle');
     if (sub) sub.textContent = titles[section] || '';
+    if (section !== 'grades') {
+        progresCurrentView = null;
+        const gs = document.getElementById('section-grades');
+        if (gs) gs.classList.remove('view-card');
+    }
     if (section === 'library' && window.LibraryView && window.LibraryView.open) {
         window.LibraryView.open();
     }
-    const navKey = { home: 'home', grades: 'grades', account: 'account', library: 'library' }[section] || '';
-    document.querySelectorAll('.bn-btn').forEach((b) => b.classList.toggle('active', b.dataset.nav === navKey));
+    if (section === 'account') loadAccountProfile();
+    try { if (section === 'account' && window.PortalNotifyUI) window.PortalNotifyUI.paint(); } catch (e) {}
+    try { if (section === 'account' && window.PortalUpdateUI) window.PortalUpdateUI.refresh(); } catch (e) {}
+    if (section === 'home') renderHomeDashboard();
+    updateBnActive();
     const menu = $id('app-menu'); if (menu) menu.classList.add('hidden');
     // Close sidebar on mobile
     closeSidebar();
@@ -621,6 +865,12 @@ window.addEventListener('hashchange', () => {
     if (!app || app.classList.contains('hidden')) return;
     const section = getSectionFromHash();
     if (!section || section === APP_STATE.currentSection) return;
+    if (navPopInProgress) {
+        navPopInProgress = false;
+    } else {
+        const top = navBackStack[navBackStack.length - 1];
+        if (top === section) navBackStack.pop();
+    }
     navigateToSection(section);
 });
 
@@ -1016,7 +1266,7 @@ function isScheduleEmpty() {
 function renderSchedule() {
     const tbody = document.getElementById('schedule-body');
 
-    if (isScheduleEmpty()) {
+    if (isScheduleEmpty() && !ptsAny()) {
         const msg = '<div class="schedule-not-available"><i class="fas fa-calendar-xmark"></i><p>الرزنامة غير متوفرة حالياً</p><small>سيتم إضافة الرزنامة مع بداية الدخول الجامعي</small></div>';
         tbody.innerHTML = '<tr><td colspan="6" style="border:none;padding:0;">' + msg + '</td></tr>';
     } else {
@@ -1024,16 +1274,29 @@ function renderSchedule() {
             return '<tr><td class="time-col">' + time + '</td>' +
                 DAYS.map(day => {
                     const cell = schedule[day + '_' + i] || {};
+                    const ov = ptsOverlay(day, i);
                     let cls = '';
-                    if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
-                    if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
-                    return '<td class="' + cls + '">' + (cell.text || '') + '</td>';
+                    let text = '';
+                    if (ov) {
+                        cls = PTS_CLASS[ov.type] || '';
+                        text = ptsEsc(ov.subject) + (ov.room ? ' • ' + ptsEsc(ov.room) : '');
+                    } else {
+                        if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
+                        if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
+                        text = cell.text || '';
+                    }
+                    const tap = ptsEditMode ? ' slot-tap" onclick="openSlotEditor(\'' + day + '\',' + i + ')"' : '';
+                    return '<td class="' + cls + tap + '">' + text + '</td>';
                 }).join('') + '</tr>';
         }).join('');
     }
 
     renderMobileDayPicker();
     renderMobileSchedule();
+    renderHomeDashboard();
+    // Class reminders follow the FINAL timetable (overlay wins); the
+    // signature guard inside makes repeat renders a no-op.
+    try { if (window.PortalNotify) window.PortalNotify.rebuildClassReminders(); } catch (e) {}
 }
 
 let selectedScheduleDay = -1;
@@ -1041,6 +1304,7 @@ let selectedScheduleDay = -1;
 function renderMobileDayPicker() {
     const picker = document.getElementById('schedule-day-picker');
     if (!picker) return;
+    const ptsDays = new Set(ptsEntries().map(x => x.day));
     document.querySelectorAll('.day-btn').forEach((btn, i) => {
         const hasContent = DAYS.some((day, di) => {
             return TIME_SLOTS.some((_, ti) => {
@@ -1052,7 +1316,7 @@ function renderMobileDayPicker() {
             const cell = schedule[`${DAYS[i]}_${ti}`] || {};
             return cell.text && cell.text.trim();
         });
-        btn.classList.toggle('has-classes', dayHasContent);
+        btn.classList.toggle('has-classes', dayHasContent || ptsDays.has(DAYS[i]));
     });
 }
 
@@ -1071,22 +1335,327 @@ function renderMobileSchedule() {
         container.innerHTML = '<div class="mobile-empty"><i class="fas fa-hand-pointer"></i><p>اختر يوماً من الأعلى لعرض جدوله</p></div>';
         return;
     }
-    if (isScheduleEmpty()) {
+    const day = DAYS[selectedScheduleDay];
+    const label = DAY_LABELS[selectedScheduleDay];
+    if (isScheduleEmpty() && !ptsAny()) {
         container.innerHTML = '<div class="schedule-not-available"><i class="fas fa-calendar-xmark"></i><p>الرزنامة غير متوفرة حالياً</p><small>سيتم إضافة الرزنامة مع بداية الدخول الجامعي</small></div>';
         return;
     }
-    const day = DAYS[selectedScheduleDay];
-    const label = DAY_LABELS[selectedScheduleDay];
     let html = '<div class="mobile-day-title"><i class="fas fa-calendar-check"></i> جدول ' + label + '</div>';
     TIME_SLOTS.forEach((time, i) => {
-        const cell = schedule[day + '_' + i] || {};
+        const cell = (!isScheduleEmpty() && schedule[day + '_' + i]) || {};
+        const ov = ptsOverlay(day, i);
         let cls = '';
-        if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
-        if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
-        const text = cell.text || '';
-        html += '<div class="mobile-slot"><div class="mobile-slot-time"><i class="fas fa-clock"></i> ' + time + '</div><div class="mobile-slot-content ' + cls + ' ' + (!text ? 'empty' : '') + '">' + (text || 'فارغ') + '</div></div>';
+        let inner = '';
+        if (ov) {
+            cls = PTS_CLASS[ov.type] || '';
+            inner = ptsSlotText(ov);
+        } else {
+            if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
+            if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
+            inner = cell.text || '';
+        }
+        if (ptsEditMode) {
+            inner = (inner || 'فارغ') + ' <i class="fas fa-pen pts-pen"></i>';
+            html += '<div class="mobile-slot"><div class="mobile-slot-time"><i class="fas fa-clock"></i> ' + time + '</div><div class="mobile-slot-content ' + cls + ' slot-tap" onclick="openSlotEditor(\'' + day + '\',' + i + ')">' + inner + '</div></div>';
+        } else if (!inner) {
+            html += '<div class="mobile-slot"><div class="mobile-slot-time"><i class="fas fa-clock"></i> ' + time + '</div><div class="mobile-slot-content empty">فارغ</div></div>';
+        } else {
+            html += '<div class="mobile-slot"><div class="mobile-slot-time"><i class="fas fa-clock"></i> ' + time + '</div><div class="mobile-slot-content ' + cls + '">' + inner + '</div></div>';
+        }
     });
     container.innerHTML = html;
+}
+
+// ============================================
+// HOME DASHBOARD — read-only view over the existing timetable system
+// (university schedule + personal slot overlays). Consumes data only.
+// ============================================
+function dhToMin(t) {
+    const m = /^(\d{1,2}):(\d{2})/.exec(String(t || ''));
+    return m ? (+m[1]) * 60 + (+m[2]) : -1;
+}
+// Today's timetable items (overlay wins over university cell); null on Fri/Sat
+function dhTodayItems() {
+    const jsDay = new Date().getDay(); // 0 = Sunday
+    if (jsDay < 0 || jsDay > 4) return null;
+    const day = DAYS[jsDay];
+    const items = [];
+    TIME_SLOTS.forEach((rng, i) => {
+        const parts = String(rng).split('-');
+        const start = (parts[0] || '').trim(), end = (parts[1] || '').trim();
+        const ov = ptsOverlay(day, i);
+        if (ov) {
+            items.push({ start, end, subject: ov.subject, typeAr: (typeof PTS_TYPES !== 'undefined' && PTS_TYPES[ov.type]) || '', meta: [ov.room, ov.teacher].filter(Boolean).join(' • ') });
+            return;
+        }
+        const cell = (!isScheduleEmpty() && schedule[day + '_' + i]) || {};
+        const text = cell.text ? String(cell.text).trim() : '';
+        if (text) items.push({ start, end, subject: text, meta: '' });
+    });
+    return items;
+}
+function dhCountdown(mins, start) {
+    if (mins <= 1) return 'تبدأ بعد دقيقة';
+    if (mins === 2) return 'بعد دقيقتين';
+    if (mins <= 10) return 'بعد ' + mins + ' دقائق';
+    if (mins < 60) return 'بعد ' + mins + ' دقيقة';
+    return 'تبدأ ' + start;
+}
+// Real first name for the greeting — firstName only, never the registration number.
+function progresFirstName() {
+    const isPlaceholder = (s) => !s || s === 'طالب' || s === 'مسؤول' || s === 'ضيف' || /^\d+$/.test(String(s).trim());
+    const pick = (...vs) => { for (const v of vs) { const s = String(v ?? '').trim(); if (s) return s; } return ''; };
+    let me = null;
+    try { me = DataCache.get('profile_me'); } catch (e) {}
+    let first = me ? pick(me.prenomAr, me.prenom, me.prenomLatin) : '';
+    if (!first) {
+        // Fallback 1 — the full name already rendered in «حسابي» (NOM prenom → prenom)
+        try {
+            const acc = String(document.getElementById('acc-name').textContent || '').trim();
+            if (!isPlaceholder(acc)) {
+                const parts = acc.split(/\s+/);
+                first = (parts.length > 1) ? parts[parts.length - 1] : parts[0];
+            }
+        } catch (e) {}
+    }
+    if (!first) {
+        // Fallback 2 — addressé card inside the saved session
+        try {
+            const s = getProgresSession();
+            const cards = (s && Array.isArray(s.cards)) ? s.cards : [];
+            first = pick((cards[0] || {}).individuPrenomArabe, (cards[0] || {}).individuPrenomLatin);
+        } catch (e) {}
+    }
+    if (!first) {
+        // Fallback 3 — tail of whatever the session named itself
+        try {
+            const s = getProgresSession();
+            const parts = String(s && s.name || '').trim().split(/\s+/);
+            const tail = parts[parts.length - 1] || '';
+            first = isPlaceholder(tail) ? '' : tail;
+        } catch (e) {}
+    }
+    return first;
+}
+function renderDhIdentity() {
+    const who = document.getElementById('dh-who');
+    const idsub = document.getElementById('dh-idsub');
+    if (!who && !idsub) return;
+    let reg = '';
+    try { reg = localStorage.getItem('user_name') || ''; } catch (e) {}
+    if (!reg) { try { const s = getProgresSession(); reg = (s && s.name) || ''; } catch (e) {} }
+    const first = progresFirstName();
+    if (who) who.textContent = first ? ('أهلًا، ' + first) : 'أهلًا بك';
+    if (idsub) idsub.textContent = reg ? ('رقم التسجيل · ' + reg) : '';
+}
+function renderHomeDashboard() {
+    renderDhIdentity();
+    const nextEl = document.getElementById('dh-next');
+    const todayEl = document.getElementById('dh-today');
+    const cntEl = document.getElementById('dh-cnt');
+    const tlwrap = document.getElementById('dh-tlwrap');
+    if (!nextEl || !todayEl) return;
+    const tlink = '<div><button type="button" class="dh-link" onclick="switchSection(\'schedule\')">عرض الرزنامة <i class="fas fa-chevron-left"></i></button></div>';
+    const items = dhTodayItems(); // null on the weekend
+    const weekend = (items === null);
+    // Hero card = #dh-next itself; live state lives on its className.
+    const hero = (live, inner) => {
+        nextEl.className = 'dh-hero-card' + (live ? ' live' : '');
+        nextEl.innerHTML = inner;
+    };
+    if (weekend) {
+        if (cntEl) cntEl.textContent = '';
+        if (tlwrap) tlwrap.style.display = 'none';
+        todayEl.innerHTML = '';
+        hero(false, '<p class="dh-eyebrow"><span class="dh-eyedot"></span>عطلة نهاية الأسبوع</p>'
+            + '<p class="dh-none">لا توجد حصص اليوم — تستأنف الرزنامة يوم الأحد</p>'
+            + tlink);
+        return;
+    }
+    if (cntEl) cntEl.textContent = items.length ? (items.length + ' حصص') : 'اليوم بدون حصص';
+    if (tlwrap) tlwrap.style.display = '';
+    if (!items.length) {
+        hero(false, '<p class="dh-eyebrow"><span class="dh-eyedot"></span>اليوم</p>'
+            + '<p class="dh-none">لا توجد حصص مجدولة اليوم</p>'
+            + tlink);
+        todayEl.innerHTML = '';
+        return;
+    }
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const nx = items.find(x => dhToMin(x.end) > nowMin);
+    const idx = nx ? (items.indexOf(nx) + 1) : items.length;
+    if (!nx) {
+        hero(false, '<p class="dh-eyebrow"><span class="dh-eyedot"></span>اليوم</p>'
+            + '<p class="dh-none">انتهت حصص اليوم</p>'
+            + tlink);
+    } else {
+        const s = dhToMin(nx.start);
+        const live = nowMin >= s;
+        hero(live,
+            '<p class="dh-eyebrow"><span class="dh-eyedot"></span>' + (live ? 'حصة جارية الآن' : 'الحصة القادمة') + '<span class="dh-idx">' + idx + ' من ' + items.length + '</span></p>'
+            + '<p class="dh-bigtime">' + ptsEsc(nx.start) + '</p>'
+            + '<h2 class="dh-subject">' + ptsEsc(nx.subject) + '</h2>'
+            + '<p class="dh-meta">' + ptsEsc([nx.typeAr, nx.meta].filter(Boolean).join(' · ') || (nx.start + ' — ' + nx.end)) + '</p>'
+            + '<p class="dh-rule"></p>'
+            + '<div class="dh-foot"><p class="dh-count">' + (live ? ('تجري الآن · تنتهي ' + ptsEsc(nx.end)) : dhCountdown(s - nowMin, nx.start)) + '</p>'
+            + tlink + '</div>');
+    }
+    todayEl.innerHTML = items.map(x => {
+        const s = dhToMin(x.start), e = dhToMin(x.end);
+        const st = (nowMin >= e) ? ' past' : ((nowMin >= s) ? ' now' : '');
+        return '<div class="dh-tlrow' + st + '"><span class="dh-time">' + ptsEsc(x.start) + '</span>'
+            + '<span class="dh-rail"><span class="dh-dot"></span></span>'
+            + '<div class="dh-tlbody">'
+            + (st === ' now' ? '<span class="dh-nowtag">الآن</span>' : '')
+            + '<p class="dh-tlname">' + ptsEsc(x.subject) + '</p>'
+            + (x.meta ? '<p class="dh-tlmeta">' + ptsEsc(x.meta) + '</p>' : '')
+            + '</div></div>';
+    }).join('');
+}
+
+// ============================================
+// PERSONAL TIMETABLE — per-slot overlay (device-only, survives logout,
+// never sent to any server). Saved sessions appear INSIDE their fixed slot.
+// Model per owner: { "day_idx": { day, idx, subject, type, room, teacher, notes } }
+// ============================================
+const PTS_KEY = 'personal_timetable_v1';
+const PTS_TYPES = { lecture: 'محاضرة', td: 'أعمال موجهة', tp: 'أعمال تطبيقية' };
+const PTS_CLASS = { lecture: 'schedule-cell-lecture', td: 'schedule-cell-tdtp', tp: 'schedule-cell-tp' };
+let ptsEditMode = false;
+
+function ptsEsc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function ptsDb() {
+    try {
+        const p = JSON.parse(localStorage.getItem(PTS_KEY) || 'null');
+        if (p && typeof p === 'object' && p.owners && typeof p.owners === 'object') return p;
+    } catch (e) {}
+    return { owners: {}, lastOwner: null };
+}
+function ptsPersist(db) {
+    try { localStorage.setItem(PTS_KEY, JSON.stringify(db)); } catch (e) {}
+}
+// Active profile: logged-in uuid, else last used owner (still visible after logout), else guest
+function ptsOwner() {
+    try {
+        const s = getProgresSession();
+        if (s && s.uuid) return String(s.uuid);
+    } catch (e) {}
+    const db = ptsDb();
+    return db.lastOwner || 'guest';
+}
+function ptsOwnerMap() {
+    const db = ptsDb();
+    const o = db.owners[ptsOwner()];
+    return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {};
+}
+function ptsEntries() {
+    return Object.values(ptsOwnerMap())
+        .filter(x => x && typeof x === 'object' && x.day && x.idx !== undefined && x.idx !== null && x.subject);
+}
+function ptsOverlay(day, idx) {
+    const e = ptsOwnerMap()[day + '_' + idx];
+    return (e && e.subject) ? e : null;
+}
+function ptsAny() {
+    return ptsEntries().length > 0;
+}
+function ptsSlotText(ov) {
+    const meta = [];
+    if (ov.room) meta.push('<i class="fas fa-door-open"></i> ' + ptsEsc(ov.room));
+    if (ov.teacher) meta.push('<i class="fas fa-user"></i> ' + ptsEsc(ov.teacher));
+    if (ov.notes) meta.push('<i class="fas fa-note-sticky"></i> ' + ptsEsc(ov.notes));
+    return '<strong>' + ptsEsc(ov.subject) + '</strong>'
+        + ' <span>' + ptsEsc(PTS_TYPES[ov.type] || ov.type || '') + '</span>'
+        + (meta.length ? '<br>' + meta.join(' · ') : '');
+}
+function togglePtsEditMode() {
+    ptsEditMode = !ptsEditMode;
+    const b = document.getElementById('sched-edit-btn');
+    if (b) {
+        b.classList.toggle('active', ptsEditMode);
+        b.innerHTML = ptsEditMode
+            ? '<i class="fas fa-check"></i> تم'
+            : '<i class="fas fa-pen"></i> تعديل الجدول';
+    }
+    renderSchedule();
+}
+// Tap a fixed slot → edit THAT slot (day/time already known, never asked)
+function openSlotEditor(day, idx) {
+    const uni = schedule[day + '_' + idx] || {};
+    const ov = ptsOverlay(day, idx);
+    const di = DAYS.indexOf(day);
+    document.getElementById('pt-ctx').textContent = (di >= 0 ? DAY_LABELS[di] : day) + ' • ' + TIME_SLOTS[idx];
+    let t = (ov && ov.type) || (uni.type === 'tdtp' ? 'td' : 'lecture');
+    if (!PTS_TYPES[t]) t = 'lecture';
+    document.getElementById('pt-type').value = t;
+    paintPtsType(t);
+    document.getElementById('pt-id').value = day + '_' + idx;
+    document.getElementById('pt-subject').value = (ov && ov.subject) || uni.text || '';
+    document.getElementById('pt-room').value = (ov && ov.room) || '';
+    document.getElementById('pt-teacher').value = (ov && ov.teacher) || '';
+    document.getElementById('pt-notes').value = (ov && ov.notes) || '';
+    document.getElementById('pt-del').style.display = ov ? '' : 'none';
+    document.getElementById('session-editor-modal').classList.remove('hidden');
+}
+function paintPtsType(t) {
+    document.querySelectorAll('.pt-type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === t));
+}
+function selectPtsType(t) {
+    if (!PTS_TYPES[t]) return;
+    document.getElementById('pt-type').value = t;
+    paintPtsType(t);
+}
+function closeSessionEditor() {
+    document.getElementById('session-editor-modal').classList.add('hidden');
+}
+function saveSlotOverride(e) {
+    e.preventDefault();
+    const key = document.getElementById('pt-id').value;
+    const parts = String(key).split('_');
+    const idx = parseInt(parts.pop(), 10);
+    const day = parts.join('_');
+    if (!DAYS.includes(day) || isNaN(idx) || !TIME_SLOTS[idx]) return;
+    const subject = document.getElementById('pt-subject').value.trim();
+    if (!subject) { showToast('أدخل اسم المادة', 'error'); return; }
+    let type = document.getElementById('pt-type').value;
+    if (!PTS_TYPES[type]) type = 'lecture';
+    const db = ptsDb();
+    const o = ptsOwner();
+    if (!db.owners[o] || typeof db.owners[o] !== 'object' || Array.isArray(db.owners[o])) db.owners[o] = {};
+    db.owners[o][key] = {
+        day, idx,
+        subject,
+        type,
+        room: document.getElementById('pt-room').value.trim(),
+        teacher: document.getElementById('pt-teacher').value.trim(),
+        notes: document.getElementById('pt-notes').value.trim(),
+    };
+    if (o !== 'guest') db.lastOwner = o;
+    ptsPersist(db);
+    closeSessionEditor();
+    renderSchedule();
+    showToast('تم حفظ الحصة', 'success');
+}
+// Delete personal overlay only — the fixed slot stays, underlying content shows through
+function deleteSlotOverride() {
+    const key = document.getElementById('pt-id').value;
+    if (!key) return;
+    const parts = String(key).split('_');
+    const idx = parseInt(parts.pop(), 10);
+    const day = parts.join('_');
+    if (!ptsOverlay(day, idx)) return;
+    if (!confirm('هل تريد حذف هذه الحصة؟')) return;
+    const db = ptsDb();
+    const o = ptsOwner();
+    if (db.owners[o] && typeof db.owners[o] === 'object') delete db.owners[o][key];
+    ptsPersist(db);
+    closeSessionEditor();
+    renderSchedule();
+    showToast('تم حذف الحصة', 'success');
 }
 
 // ============================================
@@ -1311,7 +1880,8 @@ function startPomo() {
         return;
     }
     pomoState.running = true;
-    document.getElementById('pomo-fab').classList.add('running');
+    const ab1 = document.getElementById('appbar-pomo');
+    if (ab1) ab1.classList.add('running');
     document.getElementById('pomo-start-btn').innerHTML = '<i class="fas fa-pause"></i> إيقاف مؤقت';
     pomoState.interval = setInterval(pomoTick, 1000);
 }
@@ -1319,7 +1889,8 @@ function startPomo() {
 function stopPomoTick() {
     pomoState.running = false;
     clearInterval(pomoState.interval);
-    document.getElementById('pomo-fab').classList.remove('running');
+    const ab0 = document.getElementById('appbar-pomo');
+    if (ab0) ab0.classList.remove('running');
     document.getElementById('pomo-start-btn').innerHTML = '<i class="fas fa-play"></i> ابدأ';
 }
 
@@ -1374,9 +1945,13 @@ function updatePomoUI() {
     const s = pomoState.remaining % 60;
     const timeStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     document.getElementById('pomo-time').textContent = timeStr;
-    const fabTime = document.getElementById('pomo-fab-time');
-    fabTime.textContent = timeStr;
-    fabTime.classList.remove('hidden');
+    const ab = document.getElementById('appbar-pomo');
+    if (ab) {
+        ab.classList.toggle('running', pomoState.running);
+        ab.innerHTML = pomoState.running
+            ? `<span id="appbar-pomo-time">${timeStr}</span>`
+            : '<i class="fas fa-hourglass-half"></i>';
+    }
     document.getElementById('pomo-count').textContent = `جلسات مكتملة: ${pomoState.completed}`;
     const total = POMO_DURATIONS[pomoState.mode];
     const progress = 283 * (1 - pomoState.remaining / total);
@@ -1385,7 +1960,10 @@ function updatePomoUI() {
 }
 
 // ============================================
-// PROGRES GRADES (pass-through — password never stored)
+// PROGRES SESSION (password never stored)
+// Token+uuid live in progres_session (localStorage) and survive app restarts.
+// A valid token restores the app instantly at boot; an expired one falls
+// back to the login screen (Progres JWTs cannot be refreshed without login).
 // ============================================
 const PROGRES_SESSION_KEY = 'progres_session';
 
@@ -1412,6 +1990,10 @@ function setProgresSession(session) {
 }
 
 function progresLogout() {
+    try {
+        const s = getProgresSession();
+        if (s && s.uuid) localStorage.removeItem('progres_photo_' + s.uuid);
+    } catch (e) {}
     localStorage.removeItem(PROGRES_SESSION_KEY);
     sessionStorage.removeItem(PROGRES_SESSION_KEY);
     clearProgresCache();
@@ -1483,7 +2065,7 @@ async function handleProgresLogin(event) {
             } else {
                 renderGradesSection();
                 loadProgresGrades();
-                showToast('مرحباً ' + (data.userName || username), 'success');
+                greetStudent();
             }
             return;
         } catch (e) {
@@ -1586,16 +2168,50 @@ function gradeBadge(val, isPass, suffix = '') {
     return `<span class="pbadge ${isPass ? 'pb-pass' : 'pb-fail'}">${val}${suffix}</span>`;
 }
 
+// Strict hardcoded semester mapping (Finance & Accounting L1 official names).
+// Returns 2 for Semester 2, 1 otherwise (Semester 1 default).
+function getSemester(moduleName) {
+    if (!moduleName) return 1;
+    // Light Arabic normalization (alef forms, taa marbuta, whitespace) so API
+    // orthography variants still match the official list below.
+    const norm = (t) => String(t).replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim();
+    const name = norm(moduleName);
+    const s2List = [
+        'رياضيات 2', 'إحصاء 2', 'تاريخ الفكر الاقتصادي', 'اقتصاد المؤسسة',
+        'إقتصاد جزئي 2', 'المحاسبة المالية 2', 'قانون تجاري',
+        'أساسيات البرمجة بالبايثون 2', 'المصطلحات الاقتصادية بالإنجليزية',
+    ];
+    // Check if name matches S2 or contains S2 unit codes
+    if (s2List.some((item) => name.includes(norm(item)))) return 2;
+    if (name.includes('S2')) return 2; // unit rows: F00M0001S2, F00F0001S2, F00D0001S2, F00T0001S2
+    return 1;
+}
+
 function renderExamList(exams) {
     if (!Array.isArray(exams) || !exams.length) return '';
-    const rows = exams.map(g => badgeRow(
-        g.mcLibelleAr || g.mcLibelleFr || '',
+    const s1 = [], s2 = [];
+    exams.forEach(g => {
+        const label = g.matiereLibelleAr || g.mcLibelleAr || g.mcLibelleFr || '';
+        const codes = [g.mcCode, g.codeMc, g.code, g.apCode].filter(Boolean).join(' ');
+        (getSemester(label + ' ' + codes) === 2 ? s2 : s1).push(g);
+    });
+    const rows = (list) => list.map(g => badgeRow(
+        g.matiereLibelleAr || g.mcLibelleAr || g.mcLibelleFr || '',
         gradeBadge(g.noteExamen, g.noteExamen == null || g.noteExamen >= 10),
         `${g.planningSessionIntitule ? `<span class="pbadge pb-dim">${g.planningSessionIntitule}</span>` : ''}` +
         `<span class="pbadge pb-info">معامل ${g.rattachementMcCoefficient ?? '-'}</span>`
     )).join('');
-    return `<h4 class="grades-section-title"><i class="fas fa-file-pen"></i> نقاط الامتحانات</h4>
-        <div class="pcard">${rows}</div>`;
+    const H3 = 'color: #D4AF37; margin: 20px 10px 10px 10px; font-size: 16px; border-bottom: 1px solid #D4AF37; padding-bottom: 8px; text-align: right;';
+    const empty = '<p class="ins-empty">لا توجد مواد</p>';
+    return `
+     <div class="semester-section">
+         <h3 style="${H3}">السداسي الأول</h3>
+         <div class="semester-items" id="s1-items">${rows(s1) || empty}</div>
+     </div>
+     <div class="semester-section">
+         <h3 style="${H3}">السداسي الثاني</h3>
+         <div class="semester-items" id="s2-items">${rows(s2) || empty}</div>
+     </div>`;
 }
 
 function renderCcGroups(cc) {
@@ -1634,50 +2250,156 @@ function renderAnnual(annual, cardLabel) {
     </div>`;
 }
 
-function renderRealStudentId(card) {
+function _sidEsc(v) {
+    return String(v ?? '').trim().replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Progres student card — faithful replica of the official app:
+// real JPG faces, Cairo type, tap-to-flip (Reanimated withTiming 500ms equivalent).
+let _sidFlipped = false;
+function sidFlip(force) {
+    const card = document.getElementById('sid-card');
+    if (!card) return;
+    _sidFlipped = typeof force === 'boolean' ? force : !_sidFlipped;
+    card.classList.toggle('is-flipped', _sidFlipped);
+}
+
+function _sidRow(lbl, inner) {
+    return inner ? `<div class="sid-row"><span class="sid-lbl">${lbl}</span><span class="sid-val">${inner}</span></div>` : '';
+}
+
+function _sidPersonRows(card, esc) {
+    const nomAr = esc(card.individuNomArabe), nomLt = esc(card.individuNomLatin);
+    const prnAr = esc(card.individuPrenomArabe), prnLt = esc(card.individuPrenomLatin);
+    const bDate = esc(card.individuDateNaissance ? String(card.individuDateNaissance).split(' ')[0] : '');
+    const bPlace = esc(card.individuLieuNaissanceArabe || card.individuLieuNaissance);
+    const field = esc(card.ofLlDomaineArabe || card.niveauLibelleLongAr || card.niveauLibelleLongLt);
+    const branch = esc(card.ofLlFiliereArabe || card.ofLlFiliere);
+    const birth = [bDate ? `<span dir="ltr">${bDate}</span>` : '', bPlace ? `<span>${bPlace}</span>` : ''].filter(Boolean).join(' ');
+    return ''
+        + _sidRow('اللقب', (nomLt ? `<span class="sid-lat" dir="ltr">${nomLt}</span>` : '') + (nomAr ? `<span>${nomAr}</span>` : ''))
+        + _sidRow('الاسم', (prnLt ? `<span class="sid-lat" dir="ltr">${prnLt}</span>` : '') + (prnAr ? `<span>${prnAr}</span>` : ''))
+        + _sidRow('تاريخ و مكان الميلاد', birth)
+        + _sidRow('الميدان', field ? `<span>${field}</span>` : '')
+        + _sidRow('الفرع', branch ? `<span>${branch}</span>` : '');
+}
+
+let _sidResCache = null;
+let _sidResKey = null;
+function sidResFill() {
+    const body = document.getElementById('sid-res-body');
+    if (!body) return;
+    const c = _sidResCache;
+    const hd = c && c.status === 'fulfilled' ? c.value : null;
+    if (!hd || (typeof hd !== 'string' && !hd.name && !hd.pav && !hd.room && !hd.affect)) {
+        body.innerHTML = '<span class="sid-res-empty">لا يوجد سكن جامعي مرتبط بالحساب بعد</span>';
+        return;
+    }
+    if (typeof hd === 'string') {
+        body.innerHTML = '<span class="sid-res-empty">لا توجد معطيات إقامة منشورة</span>';
+        return;
+    }
+    const hname = String(hd.name || '').trim();
+    const pav = String(hd.pav || '').trim();
+    const room = String(hd.room || '').trim();
+    const affect = String(hd.affect || '').trim() || [pav, room].filter(Boolean).join(' · ');
+    const dou = String(hd.dou || '').trim();
+    if (dou) {
+        const bt = document.getElementById('sid-back-uni');
+        if (bt) bt.textContent = dou;
+    }
+    body.innerHTML = ''
+        + (hname ? _sidRow('الإقامة', `<span>${_sidEsc(hname)}</span>`) : '')
+        + (affect ? `<div class="sid-row"><span class="sid-lbl">الجناح و الغرفة</span><span class="sid-val sid-black"><span>${_sidEsc(affect)}</span></span></div>` : '')
+        || '<span class="sid-res-empty">لا يوجد سكن جامعي مرتبط بالحساب بعد</span>';
+}
+
+async function sidResidence() {
+    const session = getProgresSession();
+    if (!session) return;
+    if (_sidResCache && _sidResKey === session.uuid) { sidResFill(); return; }
+    if (window.PortalProfile && window.PortalProfile.getCachedResidence) {
+        const snap = window.PortalProfile.getCachedResidence(session.uuid);
+        if (snap) {
+            _sidResCache = { status: 'fulfilled', value: snap };
+            _sidResKey = session.uuid;
+            sidResFill();
+        }
+    }
+    if (window.PortalProfile && window.PortalProfile.getResidence) {
+        const res = await window.PortalProfile.getResidence(session.uuid);
+        _sidResCache = { status: res ? 'fulfilled' : 'rejected', value: res || null };
+        _sidResKey = session.uuid;
+        sidResFill();
+    }
+}
+
+// Official Proges student card faces — data: real Progres card object.
+function renderStudentCardPage(card) {
     if (!card) return '';
-    const esc = s => String(s ?? '').trim();
-    const nom = esc(card.individuNomArabe || card.individuNomLatin);
-    const prenom = esc(card.individuPrenomArabe || card.individuPrenomLatin);
-    const birth = [esc(card.individuLieuNaissanceArabe || card.individuLieuNaissance), esc(card.individuDateNaissance)].filter(Boolean).join(' / ');
-    const rows = [
-        ['اللقب', esc(card.individuNomArabe || card.individuNomLatin)],
-        ['الاسم', prenom],
-        ['تاريخ ومكان الميلاد', birth],
-        ['الميدان / مسار التكوين', esc(card.niveauLibelleLongAr || card.niveauLibelleLongLt)],
-        ['الفرع', esc(card.ofLlFiliereArabe || card.ofLlFiliere)],
-    ].filter(r => r[1]);
-    const qrData = encodeURIComponent(`${esc(card.numeroInscription)}|${nom} ${prenom}`);
-    const initial = (prenom || nom || '?').charAt(0);
+    const esc = _sidEsc;
+    const prnAr = esc(card.individuPrenomArabe), nomAr = esc(card.individuNomArabe);
+    const reg = esc(card.numeroInscription);
+    const year = esc(card.anneeAcademiqueCode);
+    const uni = esc(getUniversityName());
+    const sess = getProgresSession();
+    const uuid = sess && sess.uuid ? String(sess.uuid) : '';
+    const qr = v => `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=${encodeURIComponent(v + uuid)}`;
+    const initial = (prnAr || nomAr || '?').charAt(0);
+    const person = _sidPersonRows(card, esc);
+    const logoImg = id => `<img id="${id}" class="sid-logo" alt="" onerror="this.style.display='none'">`;
+    const photoBox = (boxId, imgId, extra) => `
+        <span class="sid-photocol">
+            <span class="sid-photo rsc-photo-box${extra ? ' ' + extra : ''}" id="${boxId}">
+                <span class="sid-avatar">${initial}</span>
+                <img id="${imgId}" class="${extra ? 'sid-photoimg-b' : 'sid-photoimg'}" alt="صورة الطالب">
+            </span>
+        </span>`;
     return `
-    <div class="rsc-card">
-        <div class="rsc-topbar">
-            <img id="rsc-logo" class="rsc-logo" alt="">
-            <div class="rsc-topbar-text">
-                <div class="rsc-state">الجمهورية الجزائرية الديمقراطية الشعبية</div>
-                <div class="rsc-ministry">وزارة التعليم العالي والبحث العلمي</div>
+    <div class="sid-page">
+        <div class="sid-head">
+            <div class="sid-titles">
+                <h2>بطاقة الطالب</h2>
+                <p>${uni}</p>
             </div>
         </div>
-        <div class="rsc-title">بطاقة الطالب</div>
-        <div class="rsc-body">
-            <div class="rsc-photo-col">
-                <div class="rsc-photo-box" id="rsc-photo-box">
-                    <span class="rsc-avatar">${initial}</span>
-                    <img id="rsc-photo" class="rsc-photo" alt="">
+        <div class="sid-scene">
+            <div class="sid-rotbox">
+            <div class="sid-card" id="sid-card" onclick="sidFlip()" role="button" aria-label="اقلب البطاقة" tabindex="0">
+                <div class="sid-face sid-front">
+                    <img class="sid-bg" src="assets/carteetu.jpg" alt="">
+                    <div class="sid-head28">
+                        ${logoImg('rsc-logo')}
+                        <div class="sid-unititle">${uni}</div>
+                    </div>
+                    <div class="sid-body50">
+                        ${photoBox('rsc-photo-box', 'rsc-photo', '')}
+                        <div class="sid-fields">${person}</div>
+                        <div class="sid-qrcol"><img class="sid-qr" alt="QR" src="${qr('/checkInscription/')}" onerror="this.style.display='none'"></div>
+                    </div>
+                    <div class="sid-foot12">
+                        <span class="sid-reg" dir="ltr">${reg}</span>
+                        <span class="sid-year">السنة الجامعية ${year}</span>
+                    </div>
                 </div>
-                <div class="rsc-reg-num">${esc(card.numeroInscription)}</div>
+                <div class="sid-face sid-backface">
+                    <img class="sid-bg" src="assets/carteback.jpg" alt="">
+                    <div class="sid-head28">
+                        ${logoImg('rsc-logo-b')}
+                        <div class="sid-unititle" id="sid-back-uni">${uni}</div>
+                    </div>
+                    <div class="sid-body50">
+                        ${photoBox('rsc-photo-box-b', 'rsc-photo-b', 'rsc-photo-box-b')}
+                        <div class="sid-fields">${person}<div id="sid-res-body"><span class="sid-res-empty">جاري جلب بطاقة السكن...</span></div></div>
+                        <div class="sid-qrcol"><img class="sid-qr" alt="QR" src="${qr('checkHebergement/')}" onerror="this.style.display='none'"></div>
+                    </div>
+                    <div class="sid-foot12">
+                        <span class="sid-reg" dir="ltr">${reg}</span>
+                        <span class="sid-year">السنة الجامعية ${year}</span>
+                    </div>
+                </div>
             </div>
-            <div class="rsc-info-col">
-                ${rows.map(r => `<div class="rsc-row"><span class="rsc-label">${r[0]}</span><span class="rsc-value">${r[1]}</span></div>`).join('')}
             </div>
-            <div class="rsc-qr-col">
-                <img class="rsc-qr" alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${qrData}" onerror="this.style.display='none'">
-                <i class="fas fa-bus rsc-bus-icon"></i>
-            </div>
-        </div>
-        <div class="rsc-footer">
-            <span>السنة الجامعية ${esc(card.anneeAcademiqueCode)}</span>
-            <span>${esc(card.numeroInscription)}</span>
         </div>
     </div>`;
 }
@@ -1727,6 +2449,8 @@ async function loadProgresImages() {
             live.onload = () => box?.classList.remove('photo-failed');
             live.onerror = () => box?.classList.add('photo-failed');
             live.src = progresPhotoUrl;
+            const back = document.getElementById('rsc-photo-b');
+            if (back) back.src = progresPhotoUrl;
         } else {
             box?.classList.add('photo-failed');
         }
@@ -1740,7 +2464,12 @@ async function loadProgresImages() {
             });
             if (res.ok) {
                 const blob = await res.blob();
-                if (blob.type.startsWith('image/')) logo.src = URL.createObjectURL(blob);
+                if (blob.type.startsWith('image/')) {
+                    const url = URL.createObjectURL(blob);
+                    logo.src = url;
+                    const backLogo = document.getElementById('rsc-logo-b');
+                    if (backLogo) { backLogo.src = url; backLogo.style.display = ''; }
+                }
             }
         } catch (e) { /* logo optional */ }
     }
@@ -1857,20 +2586,25 @@ async function openProgresView(view) {
                 s0.idCardYear = String(cardObj.id);
                 setProgresSession(s0);
             }
-            html = back + renderRealStudentId(cardObj);
-        } else if (view === 'exams') {
-            html = back + (renderExamList(c.data.exams.status === 'fulfilled' ? c.data.exams.value : []) || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط امتحانات بعد</p></div>');
-        } else if (view === 'cc') {
-            html = back + (renderCcGroups(c.data.cc.status === 'fulfilled' ? c.data.cc.value : []) || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط تحكم مستمر بعد</p></div>');
+            html = renderStudentCardPage(cardObj);
+            setGradesCardView(true);
         } else {
-            const body = c.notice
-                + renderAnnual(c.data.annual, c.cardLabel)
-                + renderTranscripts(c.data.transcripts.status === 'fulfilled' ? c.data.transcripts.value : []);
-            html = back + (body.trim() ? body : '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط منشورة بعد</p></div>');
+            html = back + (view === 'exams'
+                ? (renderExamList(c.data.exams.status === 'fulfilled' ? c.data.exams.value : []) || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط امتحانات بعد</p></div>')
+                : view === 'cc'
+                    ? (renderCcGroups(c.data.cc.status === 'fulfilled' ? c.data.cc.value : []) || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط تحكم مستمر بعد</p></div>')
+                    : (() => {
+                        const body = c.notice + renderAnnual(c.data.annual, c.cardLabel) + renderTranscripts(c.data.transcripts.status === 'fulfilled' ? c.data.transcripts.value : []);
+                        return body.trim() ? body : '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط منشورة بعد</p></div>';
+                    })());
+            setGradesCardView(false);
         }
         content.innerHTML = html;
-        if (view === 'card') loadProgresImages();
+        if (view === 'card') { loadProgresImages(); sidResidence(); }
+        updateBnActive();
     } catch (e) {
+        setGradesCardView(false);
+        updateBnActive();
         if (e.message === 'status-401') {
             progresLogout();
             showToast('انتهت جلسة بروقرس، سجل دخول من جديد', 'error');
@@ -1905,6 +2639,10 @@ function renderGradesSection() {
     dataView.classList.toggle('hidden', !session);
     if (session) {
         document.getElementById('grades-student-name').textContent = 'نقاطي — ' + (session.name || '');
+    } else {
+        setGradesCardView(false);
+        progresCurrentView = null;
+        updateBnActive();
     }
 }
 
@@ -2587,12 +3325,6 @@ window.LibraryView = (function () {
             size: Number(pdf.sizeBytes) || 0,
         };
     }
-    function bytesToB64Local(bytes) {
-        const CH = 0x8000;
-        let s = '';
-        for (let i = 0; i < bytes.length; i += CH) s += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
-        return window.btoa(s);
-    }
     async function dsOpen(i, mode) {
         const d = (STATE.dsResults || [])[i];
         if (!d) return;
@@ -2600,31 +3332,24 @@ window.LibraryView = (function () {
         const repo = currentDsRepo();
         let bs;
         try { bs = await resolveDsBitstream(repo, d.uuid); } catch (e) { bs = null; }
-        if (!bs) { showToast('تعذر العثور على ملف مرفق في هذه الوثيقة', 'error'); return; }
-        const pn = window.PortalNative;
+        if (!bs || !bs.url) { showToast('تعذر العثور على ملف مرفق في هذه الوثيقة', 'error'); return; }
+        // Ensure URL is absolute
+        let pdfUrl = String(bs.url || '');
+        if (pdfUrl && !/^https?:\/\//i.test(pdfUrl)) pdfUrl = 'https://' + pdfUrl.replace(/^\/+/, '');
+        // Bulletproof native handoff — no fetch, no CORS, no sandbox issues.
+        // The OS (system browser / PDF viewer) handles BOTH view and download.
         try {
-            let b64 = null;
-            if (pn && typeof pn.dspaceBytes === 'function') {
-                const r = await pn.dspaceBytes(bs.url);
-                b64 = r.base64;
+            const cap = window.Capacitor && window.Capacitor.Plugins;
+            if (cap && cap.Browser && typeof cap.Browser.open === 'function') {
+                await cap.Browser.open({ url: pdfUrl });
             } else {
-                const fb = await fetch(bs.url);
-                if (!fb.ok) throw new Error('HTTP ' + fb.status);
-                b64 = bytesToB64Local(new Uint8Array(await fb.arrayBuffer()));
+                window.open(pdfUrl, '_system');
             }
-            const mime = mimeOf(bs.name, 'application/pdf');
-            const clean = cleanName(bs.name);
-            if (mode === 'view' && pn && typeof pn.viewLibraryFile === 'function') {
-                await pn.viewLibraryFile({ name: clean, mime: mime, base64: b64 });
-                showToast('تم فتح الملف بعارض النظام', 'success');
-            } else if (mode === 'download' && pn && typeof pn.saveLibraryFile === 'function') {
-                await pn.saveLibraryFile({ name: clean, mime: mime, base64: b64 });
-                showToast('حُفظ الملف في مجلد التنزيلات', 'success');
-            } else {
-                showToast(mode === 'view' ? 'العرض غير متاح هنا - جرّب زر التنزيل' : 'الحفظ غير متاح هنا', 'error');
-            }
-        } catch (e) {
-            showToast(mode === 'view' ? 'تعذر فتح الملف' : 'تعذر التنزيل, حاول مجدداً', 'error');
+            // Reset UI state immediately after handing off
+            showToast(mode === 'view' ? 'تم فتح الملف' : 'تم إرسال الملف للتنزيل', 'success');
+        } catch (err) {
+            console.error('PDF Open Error:', err);
+            showToast('تعذر فتح الملف', 'error');
         }
     }
     function dsView(i) { dsOpen(i, 'view'); }
@@ -2633,13 +3358,6 @@ window.LibraryView = (function () {
     function isLibraryActive() {
         const s = document.getElementById('section-library');
         return !!(s && s.classList.contains('active'));
-    }
-    function exitApp() {
-        const cap = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
-        if (cap && cap.exitApp) {
-            const r = cap.exitApp();
-            if (r && r.catch) r.catch(function () {});
-        }
     }
 
     // ---- public navigation ----
@@ -3105,7 +3823,6 @@ window.LibraryView = (function () {
 
     // ---- back navigation: one step at a time ----
     function back() {
-        if (!isLibraryActive()) { exitApp(); return; }
         const dspace = $('lib-step-dspace');
         if (dspace && dspace.classList.contains('active')) {
             setMode('moodle');
@@ -3131,22 +3848,12 @@ window.LibraryView = (function () {
         else { go(1); }
     }
 
-    function registerBack() {
-        const cap = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
-        if (cap && cap.addListener) {
-            cap.addListener('backButton', function () {
-                if (isLibraryActive()) { back(); }
-                else { exitApp(); }
-            }).catch(function () {});
-        } else {
-            window.addEventListener('popstate', function () {
-                if (isLibraryActive()) back();
-            });
-        }
-    }
-
     function init() {
-        registerBack();
+        window.__portalBackHandlers = window.__portalBackHandlers || [];
+        window.__portalBackHandlers.push(function () {
+            if (isLibraryActive()) { back(); return true; }
+            return false;
+        });
         open();
         renderStep1();
     }
@@ -3177,3 +3884,66 @@ window.LibraryView = (function () {
         dsDownload: dsDownload,
     };
 })();
+
+// ---- boot: single back-button service (Android back gesture) ----
+registerPortalBack();
+
+// ---- top bar auto-hide on scroll down, show on scroll up ----
+let _hideBarY = 0;
+function initHideAppBar() {
+    const bar = document.querySelector('.app-bar');
+    if (!bar || bar.dataset.hidebound) return;
+    bar.dataset.hidebound = '1';
+    let tick = false;
+    const apply = (y) => {
+        if (tick) return;
+        tick = true;
+        const raf = window.requestAnimationFrame || ((fn) => setTimeout(fn, 16));
+        raf(() => {
+            tick = false;
+            bar.classList.toggle('app-hidden', y > _hideBarY && y > 90);
+            bar.classList.toggle('scrolled', y > 10);
+            _hideBarY = y;
+        });
+    };
+    const winY = () => window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    window.addEventListener('scroll', () => apply(winY()), { passive: true });
+    // capture-phase: catches any inner scrollable pane too
+    document.addEventListener('scroll', (e) => {
+        const t = e.target;
+        if (t && t !== document && t.scrollTop !== undefined) apply(t.scrollTop);
+    }, { capture: true, passive: true });
+}
+initHideAppBar();
+
+// ---- login screen: keyboard-aware shift (visualViewport, transform-based) ----
+function initLoginKeyboard() {
+    const page = document.getElementById('landing-page');
+    const card = document.getElementById('login-card');
+    const btn = document.getElementById('login-submit');
+    if (!page || !card || page.dataset.kbinit) return;
+    page.dataset.kbinit = '1';
+    const vv = window.visualViewport;
+    const update = () => {
+        if (page.classList.contains('hidden')) return;
+        let shift = 0;
+        if (vv) {
+            const kb = window.innerHeight - vv.height - vv.offsetTop;
+            if (kb > 60 && btn) {
+                const r = btn.getBoundingClientRect();
+                shift = Math.max(0, Math.min(kb, (r.bottom - vv.offsetTop) - vv.height + 20));
+            }
+        }
+        card.style.setProperty('--kb-shift', shift + 'px');
+        page.classList.toggle('kb-open', shift > 0);
+    };
+    if (vv) {
+        vv.addEventListener('resize', update);
+        vv.addEventListener('scroll', update);
+    }
+    page.addEventListener('focusin', (e) => {
+        if (e.target && e.target.tagName === 'INPUT') requestAnimationFrame(update);
+    });
+    update();
+}
+initLoginKeyboard();

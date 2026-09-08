@@ -66,6 +66,9 @@
     --tdtp-bg: rgba(76, 175, 80, 0.08);
     --tdtp-border: #4CAF50;
     --tdtp-text: #81C784;
+    --tp-bg: rgba(111, 168, 255, 0.10);
+    --tp-border: #6FA8FF;
+    --tp-text: #9DC0FF;
 
     color-scheme: dark;
 }
@@ -119,6 +122,9 @@
     --tdtp-bg: rgba(46, 125, 50, 0.06);
     --tdtp-border: #2E7D32;
     --tdtp-text: #388E3C;
+    --tp-bg: rgba(30, 100, 200, 0.07);
+    --tp-border: #1E64C8;
+    --tp-text: #1E56A8;
 
     color-scheme: light;
 }
@@ -672,6 +678,10 @@ input { font-family: inherit; }
     background: var(--tdtp-bg) !important; color: var(--tdtp-text);
     border-right: 3px solid var(--tdtp-border);
 }
+.schedule-cell-tp {
+    background: var(--tp-bg) !important; color: var(--tp-text);
+    border-right: 3px solid var(--tp-border);
+}
 .schedule-not-available {
     text-align: center; padding: 60px 20px; color: var(--text-tertiary);
 }
@@ -1024,8 +1034,18 @@ input { font-family: inherit; }
     .day-picker-title {
         font-size: 1rem; font-weight: 700; color: var(--text-primary);
         margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+        justify-content: space-between;
     }
     .day-picker-title i { color: var(--accent); }
+    .sched-edit-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: .75rem; font-weight: 800; font-family: inherit;
+        color: var(--accent); background: transparent;
+        border: 1px solid var(--border); border-radius: 999px;
+        padding: 7px 12px; cursor: pointer; white-space: nowrap;
+    }
+    .sched-edit-btn:active { transform: scale(.96); }
+    .sched-edit-btn.active { color: #241A05; background: var(--accent); border-color: transparent; }
     .day-picker-grid {
         display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
     }
@@ -1070,6 +1090,20 @@ input { font-family: inherit; }
         border-right: 3px solid var(--tdtp-border); padding-right: 10px;
         background: var(--tdtp-bg); padding: 8px 10px; border-radius: var(--radius-sm);
     }
+    .mobile-slot-content.schedule-cell-tp {
+        border-right: 3px solid var(--tp-border); padding-right: 10px;
+        background: var(--tp-bg); padding: 8px 10px; border-radius: var(--radius-sm);
+    }
+    .mobile-slot .slot-tap, .schedule-table td.slot-tap { cursor: pointer; }
+    .pts-pen { font-size: .7rem; opacity: .6; }
+    .pt-type-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .pt-type-btn {
+        flex: 1; padding: 11px 4px; border-radius: var(--radius-md);
+        font-size: .82rem; font-weight: 800; font-family: inherit;
+        color: var(--text-secondary); background: transparent;
+        border: 1px solid var(--border); cursor: pointer;
+    }
+    .pt-type-btn.active { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
     .mobile-empty {
         text-align: center; padding: 40px 20px; color: var(--text-tertiary);
     }
