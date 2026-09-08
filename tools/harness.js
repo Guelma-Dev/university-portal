@@ -221,7 +221,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const mani4 = fs.readFileSync(path.join(ROOT, 'android', 'app', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
     check(mani4.includes('REQUEST_INSTALL_PACKAGES') && mani4.includes('.UpdateInstallReceiver'), 'install permission + status receiver');
     const beManifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'backend', 'flask_backend', 'update.json'), 'utf8'));
-    check(beManifest.versionCode === 1 && beManifest.apkUrl === '', 'production manifest mirrors current build (no fake update)');
+    check(beManifest.versionCode === 2 && beManifest.versionName === '1.3.8', 'production manifest advertises 1.3.8 (code 2)');
+    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-2\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
+    check(/^[0-9a-f]{64}$/.test(beManifest.sha256 || ''), 'manifest carries real sha256');
+    const beApp = fs.readFileSync(path.join(ROOT, 'backend', 'flask_backend', 'app.py'), 'utf8');
+    check(beApp.includes("Access-Control-Allow-Origin'] = '*'") && beApp.includes('/app/update.json'), 'manifest + apk served with CORS for WebView');
     // ---------- Phase 3: branding / splash / login / status ----------
     check(fs.existsSync(path.join(ROOT, 'assets', 'logo.svg')), 'new logo SVG exists');
     const _logoSvg = fs.readFileSync(path.join(ROOT, 'assets', 'logo.svg'), 'utf8');

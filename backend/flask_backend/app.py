@@ -470,13 +470,18 @@ def app_update_manifest():
         vc = 0
     if vc <= 0:
         return jsonify({'error': 'update manifest unavailable'}), 502
-    return jsonify({
+    resp = jsonify({
         'versionName': str(data.get('versionName') or ('v' + str(vc))),
         'versionCode': vc,
         'apkUrl': str(data.get('apkUrl') or ''),
         'sha256': str(data.get('sha256') or ''),
         'mandatory': data.get('mandatory') is True,
     })
+    # Public manifest read by the APK WebView (origin https://localhost):
+    # allow cross-origin reads like the /files/ route already does.
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 
 @app.route('/app/releases/<path:filename>', methods=['GET'])
@@ -491,6 +496,8 @@ def app_update_apk(filename):
         return jsonify({'error': 'not found'}), 404
     resp = send_from_directory(releases, filename, mimetype='application/vnd.android.package-archive')
     resp.headers['Accept-Ranges'] = 'bytes'
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
     return resp
 
 

@@ -15,7 +15,7 @@ window.PortalUpdate = (function () {
     var LS_DL = 'portal_update_dl';
     var LS_CHECK = 'portal_update_check';
     var CHECK_TTL = 6 * 3600 * 1000;
-    var FETCH_TIMEOUT = 15000;
+    var FETCH_TIMEOUT = 30000;
 
     var state = { name: 'idle', remote: null, progress: null, error: '' };
     var listeners = [];
