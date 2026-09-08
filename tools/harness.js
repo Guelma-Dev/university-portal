@@ -226,7 +226,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const beManifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'backend', 'flask_backend', 'update.json'), 'utf8'));
     check(beManifest.versionCode === 4 && beManifest.versionName === '1.4.0', 'production manifest advertises 1.4.0 (code 4)');
     check(/^https:\/\/[^\/\s]+\/app\/releases\/app-4\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
-    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-3.apk')), 'release APK present for hosting');
+    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-4.apk')), 'release APK present for hosting');
     check(!upJava.includes('setDestinationUri(Uri.fromFile') && !upJava.includes('VISIBILITY_HIDDEN'), 'no banned download destination/visibility');
     check(upJava.includes('setDestinationInExternalFilesDir') && upJava.includes('VISIBILITY_VISIBLE'), 'store-compliant download target + visible progress');
     check(/^[0-9a-f]{64}$/.test(beManifest.sha256 || ''), 'manifest carries real sha256');
