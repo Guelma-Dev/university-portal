@@ -200,8 +200,16 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(!_cssLuxP.includes('.pomo-fab'), 'no dead fab CSS');
     for (const f of ['index.html', path.join('www', 'index.html')]) {
         const h = fs.readFileSync(path.join(ROOT, f), 'utf8');
-        const n = (h.match(/\?v=1\.4\.1/g) || []).length;
+        const n = (h.match(/\?v=1\.4\.4/g) || []).length;
         check(n >= 10, (f.includes('www') ? '[www] ' : '') + 'cache busters pinned to release (' + n + ')');
+    }
+    // Busters must track the release version or OTA updates serve stale assets.
+    const gradle = fs.readFileSync(path.join(ROOT, 'android', 'app', 'build.gradle'), 'utf8');
+    const verName = (gradle.match(/versionName\s+"([^"]+)"/) || [])[1] || '';
+    for (const f of ['index.html', path.join('www', 'index.html')]) {
+        const h = fs.readFileSync(path.join(ROOT, f), 'utf8');
+        const vers = new Set([...h.matchAll(/\?v=([^"'\s]+)/g)].map(m => m[1]));
+        check(vers.size === 1 && vers.has(verName), (f.includes('www') ? '[www] ' : '') + 'all busters equal release ' + verName);
     }
 
     // ---------- Static CSS/JS checks ----------
@@ -233,9 +241,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const mani4 = fs.readFileSync(path.join(ROOT, 'android', 'app', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
     check(mani4.includes('REQUEST_INSTALL_PACKAGES') && mani4.includes('.UpdateInstallReceiver'), 'install permission + status receiver');
     const beManifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'backend', 'flask_backend', 'update.json'), 'utf8'));
-    check(beManifest.versionCode === 7 && beManifest.versionName === '1.4.3', 'production manifest advertises 1.4.3 (code 7)');
-    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-7\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
-    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-7.apk')), 'release APK present for hosting');
+    check(beManifest.versionCode === 8 && beManifest.versionName === '1.4.4', 'production manifest advertises 1.4.4 (code 8)');
+    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-8\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
+    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-8.apk')), 'release APK present for hosting');
     check(!upJava.includes('setDestinationUri(Uri.fromFile') && !upJava.includes('VISIBILITY_HIDDEN'), 'no banned download destination/visibility');
     check(upJava.includes('setDestinationInExternalFilesDir') && upJava.includes('VISIBILITY_VISIBLE'), 'store-compliant download target + visible progress');
     check(upJava.includes('installBegin') && upJava.includes('installAppend') && upJava.includes('installCommit'), 'chunked install handoff (bridge-safe)');
