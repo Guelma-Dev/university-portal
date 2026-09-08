@@ -2264,38 +2264,8 @@ function sidFlip(force) {
     card.classList.toggle('is-flipped', _sidFlipped);
 }
 
-// Single-coordinate-space scaling: 1em = 1% of the card's own width, so
-// background, photo, QR and text always scale together, uniformly.
-function sidFitCard() {
-    try {
-        const card = document.getElementById('sid-card');
-        if (!card) return;
-        const w = card.offsetWidth;
-        if (w && w > 50) card.style.fontSize = (w / 100) + 'px';
-    } catch (e) {}
-}
-let _sidFitBound = false;
-function sidBindFit() {
-    if (_sidFitBound) return;
-    _sidFitBound = true;
-    try {
-        window.addEventListener('resize', () => { sidFitCard(); });
-        window.addEventListener('orientationchange', () => { setTimeout(sidFitCard, 120); });
-    } catch (e) {}
-}
-
-function _sidLbl(t, wide) {
-    return t ? `<div class="sid-frow"><span class="sid-flbl${wide ? ' sid-flbl-w' : ''}">${t}</span></div>` : '';
-}
-function _sidVal(ar, lat) {
-    // Official: arabic + latin share one row-reverse row, each capped at 60%.
-    const parts = [];
-    if (ar) parts.push(`<span class="sid-v">${ar}</span>`);
-    if (lat) parts.push(`<span class="sid-v sid-vlat" dir="ltr">${lat}</span>`);
-    return parts.length ? `<div class="sid-frow">${parts.join('')}</div>` : '';
-}
-function _sidVal1(html) {
-    return html ? `<div class="sid-frow sid-frow-1"><span class="sid-v sid-vfull">${html}</span></div>` : '';
+function _sidRow(lbl, inner) {
+    return inner ? `<div class="sid-row"><span class="sid-lbl">${lbl}</span><span class="sid-val">${inner}</span></div>` : '';
 }
 
 function _sidPersonRows(card, esc) {
@@ -2305,14 +2275,13 @@ function _sidPersonRows(card, esc) {
     const bPlace = esc(card.individuLieuNaissanceArabe || card.individuLieuNaissance);
     const field = esc(card.ofLlDomaineArabe || card.niveauLibelleLongAr || card.niveauLibelleLongLt);
     const branch = esc(card.ofLlFiliereArabe || card.ofLlFiliere);
-    const nbsp = '&nbsp;'.repeat(8);
-    const birth = [bDate ? `<span dir="ltr">${bDate}</span>` : '', bPlace ? `<span>${bPlace}</span>` : ''].filter(Boolean).join(nbsp);
+    const birth = [bDate ? `<span dir="ltr">${bDate}</span>` : '', bPlace ? `<span>${bPlace}</span>` : ''].filter(Boolean).join(' ');
     return ''
-        + _sidLbl('اللقب', true) + _sidVal(nomAr, nomLt)
-        + _sidLbl('الاسم') + _sidVal(prnAr, prnLt)
-        + _sidLbl('تاريخ و مكان الميلاد') + _sidVal1(birth)
-        + _sidLbl('الميدان') + _sidVal1(field ? `<span>${field}</span>` : '')
-        + (branch ? _sidLbl('الفرع') + _sidVal1(`<span>${branch}</span>`) : '');
+        + _sidRow('اللقب', (nomLt ? `<span class="sid-lat" dir="ltr">${nomLt}</span>` : '') + (nomAr ? `<span>${nomAr}</span>` : ''))
+        + _sidRow('الاسم', (prnLt ? `<span class="sid-lat" dir="ltr">${prnLt}</span>` : '') + (prnAr ? `<span>${prnAr}</span>` : ''))
+        + _sidRow('تاريخ و مكان الميلاد', birth)
+        + _sidRow('الميدان', field ? `<span>${field}</span>` : '')
+        + _sidRow('الفرع', branch ? `<span>${branch}</span>` : '');
 }
 
 let _sidResCache = null;
@@ -2340,8 +2309,8 @@ function sidResFill() {
         if (bt) bt.textContent = dou;
     }
     body.innerHTML = ''
-        + (hname ? _sidLbl('الإقامة') + _sidVal1(`<span>${_sidEsc(hname)}</span>`) : '')
-        + (affect ? `<div class="sid-frow"><span class="sid-flbl sid-flbl-b">الجناح و الغرفة</span><span class="sid-v sid-v900"><span>${_sidEsc(affect)}</span></span></div>` : '')
+        + (hname ? _sidRow('الإقامة', `<span>${_sidEsc(hname)}</span>`) : '')
+        + (affect ? `<div class="sid-row"><span class="sid-lbl">الجناح و الغرفة</span><span class="sid-val sid-black"><span>${_sidEsc(affect)}</span></span></div>` : '')
         || '<span class="sid-res-empty">لا يوجد سكن جامعي مرتبط بالحساب بعد</span>';
 }
 
@@ -2378,7 +2347,6 @@ function renderStudentCardPage(card) {
     const qr = v => `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=${encodeURIComponent(v + uuid)}`;
     const initial = (prnAr || nomAr || '?').charAt(0);
     const person = _sidPersonRows(card, esc);
-    const uniCls = uni.indexOf('الصحة') !== -1 ? ' sid-small' : '';
     const logoImg = id => `<img id="${id}" class="sid-logo" alt="" onerror="this.style.display='none'">`;
     const photoBox = (boxId, imgId, extra) => `
         <span class="sid-photocol">
@@ -2389,6 +2357,12 @@ function renderStudentCardPage(card) {
         </span>`;
     return `
     <div class="sid-page">
+        <div class="sid-head">
+            <div class="sid-titles">
+                <h2>بطاقة الطالب</h2>
+                <p>${uni}</p>
+            </div>
+        </div>
         <div class="sid-scene">
             <div class="sid-rotbox">
             <div class="sid-card" id="sid-card" onclick="sidFlip()" role="button" aria-label="اقلب البطاقة" tabindex="0">
@@ -2396,7 +2370,7 @@ function renderStudentCardPage(card) {
                     <img class="sid-bg" src="assets/carteetu.jpg" alt="">
                     <div class="sid-head28">
                         ${logoImg('rsc-logo')}
-                        <div class="sid-unititle${uniCls}">${uni}</div>
+                        <div class="sid-unititle">${uni}</div>
                     </div>
                     <div class="sid-body50">
                         ${photoBox('rsc-photo-box', 'rsc-photo', '')}
@@ -2412,7 +2386,7 @@ function renderStudentCardPage(card) {
                     <img class="sid-bg" src="assets/carteback.jpg" alt="">
                     <div class="sid-head28">
                         ${logoImg('rsc-logo-b')}
-                        <div class="sid-unititle${uniCls}" id="sid-back-uni">${uni}</div>
+                        <div class="sid-unititle" id="sid-back-uni">${uni}</div>
                     </div>
                     <div class="sid-body50">
                         ${photoBox('rsc-photo-box-b', 'rsc-photo-b', 'rsc-photo-box-b')}
@@ -2626,7 +2600,7 @@ async function openProgresView(view) {
             setGradesCardView(false);
         }
         content.innerHTML = html;
-        if (view === 'card') { loadProgresImages(); sidResidence(); sidBindFit(); requestAnimationFrame(() => { sidFitCard(); }); }
+        if (view === 'card') { loadProgresImages(); sidResidence(); }
         updateBnActive();
     } catch (e) {
         setGradesCardView(false);

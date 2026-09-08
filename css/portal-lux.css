@@ -2212,9 +2212,12 @@ select option { background: var(--input-bg); color: var(--text-primary); }
     display: flex; flex-direction: column;
     padding: 8px 0 10px;
 }
+.sid-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.sid-titles h2 { margin: 0 0 3px; font-size: 1.12rem; font-weight: 800; color: var(--text-primary); }
+.sid-titles p { margin: 0; font-size: .7rem; color: var(--text-tertiary); }
 .sid-scene {
     flex: 1; min-height: 0; display: grid; place-items: center;
-    padding: 19vh 0 12px;
+    padding: 10px 0 2px;
 }
 /* Footprint box (portrait) — the landscape card lives rotated -90deg inside,
    exactly like the official app (frontStyle/backStyle rotate '-90deg').
@@ -2225,13 +2228,12 @@ select option { background: var(--input-bg); color: var(--text-primary); }
     aspect-ratio: 638 / 1012; margin: 2px auto;
 }
 .sid-card {
-    font-size: 6px;
-    text-size-adjust: 100%;
-    -webkit-text-size-adjust: 100%;
     position: absolute; top: 50%; left: 50%;
     width: 158.6%; aspect-ratio: 1012 / 638;
     transform: translate(-50%, -50%);
     transform-style: preserve-3d;
+    perspective: 1200px;
+    container-type: inline-size;
     cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 
@@ -2242,11 +2244,11 @@ select option { background: var(--input-bg); color: var(--text-primary); }
 .sid-face {
     position: absolute; inset: 0; overflow: hidden;
     -webkit-backface-visibility: hidden; backface-visibility: hidden;
-    border-radius: 25px; border-radius: 4.7em;
+    border-radius: 18px; border-radius: 3.5cqw;
     background: #fff;
     box-shadow: 0 18px 42px rgba(0, 0, 0, .30);
     font-family: 'CairoCard', sans-serif;
-    transition: transform .5s cubic-bezier(.45, 0, .55, 1);
+    transition: transform .5s cubic-bezier(.4, .05, .3, 1);
 }
 .sid-front { transform: rotate(-90deg) rotateY(0deg); }
 .sid-backface { transform: rotate(-90deg) rotateY(180deg); }
@@ -2258,46 +2260,43 @@ select option { background: var(--input-bg); color: var(--text-primary); }
     position: absolute; top: 16%; inset-inline-start: 6.6%;
     width: 13.2%; aspect-ratio: 1; object-fit: contain;
 }
-.sid-logo { display: none; }
-.sid-logo[src] { display: block; }
-.sid-unititle.sid-small { font-size: 11px; font-size: 2.04em; }
+.sid-logo:not([src]) { display: none; }
 .sid-unititle {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    text-align: center; font-weight: 700; color: #000;
-    font-size: 14px; font-size: 2.45em; line-height: 1.5;
+    text-align: center; font-weight: 700; color: #2B2B30;
+    font-size: 14px; font-size: 2.45cqw; line-height: 1.5;
 }
 
 .sid-body50 { position: absolute; top: 28%; height: 50%; left: 0; right: 0; display: flex; align-items: stretch; padding-top: 1%; }
 .sid-photocol { width: 25%; display: flex; align-items: center; justify-content: center; }
 .sid-photo {
-    position: relative; width: 85%; aspect-ratio: 29 / 40;
-    border-radius: 12px; border-radius: 2.3em; overflow: hidden; background: rgba(255, 255, 255, .55);
-    border: 1px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+    position: relative; width: 85%; aspect-ratio: 3 / 4.05;
+    border-radius: 6px; overflow: hidden; background: rgba(255, 255, 255, .55);
+    border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
     display: grid; place-items: center;
 }
-.sid-photo .sid-avatar { font-size: 24px; font-size: 6em; font-weight: 800; color: #9AA3B5; }
+.sid-photo .sid-avatar { font-size: 24px; font-size: 6cqw; font-weight: 800; color: #9AA3B5; }
 .sid-photoimg, .sid-photoimg-b { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .sid-photoimg:not([src]), .sid-photoimg-b:not([src]) { opacity: 0; }
 .sid-photo.photo-failed .sid-photoimg { opacity: 0; }
-.sid-fields { width: 50%; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; gap: 1.2em; padding: 0 1%; }
-.sid-frow { display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: center; overflow: hidden; padding-bottom: 1px; }
-.sid-frow-1 { justify-content: flex-start; }
-.sid-flbl { font-size: 10px; font-size: 2.04em; line-height: 12px; font-weight: 600; color: #000; }
-.sid-flbl-w { max-width: 60%; line-height: 1.2; }
-.sid-flbl-b { font-weight: 700; }
-.sid-v { font-size: 10px; font-size: 2.04em; line-height: 1.64; font-weight: 700; color: #000; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sid-vlat { font-size: 13px; font-size: 2.45em; line-height: 1.36; }
-.sid-vfull { max-width: 100%; }
-.sid-v900 { font-size: 13px; font-size: 2.45em; line-height: 1.36; font-weight: 900; }
+.sid-fields { width: 50%; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; gap: 1.2cqw; padding: 0 1%; }
+.sid-row { display: flex; align-items: baseline; gap: 2%; min-width: 0; }
+.sid-lbl { flex: 0 0 33%; font-size: 10px; font-size: 2.04cqw; line-height: 2.45cqw; font-weight: 600; color: #000; }
+.sid-val {
+    flex: 1; min-width: 0; display: flex; flex-direction: column;
+    font-size: 10px; font-size: 2.04cqw; line-height: 3.1cqw; font-weight: 700; color: #000;
+}
+.sid-lat { color: #1C1C1C; }
+.sid-val.sid-black { font-weight: 900; }
 .sid-qrcol { width: 25%; display: flex; align-items: center; justify-content: flex-end; flex-direction: column; padding-bottom: 5%; }
 .sid-qr { width: 57%; aspect-ratio: 1; background: #fff; }
 .sid-foot12 {
     position: absolute; bottom: 0; left: 0; right: 0; height: 12%;
     display: flex; align-items: center; justify-content: space-between; padding: 0 5.7%;
 }
-.sid-reg { font-size: 11px; font-size: 2.3em; font-weight: 700; color: #000; letter-spacing: .02em; }
-.sid-year { font-size: 11px; font-size: 2.3em; font-weight: 700; color: #000; }
-.sid-res-empty { font-size: 10px; font-size: 2.2em; font-weight: 600; color: #55555C; }
+.sid-reg { font-size: 11px; font-size: 2.3cqw; font-weight: 700; color: #44444C; letter-spacing: .02em; }
+.sid-year { font-size: 11px; font-size: 2.3cqw; font-weight: 700; color: #141418; }
+.sid-res-empty { font-size: 10px; font-size: 2.2cqw; font-weight: 600; color: #55555C; }
 
 /* ==========================================================================
    PREMIUM POLISH — بطاقات الخدمات + الشريطان + المكتبة + ليلي البطاقة
