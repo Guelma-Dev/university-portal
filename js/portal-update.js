@@ -292,7 +292,10 @@ window.PortalUpdate = (function () {
             stallTimer = null;
             var blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
             chunks = null;
-            if (total > 0 && blob.size !== total) throw new Error('incomplete');
+            // Truncation (not mere difference) is the failure: carriers may
+            // gzip/transform in flight, so decompressed bytes can EXCEED a
+            // compressed Content-Length. The SHA-256 gate below is definitive.
+            if (total > 0 && blob.size < total) throw new Error('incomplete');
             saveDl({ downloadId: 0, versionCode: m.versionCode, sha256: m.sha256, apkUrl: m.apkUrl });
             var begun = await pl.installBegin({ versionCode: m.versionCode });
             if (!begun) throw new Error('bad install spec');
