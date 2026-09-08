@@ -279,18 +279,17 @@ public class UpdatePlugin extends Plugin {
 
     // ---------- verify + install (PackageInstaller session API) ----------
 
-    /** Fallback installer: JS fetched the bytes itself (WebView HTTPS,
-     *  which provably works wherever the manifest check works). Writes them
-     *  to the same verified location, then follows the identical
+    /** Chunked fallback handoff: the JS layer streams the APK (fetched over
+     *  WebView HTTPS) in ~1.2MB base64 parts because a single multi-MB
+     *  bridge string is unreliable on some WebViews. Parts append to the
+     *  same verified location; installCommit runs the identical
      *  verify → compatibility → PackageInstaller path as verifyAndInstall. */
     @PluginMethod
-    public void installFromBase64(PluginCall call) {
+    public void installBegin(PluginCall call) {
         long versionCode = 0;
         try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
-        String b64 = call.getString("base64", "");
-        String sha256 = call.getString("sha256", "");
-        if (versionCode <= 0 || b64 == null || b64.length() < 1024 * 1024) {
-            call.reject("bad install payload");
+        if (versionCode <= 0) {
+            call.reject("bad install spec");
             return;
         }
         try {
@@ -298,14 +297,63 @@ public class UpdatePlugin extends Plugin {
             cleanupExcept(ctx, versionCode);
             File apk = destFile(ctx, versionCode);
             if (apk.getParentFile() != null) apk.getParentFile().mkdirs();
-            byte[] raw = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+            if (apk.exists() && !apk.delete()) {
+                call.reject("storage unavailable");
+                return;
+            }
+            if (!apk.createNewFile()) {
+                call.reject("storage unavailable");
+                return;
+            }
+            JSObject r = new JSObject();
+            r.put("ready", true);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("storage unavailable");
+        }
+    }
+
+    @PluginMethod
+    public void installAppend(PluginCall call) {
+        long versionCode = 0;
+        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        String part = call.getString("part", "");
+        if (versionCode <= 0 || part == null || part.isEmpty()) {
+            call.reject("bad chunk");
+            return;
+        }
+        try {
+            File apk = destFile(getContext(), versionCode);
+            byte[] raw = android.util.Base64.decode(part, android.util.Base64.DEFAULT);
             java.io.FileOutputStream fos = null;
             try {
-                fos = new java.io.FileOutputStream(apk);
+                fos = new java.io.FileOutputStream(apk, true);
                 fos.write(raw);
             } finally {
                 if (fos != null) { try { fos.close(); } catch (Exception ignored) {} }
             }
+            JSObject r = new JSObject();
+            r.put("written", apk.length());
+            call.resolve(r);
+        } catch (OutOfMemoryError oom) {
+            call.reject("install failed: out of memory");
+        } catch (Exception e) {
+            call.reject("install failed: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void installCommit(PluginCall call) {
+        long versionCode = 0;
+        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        String sha256 = call.getString("sha256", "");
+        if (versionCode <= 0) {
+            call.reject("bad install spec");
+            return;
+        }
+        try {
+            Context ctx = getContext();
+            File apk = destFile(ctx, versionCode);
             String problem = verifyApkFile(ctx, apk, versionCode, sha256);
             if (problem != null) {
                 call.reject(problem);

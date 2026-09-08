@@ -210,9 +210,34 @@ window.PortalUpdate = (function () {
         return state;
     }
 
+    function installErrFriendly(msg) {
+        msg = String((msg && msg.message) || msg || '');
+        if (/checksum/i.test(msg)) return 'ملف التحديث تالف — أعد التنزيل';
+        if (/incompatible|invalid/i.test(msg)) return 'ملف التحديث غير متوافق';
+        if (/missing|incomplete|bad chunk|bad install/i.test(msg)) return 'ملف التحديث ناقص — أعد التنزيل';
+        if (/blocked/i.test(msg)) return 'التثبيت محظور من النظام — اسمح بتثبيت التطبيقات';
+        if (/memory/i.test(msg)) return 'ذاكرة غير كافية لإتمام التثبيت';
+        return 'تعذر تثبيت التحديث';
+    }
+
+    function blobToB64(blob) {
+        return new Promise(function (resolve, reject) {
+            var fr = new FileReader();
+            fr.onload = function () {
+                var s = String(fr.result || '');
+                var i = s.indexOf(',');
+                resolve(i === -1 ? '' : s.slice(i + 1));
+            };
+            fr.onerror = function () { reject(new Error('encode')); };
+            fr.readAsDataURL(blob);
+        });
+    }
+
     // Fallback when the system downloader fails on a device: stream the APK
     // over WebView HTTPS (proven by the manifest check) with REAL byte
-    // progress, then hand the bytes to the same verified native installer.
+    // progress, then hand the bytes over in bridge-safe ~1.2MB base64 parts.
+    // 900000 bytes is a multiple of 3, so every part decodes cleanly.
+    var CHUNK_BYTES = 900000;
     async function fallbackFetch(m) {
         var pl = plugin();
         if (!pl) {
@@ -238,20 +263,22 @@ window.PortalUpdate = (function () {
                 setState({ name: 'downloading', progress: { pct: total > 0 ? Math.min(99, Math.round((received / total) * 100)) : null, soFar: received, total: total } });
             }
             var blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
-            var b64 = await new Promise(function (resolve, reject) {
-                var fr = new FileReader();
-                fr.onload = function () {
-                    var s = String(fr.result || '');
-                    var i = s.indexOf(',');
-                    resolve(i === -1 ? '' : s.slice(i + 1));
-                };
-                fr.onerror = function () { reject(new Error('encode')); };
-                fr.readAsDataURL(blob);
-            });
             chunks = null;
-            if (!b64) throw new Error('encode');
+            if (total > 0 && blob.size !== total) throw new Error('incomplete');
             saveDl({ downloadId: 0, versionCode: m.versionCode, sha256: m.sha256, apkUrl: m.apkUrl });
-            var r = await pl.installFromBase64({ base64: b64, versionCode: m.versionCode, sha256: m.sha256 || '' });
+            var begun = await pl.installBegin({ versionCode: m.versionCode });
+            if (!begun) throw new Error('bad install spec');
+            var off = 0, idx = 0;
+            while (off < blob.size) {
+                if (fallbackCtrl.signal.aborted) throw new DOMException('aborted', 'AbortError');
+                var b64 = await blobToB64(blob.slice(off, off + CHUNK_BYTES));
+                if (!b64) throw new Error('encode');
+                await pl.installAppend({ versionCode: m.versionCode, index: idx, part: b64 });
+                off += CHUNK_BYTES;
+                idx++;
+                setState({ name: 'downloading', progress: { pct: 99, soFar: Math.min(off, blob.size), total: blob.size } });
+            }
+            var r = await pl.installCommit({ versionCode: m.versionCode, sha256: m.sha256 || '' });
             if (r && r.status === 'pending_user_action') {
                 setState({ name: 'installing', progress: { pct: 100, soFar: 0, total: 0 }, error: '' });
             } else {
@@ -263,7 +290,7 @@ window.PortalUpdate = (function () {
                 setState({ name: 'update_available', progress: null, error: '' });
             } else {
                 saveDl(null);
-                setState({ name: 'error', error: 'تعذر تنزيل التحديث', progress: null });
+                setState({ name: 'error', error: installErrFriendly(e), progress: null });
             }
         } finally {
             fallbackCtrl = null;
@@ -344,13 +371,8 @@ window.PortalUpdate = (function () {
             setState({ name: 'error', error: 'تعذر بدء التثبيت' });
         } catch (e) {
             var msg = String((e && e.message) || '');
-            var friendly = 'تعذر تثبيت التحديث';
-            if (/checksum/i.test(msg)) friendly = 'ملف التحديث تالف — أعد التنزيل';
-            else if (/blocked/i.test(msg)) friendly = 'التثبيت محظور من النظام — اسمح بتثبيت التطبيقات';
-            else if (/incompatible|invalid/i.test(msg)) friendly = 'ملف التحديث غير متوافق';
-            else if (/missing|incomplete/i.test(msg)) friendly = 'ملف التحديث ناقص — أعد التنزيل';
             if (/checksum|missing|incomplete/i.test(msg)) saveDl(null);
-            setState({ name: 'error', error: friendly });
+            setState({ name: 'error', error: installErrFriendly(e) });
         }
         return state;
     }
