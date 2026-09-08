@@ -1,7 +1,7 @@
 {
-  "versionName": "1.3.9",
-  "versionCode": 3,
-  "apkUrl": "https://university-portal-gv78.onrender.com/app/releases/app-3.apk",
-  "sha256": "efc628491e2ddafa05e349185dfca425dec38824a59e77bbbe6bdd454b8f4da3",
+  "versionName": "1.4.0",
+  "versionCode": 4,
+  "apkUrl": "https://university-portal-gv78.onrender.com/app/releases/app-4.apk",
+  "sha256": "fd9720b40c90fcd3abc9637d8b3395c0a1018e984c8217d5a52097a5c0432f2e",
   "mandatory": false
 }

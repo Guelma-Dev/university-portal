@@ -2223,12 +2223,9 @@ select option { background: var(--input-bg); color: var(--text-primary); }
     display: flex; flex-direction: column;
     padding: 8px 0 10px;
 }
-.sid-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.sid-titles h2 { margin: 0 0 3px; font-size: 1.12rem; font-weight: 800; color: var(--text-primary); }
-.sid-titles p { margin: 0; font-size: .7rem; color: var(--text-tertiary); }
 .sid-scene {
     flex: 1; min-height: 0; display: grid; place-items: center;
-    padding: 10px 0 2px;
+    padding: clamp(28px, 26vw, 150px) 0 12px;
 }
 /* Footprint box (portrait) — the landscape card lives rotated -90deg inside,
    exactly like the official app (frontStyle/backStyle rotate '-90deg').
@@ -2243,7 +2240,6 @@ select option { background: var(--input-bg); color: var(--text-primary); }
     width: 158.6%; aspect-ratio: 1012 / 638;
     transform: translate(-50%, -50%);
     transform-style: preserve-3d;
-    perspective: 1200px;
     container-type: inline-size;
     cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
@@ -2259,7 +2255,7 @@ select option { background: var(--input-bg); color: var(--text-primary); }
     background: #fff;
     box-shadow: 0 18px 42px rgba(0, 0, 0, .30);
     font-family: 'CairoCard', sans-serif;
-    transition: transform .5s cubic-bezier(.4, .05, .3, 1);
+    transition: transform .5s cubic-bezier(.45, 0, .55, 1);
 }
 .sid-front { transform: rotate(-90deg) rotateY(0deg); }
 .sid-backface { transform: rotate(-90deg) rotateY(180deg); }
@@ -2271,7 +2267,9 @@ select option { background: var(--input-bg); color: var(--text-primary); }
     position: absolute; top: 16%; inset-inline-start: 6.6%;
     width: 13.2%; aspect-ratio: 1; object-fit: contain;
 }
-.sid-logo:not([src]) { display: none; }
+.sid-logo { display: none; }
+.sid-logo[src] { display: block; }
+.sid-unititle.sid-small { font-size: 11px; font-size: 2.04cqw; }
 .sid-unititle {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     text-align: center; font-weight: 700; color: #2B2B30;
@@ -2281,9 +2279,9 @@ select option { background: var(--input-bg); color: var(--text-primary); }
 .sid-body50 { position: absolute; top: 28%; height: 50%; left: 0; right: 0; display: flex; align-items: stretch; padding-top: 1%; }
 .sid-photocol { width: 25%; display: flex; align-items: center; justify-content: center; }
 .sid-photo {
-    position: relative; width: 85%; aspect-ratio: 3 / 4.05;
-    border-radius: 6px; overflow: hidden; background: rgba(255, 255, 255, .55);
-    border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+    position: relative; width: 85%; aspect-ratio: 29 / 40;
+    border-radius: 12px; border-radius: 2.3cqw; overflow: hidden; background: rgba(255, 255, 255, .55);
+    border: 1px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
     display: grid; place-items: center;
 }
 .sid-photo .sid-avatar { font-size: 24px; font-size: 6cqw; font-weight: 800; color: #9AA3B5; }
@@ -2291,14 +2289,12 @@ select option { background: var(--input-bg); color: var(--text-primary); }
 .sid-photoimg:not([src]), .sid-photoimg-b:not([src]) { opacity: 0; }
 .sid-photo.photo-failed .sid-photoimg { opacity: 0; }
 .sid-fields { width: 50%; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; gap: 1.2cqw; padding: 0 1%; }
-.sid-row { display: flex; align-items: baseline; gap: 2%; min-width: 0; }
-.sid-lbl { flex: 0 0 33%; font-size: 10px; font-size: 2.04cqw; line-height: 2.45cqw; font-weight: 600; color: #000; }
-.sid-val {
-    flex: 1; min-width: 0; display: flex; flex-direction: column;
-    font-size: 10px; font-size: 2.04cqw; line-height: 3.1cqw; font-weight: 700; color: #000;
-}
-.sid-lat { color: #1C1C1C; }
-.sid-val.sid-black { font-weight: 900; }
+.sid-frow { display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: center; overflow: hidden; padding-bottom: 1px; }
+.sid-flbl { font-size: 10px; font-size: 2.04cqw; line-height: 12px; line-height: 2.45cqw; font-weight: 600; color: #000; max-width: 60%; }
+.sid-v { font-size: 10px; font-size: 2.04cqw; line-height: 14px; line-height: 3.34cqw; font-weight: 700; color: #000; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sid-vlat { font-size: 13px; font-size: 2.45cqw; }
+.sid-vfull { max-width: 100%; }
+.sid-black { font-weight: 900; }
 .sid-qrcol { width: 25%; display: flex; align-items: center; justify-content: flex-end; flex-direction: column; padding-bottom: 5%; }
 .sid-qr { width: 57%; aspect-ratio: 1; background: #fff; }
 .sid-foot12 {
