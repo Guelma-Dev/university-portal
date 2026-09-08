@@ -137,12 +137,13 @@ window.PortalUpdate = (function () {
                 localStorage.setItem(LS_CHECK, JSON.stringify({ at: Date.now(), available: m.versionCode > inst.versionCode }));
             } catch (e) {}
             if (m.versionCode > inst.versionCode) {
-                // Reuse an already-downloaded identical update instead of re-downloading.
+                // Reuse an already-downloaded identical update instead of re-downloading —
+                // but only after it validates (size + checksum), never on presence alone.
                 var dl = readDl();
                 if (dl && dl.versionCode === m.versionCode) {
                     var present = await nativePresent(m.versionCode);
                     if (present) {
-                        setState({ name: 'downloaded', remote: m, error: '' });
+                        if (await confirmDownloaded(m.versionCode, m.sha256, m)) return state;
                         return state;
                     }
                     saveDl(null);
@@ -158,6 +159,22 @@ window.PortalUpdate = (function () {
             if (timer) clearTimeout(timer);
         }
         return state;
+    }
+
+    // Truth gate: a finished stream is NOT proof. Size (+checksum when
+    // configured) must validate before the UI may claim DOWNLOADED.
+    async function confirmDownloaded(versionCode, sha, remote) {
+        try {
+            var r = await plugin().validateDownload({ versionCode: versionCode, sha256: sha || '' });
+            if (r && r.valid) {
+                setState({ name: 'downloaded', remote: remote || state.remote, progress: { pct: 100, soFar: 0, total: 0 }, error: '' });
+                return true;
+            }
+        } catch (e) {}
+        saveDl(null);
+        try { await plugin().discardPartial({ versionCode: versionCode }); } catch (e) {}
+        setState({ name: 'error', error: 'تعذر التحقق من ملف التحديث', progress: null });
+        return false;
     }
 
     async function nativePresent(versionCode) {
@@ -248,10 +265,18 @@ window.PortalUpdate = (function () {
         setState({ name: 'downloading', progress: { pct: null, soFar: 0, total: 0 }, error: '' });
         try { if (fallbackCtrl) fallbackCtrl.abort(); } catch (e) {}
         fallbackCtrl = new AbortController();
+        var stallTimer = null, lastBeat = Date.now(), stalled = false;
         try {
             var res = await fetch(m.apkUrl, { signal: fallbackCtrl.signal, cache: 'no-store' });
             if (!res.ok || !res.body || typeof res.body.getReader !== 'function') throw new Error('http-' + (res && res.status));
             var total = Number(res.headers.get('content-length') || 0);
+            // Stall watchdog: a silent stream must fail loudly, never hang.
+            stallTimer = setInterval(function () {
+                if (Date.now() - lastBeat > 60000) {
+                    stalled = true;
+                    try { fallbackCtrl.abort(); } catch (e2) {}
+                }
+            }, 5000);
             var reader = res.body.getReader();
             var chunks = [];
             var received = 0;
@@ -260,8 +285,11 @@ window.PortalUpdate = (function () {
                 if (part.done) break;
                 chunks.push(part.value);
                 received += part.value.length;
+                lastBeat = Date.now();
                 setState({ name: 'downloading', progress: { pct: total > 0 ? Math.min(99, Math.round((received / total) * 100)) : null, soFar: received, total: total } });
             }
+            if (stallTimer) clearInterval(stallTimer);
+            stallTimer = null;
             var blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
             chunks = null;
             if (total > 0 && blob.size !== total) throw new Error('incomplete');
@@ -285,12 +313,13 @@ window.PortalUpdate = (function () {
                 throw new Error('install-rejected');
             }
         } catch (e) {
-            if (e && e.name === 'AbortError') {
+            if (e && e.name === 'AbortError' && !stalled) {
                 saveDl(null);
                 setState({ name: 'update_available', progress: null, error: '' });
             } else {
+                try { await plugin().discardPartial({ versionCode: m.versionCode }); } catch (e2) {}
                 saveDl(null);
-                setState({ name: 'error', error: installErrFriendly(e), progress: null });
+                setState({ name: 'error', error: stalled ? 'تعذر تنزيل التحديث' : installErrFriendly(e), progress: null });
             }
         } finally {
             fallbackCtrl = null;
@@ -316,6 +345,8 @@ window.PortalUpdate = (function () {
                     setState({ name: 'downloading', progress: { pct: total > 0 ? Math.min(99, Math.round((soFar / total) * 100)) : null, soFar: soFar, total: total } });
                 } else if (st === 'complete') {
                     stopPoll();
+                    var rmC = state.remote;
+                    if (rmC && rmC.versionCode === versionCode) { confirmDownloaded(versionCode, rmC.sha256, rmC); return; }
                     setState({ name: 'downloaded', progress: { pct: 100, soFar: 0, total: 0 }, error: '' });
                 } else if (st === 'failed' || st === 'unknown') {
                     stopPoll();
@@ -344,6 +375,9 @@ window.PortalUpdate = (function () {
         var pl = plugin();
         if (pl && dl && dl.downloadId) {
             try { await pl.cancelDownload({ downloadId: dl.downloadId }); } catch (e) {}
+        }
+        if (pl && dl && dl.versionCode) {
+            try { await pl.discardPartial({ versionCode: dl.versionCode }); } catch (e) {}
         }
         saveDl(null);
         setState({ name: 'update_available', progress: null, error: '' });
@@ -408,6 +442,10 @@ window.PortalUpdate = (function () {
             var r = await plugin().pollDownload({ downloadId: id });
             if (r && r.status === 'complete') {
                 stopPoll();
+                var dl = readDl();
+                var rmO = state.remote;
+                if (dl && rmO && rmO.versionCode === dl.versionCode) { confirmDownloaded(dl.versionCode, rmO.sha256, rmO); return; }
+                if (dl) { confirmDownloaded(dl.versionCode, dl.sha256 || '', rmO); return; }
                 setState({ name: 'downloaded', progress: { pct: 100, soFar: 0, total: 0 }, error: '' });
             } else if (r && (r.status === 'failed' || r.status === 'unknown')) {
                 stopPoll();

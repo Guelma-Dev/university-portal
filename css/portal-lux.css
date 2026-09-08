@@ -2278,12 +2278,14 @@ select option { background: var(--input-bg); color: var(--text-primary); }
 .sid-photoimg:not([src]), .sid-photoimg-b:not([src]) { opacity: 0; }
 .sid-photo.photo-failed .sid-photoimg { opacity: 0; }
 .sid-fields { width: 50%; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; gap: 1.2cqw; padding: 0 1%; }
-.sid-frow { display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: center; overflow: hidden; padding-bottom: 1px; }
-.sid-flbl { font-size: 10px; font-size: 2.04cqw; line-height: 12px; line-height: 2.45cqw; font-weight: 600; color: #000; max-width: 60%; }
-.sid-v { font-size: 10px; font-size: 2.04cqw; line-height: 14px; line-height: 3.34cqw; font-weight: 700; color: #000; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sid-vlat { font-size: 13px; font-size: 2.45cqw; }
-.sid-vfull { max-width: 100%; }
-.sid-black { font-weight: 900; }
+.sid-row { display: flex; align-items: baseline; gap: 2%; min-width: 0; }
+.sid-lbl { flex: 0 0 33%; font-size: 10px; font-size: 2.04cqw; line-height: 2.45cqw; font-weight: 600; color: #000; }
+.sid-val {
+    flex: 1; min-width: 0; display: flex; flex-direction: column;
+    font-size: 10px; font-size: 2.04cqw; line-height: 3.1cqw; font-weight: 700; color: #000;
+}
+.sid-lat { color: #1C1C1C; }
+.sid-val.sid-black { font-weight: 900; }
 .sid-qrcol { width: 25%; display: flex; align-items: center; justify-content: flex-end; flex-direction: column; padding-bottom: 5%; }
 .sid-qr { width: 57%; aspect-ratio: 1; background: #fff; }
 .sid-foot12 {

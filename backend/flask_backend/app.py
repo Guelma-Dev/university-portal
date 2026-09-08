@@ -498,6 +498,7 @@ def app_update_apk(filename):
     resp.headers['Accept-Ranges'] = 'bytes'
     resp.headers['Access-Control-Allow-Origin'] = '*'
     resp.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+    resp.headers['Cache-Control'] += ', no-transform'
     return resp
 
 

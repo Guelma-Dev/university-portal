@@ -370,6 +370,58 @@ public class UpdatePlugin extends Plugin {
         }
     }
 
+    /** Truth gate: size → checksum, no install. The UI may only show
+     *  DOWNLOADED after this returns valid. */
+    @PluginMethod
+    public void validateDownload(PluginCall call) {
+        long versionCode = 0;
+        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        String sha256 = call.getString("sha256", "");
+        JSObject r = new JSObject();
+        try {
+            File apk = destFile(getContext(), versionCode);
+            if (versionCode <= 0 || !apk.exists() || apk.length() <= 1024 * 1024) {
+                r.put("valid", false);
+                r.put("reason", "incomplete");
+                call.resolve(r);
+                return;
+            }
+            if (sha256 != null && !sha256.trim().isEmpty()) {
+                String actual = sha256Of(apk);
+                if (!sha256.trim().equalsIgnoreCase(actual)) {
+                    try { apk.delete(); } catch (Exception ignored) {}
+                    r.put("valid", false);
+                    r.put("reason", "checksum");
+                    call.resolve(r);
+                    return;
+                }
+            }
+            r.put("valid", true);
+            r.put("size", apk.length());
+            call.resolve(r);
+        } catch (Exception e) {
+            r.put("valid", false);
+            r.put("reason", "incomplete");
+            call.resolve(r);
+        }
+    }
+
+    /** Best-effort removal of a partial file so retries start clean. */
+    @PluginMethod
+    public void discardPartial(PluginCall call) {
+        long versionCode = 0;
+        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        try {
+            if (versionCode > 0) {
+                File apk = destFile(getContext(), versionCode);
+                if (apk.exists()) apk.delete();
+            }
+        } catch (Exception ignored) {}
+        JSObject r = new JSObject();
+        r.put("discarded", true);
+        call.resolve(r);
+    }
+
     /** Shared gate: size → checksum → compatibility. Null = installable. */
     static String verifyApkFile(Context ctx, File apk, long versionCode, String sha256) {
         if (!apk.exists() || apk.length() <= 1024 * 1024) return "apk missing or incomplete";
