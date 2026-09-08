@@ -1946,11 +1946,11 @@ function updatePomoUI() {
     const timeStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     document.getElementById('pomo-time').textContent = timeStr;
     const ab = document.getElementById('appbar-pomo');
-    if (ab) {
-        ab.classList.toggle('running', pomoState.running);
-        ab.innerHTML = pomoState.running
-            ? `<span id="appbar-pomo-time">${timeStr}</span>`
-            : '<i class="fas fa-hourglass-half"></i>';
+    if (ab) ab.classList.toggle('running', pomoState.running);
+    const pot = document.getElementById('appbar-potime');
+    if (pot) {
+        pot.textContent = timeStr;
+        pot.classList.toggle('hidden', !pomoState.running);
     }
     document.getElementById('pomo-count').textContent = `جلسات مكتملة: ${pomoState.completed}`;
     const total = POMO_DURATIONS[pomoState.mode];

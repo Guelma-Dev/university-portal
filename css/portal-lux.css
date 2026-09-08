@@ -1282,20 +1282,9 @@ body {
 
 /* مؤقت بومودورو */
 .appbar-center { position: absolute; left: 50%; transform: translateX(-50%); display: flex; }
-.appbar-pomo {
-    min-width: 42px; height: 42px; padding: 0 10px;
-    display: inline-flex; align-items: center; justify-content: center;
-    border-radius: 13px; font-size: 1rem; color: var(--text-3);
-    background: transparent; border: 1px solid transparent;
-    font-family: inherit; cursor: pointer;
-    font-variant-numeric: tabular-nums;
-    transition: transform 120ms var(--press), color .2s, border-color .2s, background .2s;
-}
-.appbar-pomo:hover { color: var(--gold-soft); border-color: var(--gold-line); background: var(--gold-wash); }
-.appbar-pomo:active { transform: scale(.92); }
-.appbar-pomo.running { color: var(--gold); border-color: var(--gold-line); background: var(--gold-wash); font-weight: 800; font-size: .95rem; }
-#appbar-pomo-time { letter-spacing: .02em; }
-.pomo-panel { position: fixed; top: 78px; inset-inline-end: 12px; z-index: 96; width: min(320px, 92vw); padding: 18px; border-radius: var(--radius-xl); background: var(--surface); border: 1px solid var(--gold-line); box-shadow: var(--shadow-xl); backdrop-filter: blur(28px); animation: pl-enter .32s var(--spring) both; }
+.appbar-pomo.running { color: var(--gold); }
+#appbar-potime { font-weight: 800; font-size: .95rem; color: var(--gold); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.pomo-panel { position: fixed; top: 78px; inset-inline-end: 12px; z-index: 96; height: fit-content; max-height: calc(100dvh - 170px); overflow-y: auto; width: min(320px, 92vw); padding: 18px; border-radius: var(--radius-xl); background: var(--surface); border: 1px solid var(--gold-line); box-shadow: var(--shadow-xl); backdrop-filter: blur(28px); animation: pl-enter .32s var(--spring) both; }
 .pomo-header { display: flex; align-items: center; justify-content: space-between; font-weight: 800; }
 .pomo-header i { color: var(--gold); }
 .pomo-close { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; border: none; background: var(--glass-strong); color: var(--text-2); }
@@ -2039,7 +2028,7 @@ select option { background: var(--input-bg); color: var(--text-primary); }
 .lib-sub { color: var(--text-secondary); }
 
 /* ---------- بومودورو — دلالي أخضر للراحة ---------- */
-.appbar-pomo, .pomo-panel {
+.appbar-pomo, .appbar-potime, .pomo-panel {
     background: var(--nav-bg);
     -webkit-backdrop-filter: blur(16px) saturate(150%);
     backdrop-filter: blur(16px) saturate(150%);
@@ -2047,7 +2036,7 @@ select option { background: var(--input-bg); color: var(--text-primary); }
     box-shadow: var(--shadow-lg);
 }
 .pomo-display.break-mode .pomo-ring-progress { stroke: var(--success); }
-.appbar-pomo.running #appbar-pomo-time { color: var(--brand); }
+#appbar-potime { color: var(--gold); }
 
 /* ---------- التنبيهات والإشعارات ---------- */
 .offline-banner {

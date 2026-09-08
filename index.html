@@ -14,8 +14,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css?v=20260901r">
-    <link rel="stylesheet" href="css/portal-lux.css?v=20260905a">
+    <link rel="stylesheet" href="css/styles.css?v=1.4.1">
+    <link rel="stylesheet" href="css/portal-lux.css?v=1.4.1">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -126,13 +126,14 @@
                     </div>
                 </div>
                 <div class="appbar-center">
-                    <button class="appbar-pomo" id="appbar-pomo" onclick="togglePomo()" title="مؤقت بومودورو" aria-label="مؤقت بومودورو">
-                        <i class="fas fa-hourglass-half"></i>
-                    </button>
+                    <span id="appbar-potime" class="hidden">25:00</span>
                 </div>
                 <div class="appbar-left">
                     <button class="appbar-btn" onclick="toggleTheme()" title="الوضع الليلي">
                         <i class="fas fa-circle-half-stroke" id="theme-icon-top"></i>
+                    </button>
+                    <button class="appbar-btn" id="appbar-pomo" onclick="togglePomo()" title="مؤقت بومودورو" aria-label="مؤقت بومودورو">
+                        <i class="fas fa-hourglass-half"></i>
                     </button>
                     <button class="appbar-btn" onclick="toggleAppMenu()" title="القائمة">
                         <i class="fas fa-bars"></i>
@@ -812,17 +813,17 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/native.js?v=20260828x"></script>
-    <script src="js/app.js?v=20260828x"></script>
-    <script src="js/sec-loader.js?v=20260828x"></script>
-    <script src="js/sec-transport.js?v=20260828x"></script>
-    <script src="js/sec-meals.js?v=20260828x"></script>
-    <script src="js/sec-profile.js?v=20260828x"></script>
-    <script src="js/portal-notify.js?v=20260908a"></script>
-    <script src="js/portal-update.js?v=20260908a"></script>
-    <script src="js/sec-inscription.js?v=20260901a"></script>
-    <script src="js/native-shell.js?v=20260828x" defer></script>
-    <script src="js/auth-ui.js?v=20260828x" defer></script>
+    <script src="js/native.js?v=1.4.1"></script>
+    <script src="js/app.js?v=1.4.1"></script>
+    <script src="js/sec-loader.js?v=1.4.1"></script>
+    <script src="js/sec-transport.js?v=1.4.1"></script>
+    <script src="js/sec-meals.js?v=1.4.1"></script>
+    <script src="js/sec-profile.js?v=1.4.1"></script>
+    <script src="js/portal-notify.js?v=1.4.1"></script>
+    <script src="js/portal-update.js?v=1.4.1"></script>
+    <script src="js/sec-inscription.js?v=1.4.1"></script>
+    <script src="js/native-shell.js?v=1.4.1" defer></script>
+    <script src="js/auth-ui.js?v=1.4.1" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});

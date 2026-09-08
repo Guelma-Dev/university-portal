@@ -190,12 +190,19 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
         const h = fs.readFileSync(path.join(ROOT, f), 'utf8');
         const tag = f.includes('www') ? '[www] ' : '';
         check(h.includes('id="appbar-pomo"') && h.includes('togglePomo()'), tag + 'pomo compact action in top bar');
+        check(h.includes('id="appbar-potime"'), tag + 'center live timer slot');
+        check(h.includes('class="appbar-btn" id="appbar-pomo"') || h.includes('id="appbar-pomo"'), tag + 'pomo button uses standard topbar size');
         check(!h.includes('pomo-fab'), tag + 'no floating pomo button');
     }
     check(_appJsP.includes("getElementById('appbar-pomo')"), 'pomo UI targets top bar');
     check(!_appJsP.includes("getElementById('pomo-fab')"), 'no fab references in logic');
-    check(_cssLuxP.includes('.appbar-pomo') && _cssLuxP.includes('#appbar-pomo-time'), 'topbar pomo styles + live timer');
+    check(_cssLuxP.includes('#appbar-potime'), 'topbar live timer styles');
     check(!_cssLuxP.includes('.pomo-fab'), 'no dead fab CSS');
+    for (const f of ['index.html', path.join('www', 'index.html')]) {
+        const h = fs.readFileSync(path.join(ROOT, f), 'utf8');
+        const n = (h.match(/\?v=1\.4\.1/g) || []).length;
+        check(n >= 10, (f.includes('www') ? '[www] ' : '') + 'cache busters pinned to release (' + n + ')');
+    }
 
     // ---------- Static CSS/JS checks ----------
     // ---------- Static CSS/JS checks ----------
@@ -226,9 +233,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const mani4 = fs.readFileSync(path.join(ROOT, 'android', 'app', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
     check(mani4.includes('REQUEST_INSTALL_PACKAGES') && mani4.includes('.UpdateInstallReceiver'), 'install permission + status receiver');
     const beManifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'backend', 'flask_backend', 'update.json'), 'utf8'));
-    check(beManifest.versionCode === 5 && beManifest.versionName === '1.4.1', 'production manifest advertises 1.4.1 (code 5)');
-    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-5\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
-    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-5.apk')), 'release APK present for hosting');
+    check(beManifest.versionCode === 6 && beManifest.versionName === '1.4.2', 'production manifest advertises 1.4.2 (code 6)');
+    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-6\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
+    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-6.apk')), 'release APK present for hosting');
     check(!upJava.includes('setDestinationUri(Uri.fromFile') && !upJava.includes('VISIBILITY_HIDDEN'), 'no banned download destination/visibility');
     check(upJava.includes('setDestinationInExternalFilesDir') && upJava.includes('VISIBILITY_VISIBLE'), 'store-compliant download target + visible progress');
     check(upJava.includes('installFromBase64'), 'fetch-fallback installer exists');
