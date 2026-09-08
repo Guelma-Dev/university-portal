@@ -9,7 +9,12 @@ instance/
 .DS_Store
 node_modules/
 www/
-android/
-*.apk
+android/app/build/
+android/build/
+android/.gradle/
+android/capacitor-cordova-android-plugins/
+android/local.properties
+android/keystore.properties
+android/app/build/**/*.apk
 *.keystore
 *.jks

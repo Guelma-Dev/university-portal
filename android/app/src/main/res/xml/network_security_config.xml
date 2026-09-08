@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Strict by default: no cleartext, system trust anchors only. -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Ministry egress. The meals API (gs-api.onou.dz) publishes a legacy
+         certificate that cannot chain to any system trust anchor; the actual
+         HTTPS bypass lives in the scoped native MinistryHttpPlugin (OkHttp,
+         host-locked to gs-api.onou.dz). The entries below only relax cleartext
+         for these hosts and keep system trust anchors, so no request outside
+         the plugin stack changes its security posture. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">gs-api.onou.dz</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">api-webetu.mesrs.dz</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">progres.mesrs.dz</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

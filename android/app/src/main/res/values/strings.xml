@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">بوابة الطالب</string>
+    <string name="title_activity_main">بوابة الطالب</string>
+    <string name="package_name">dz.guelma.portal</string>
+    <string name="custom_url_scheme">dz.guelma.portal</string>
+</resources>
