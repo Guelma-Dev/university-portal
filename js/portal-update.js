@@ -267,29 +267,60 @@ window.PortalUpdate = (function () {
         fallbackCtrl = new AbortController();
         var stallTimer = null, lastBeat = Date.now(), stalled = false;
         try {
-            var res = await fetch(m.apkUrl, { signal: fallbackCtrl.signal, cache: 'no-store' });
-            if (!res.ok || !res.body || typeof res.body.getReader !== 'function') throw new Error('http-' + (res && res.status));
-            var total = Number(res.headers.get('content-length') || 0);
-            // Stall watchdog: a silent stream must fail loudly, never hang.
+            // Resumable fetch: flaky networks cut streams mid-file. Retry the
+            // REMAINDER with Range (server answers 206) up to 4 attempts;
+            // a 200 answer to a ranged request means restart from zero.
+            var chunks = [];
+            var received = 0;
+            var total = 0;
+            var attempts = 0;
+            var done = false;
             stallTimer = setInterval(function () {
                 if (Date.now() - lastBeat > 60000) {
                     stalled = true;
                     try { fallbackCtrl.abort(); } catch (e2) {}
                 }
             }, 5000);
-            var reader = res.body.getReader();
-            var chunks = [];
-            var received = 0;
-            for (;;) {
-                var part = await reader.read();
-                if (part.done) break;
-                chunks.push(part.value);
-                received += part.value.length;
-                lastBeat = Date.now();
-                setState({ name: 'downloading', progress: { pct: total > 0 ? Math.min(99, Math.round((received / total) * 100)) : null, soFar: received, total: total } });
+            while (!done && attempts < 4) {
+                attempts++;
+                if (fallbackCtrl.signal.aborted) throw new DOMException('aborted', 'AbortError');
+                var headers = { 'Accept-Encoding': 'identity' };
+                if (received > 0) headers['Range'] = 'bytes=' + received + '-';
+                var res = await fetch(m.apkUrl, { signal: fallbackCtrl.signal, cache: 'no-store', headers: headers });
+                if (!res.ok && res.status !== 206) throw new Error('http-' + res.status);
+                if (!res.body || typeof res.body.getReader !== 'function') throw new Error('http-' + res.status);
+                if (received > 0 && res.status === 200) {
+                    chunks = [];
+                    received = 0; // server ignored Range: restart cleanly, never append
+                }
+                var cr = res.headers.get('content-range') || '';
+                var mtot = /\/(\d+)\s*$/.exec(cr);
+                if (mtot) total = Number(mtot[1]);
+                if (!total) total = Number(res.headers.get('content-length') || 0);
+                var reader = res.body.getReader();
+                var cut = false;
+                for (;;) {
+                    var part;
+                    try {
+                        part = await reader.read();
+                    } catch (e2) {
+                        cut = true;
+                        break; // network cut mid-stream: loop retries remainder
+                    }
+                    if (part.done) break;
+                    chunks.push(part.value);
+                    received += part.value.length;
+                    lastBeat = Date.now();
+                    setState({ name: 'downloading', progress: { pct: total > 0 ? Math.min(99, Math.round((received / total) * 100)) : null, soFar: received, total: total } });
+                }
+                try { reader.cancel(); } catch (e2) {}
+                if (!cut) done = true;
+                else if (attempts >= 4) throw new Error('incomplete');
+                else await new Promise(function (r) { setTimeout(r, 1500 * attempts); });
             }
             if (stallTimer) clearInterval(stallTimer);
             stallTimer = null;
+            if (!done) throw new Error('incomplete');
             var blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
             chunks = null;
             // Truncation (not mere difference) is the failure: carriers may

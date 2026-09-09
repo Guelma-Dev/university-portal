@@ -455,8 +455,22 @@ def serve_uploaded_file(filename):
 UPDATE_MANIFEST_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'update.json')
 
 
-@app.route('/app/update.json', methods=['GET'])
+def _cors_preflight():
+    # Scoped preflight for the PUBLIC update endpoints only (the APK WebView
+    # fetches with Range/Accept-Encoding, which trigger CORS preflight).
+    # Authenticated API routes keep the strict global CORS policy untouched.
+    resp = app.make_response(('', 204))
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+    resp.headers['Access-Control-Allow-Headers'] = 'Range, Accept-Encoding, Content-Type'
+    resp.headers['Access-Control-Max-Age'] = '86400'
+    return resp
+
+
+@app.route('/app/update.json', methods=['GET', 'OPTIONS'])
 def app_update_manifest():
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
     try:
         with open(UPDATE_MANIFEST_PATH, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -484,8 +498,10 @@ def app_update_manifest():
     return resp
 
 
-@app.route('/app/releases/<path:filename>', methods=['GET'])
+@app.route('/app/releases/<path:filename>', methods=['GET', 'OPTIONS'])
 def app_update_apk(filename):
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
     if '/' in filename or '\\' in filename or filename.startswith('.'):
         return jsonify({'error': 'not found'}), 404
     if not filename.lower().endswith('.apk'):
