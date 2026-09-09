@@ -8,6 +8,7 @@ const vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 const appSrc = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
 const profSrc = fs.readFileSync(path.join(ROOT, 'js', 'sec-profile.js'), 'utf8');
+const notifSrc = fs.readFileSync(path.join(ROOT, 'js', 'portal-notify.js'), 'utf8');
 
 function makeElem() {
     const el = {
@@ -115,6 +116,7 @@ sandbox.window = sandbox;
 const ctx = vm.createContext(sandbox);
 vm.runInContext(appSrc, ctx, { filename: 'app.js' });
 vm.runInContext(profSrc, ctx, { filename: 'sec-profile.js' });
+vm.runInContext(notifSrc, ctx, { filename: 'portal-notify.js' });
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -218,6 +220,32 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const _cardCss = _cardCssAll.slice(_cardCssAll.indexOf('.sid-page {'), _cardCssAll.indexOf('.sid-res-empty'));
     check(!_cardCss.includes('cqw') && !_cardCss.includes('container-type'), 'no container-query units in card (single space)');
     check(_cardCss.includes('font-size: 6px;'), 'measured em base with static fallback');
+    // ---------- Timetable reminder logic (final merged timetable) ----------
+    const PN = ctx.window.PortalNotify;
+    check(typeof PN.computeClassReminders === 'function', 'reminder compute exposed');
+    let emptyList = null;
+    try { emptyList = PN.computeClassReminders(); } catch (e) { emptyList = 'threw'; }
+    check(Array.isArray(emptyList) && emptyList.length === 0, 'empty timetable → no reminders');
+    // seed a custom overlay entry for tomorrow slot 0 (future by construction)
+    const _d = new Date(); _d.setDate(_d.getDate() + 1);
+    let _dd = new Date(_d);
+    while (_dd.getDay() === 5 || _dd.getDay() === 6) _dd.setDate(_dd.getDate() + 1);
+    const _days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
+    const _key = _days[_dd.getDay()] + '_0';
+    const _db = { owners: { 'u-123': {} }, lastOwner: 'u-123' };
+    _db.owners['u-123'][_key] = { day: _days[_dd.getDay()], idx: 0, subject: 'رياضيات', type: 'lecture', room: 'B12', teacher: '', notes: '' };
+    store['personal_timetable_v1'] = JSON.stringify(_db);
+    let customList = PN.computeClassReminders();
+    check(customList.length === 1 && customList[0].subject === 'رياضيات' && customList[0].room === 'B12', 'custom slot → reminder with subject+room');
+    check(/^cls-\d{4}-\d{2}-\d{2}-0$/.test(customList[0].id), 'stable reminder id');
+    const _now = Date.now();
+    check(customList[0].at > _now && customList[0].at <= _now + 8 * 86400000, 'reminder ~1h before class, within 7d');
+    // delete the entry → excluded again
+    delete _db.owners['u-123'][_key];
+    store['personal_timetable_v1'] = JSON.stringify(_db);
+    check(PN.computeClassReminders().length === 0, 'deleted slot → no reminder');
+    delete store['personal_timetable_v1'];
+
     // ---------- Static CSS/JS checks ----------
     // ---------- Phase 4: in-app update system ----------
     const puJs = fs.readFileSync(path.join(ROOT, 'js', 'portal-update.js'), 'utf8');
@@ -249,9 +277,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const mani4 = fs.readFileSync(path.join(ROOT, 'android', 'app', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
     check(mani4.includes('REQUEST_INSTALL_PACKAGES') && mani4.includes('.UpdateInstallReceiver'), 'install permission + status receiver');
     const beManifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'backend', 'flask_backend', 'update.json'), 'utf8'));
-    check(beManifest.versionCode === 15 && beManifest.versionName === '1.4.11', 'production manifest advertises 1.4.10 (code 14)');
-    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-15\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
-    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-15.apk')), 'release APK present for hosting');
+    check(beManifest.versionCode === 16 && beManifest.versionName === '1.4.12', 'production manifest advertises 1.4.12 (code 16)');
+    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-16\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
+    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-16.apk')), 'release APK present for hosting');
     check(!upJava.includes('setDestinationUri(Uri.fromFile') && !upJava.includes('VISIBILITY_HIDDEN'), 'no banned download destination/visibility');
     check(upJava.includes('setDestinationInExternalFilesDir') && upJava.includes('VISIBILITY_VISIBLE'), 'store-compliant download target + visible progress');
     check(upJava.includes('installBegin') && upJava.includes('installAppend') && upJava.includes('installCommit'), 'chunked install handoff (bridge-safe)');

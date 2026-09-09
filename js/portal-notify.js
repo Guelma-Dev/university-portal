@@ -271,7 +271,6 @@ window.PortalNotify = (function () {
         cancelClassReminders: cancelClassReminders,
     };
 })();
-
 /* ---- settings-screen bindings (account section) ---- */
 window.PortalNotifyUI = (function () {
     'use strict';
@@ -417,7 +416,40 @@ window.PortalNotifyUI = (function () {
         paint();
     }
 
-    return { paint: paint, toggleMaster: toggleMaster, toggleAuto: toggleAuto, toggleClass: toggleClass, setTime: setTime, toggleMeal: toggleMeal };
+    var _tapN = 0, _tapT = null;
+    function devTap() {
+        _tapN++;
+        if (_tapT) clearTimeout(_tapT);
+        _tapT = setTimeout(function () { _tapN = 0; }, 1500);
+        if (_tapN >= 3) {
+            _tapN = 0;
+            clearTimeout(_tapT);
+            runNotifTests();
+        }
+    }
+
+    // Developer-only test trigger: uses the REAL scheduling + display paths
+    // (native scheduleReminder + notifyNow). Never touches booking logic and
+    // never claims a real booking happened (manual trigger + test content).
+    async function runNotifTests() {
+        var N = window.PortalNotify;
+        if (!N || !N.isNative()) { toast('اختبار الإشعارات يعمل في تطبيق الأندرويد', 'info'); return; }
+        try {
+            if (!(await N.ensurePermission('لاختبار تذكيرات المحاضرات يحتاج التطبيق إلى إذن الإشعارات.'))) return;
+            var C = null;
+            try { C = window.Capacitor.Plugins.NotifyPlugin; } catch (e) {}
+            if (!C) return;
+            var at = Date.now() + 2 * 60 * 1000;
+            await C.scheduleReminder({ id: 'test-cls-' + at, tag: 'test', triggerAt: at, title: 'تذكير بالمحاضرة', body: 'لديك محاضرة اختبار بعد ساعة\nالقاعة: B12', channel: 'general' });
+            await N.notify('حجز الوجبات', 'تم حجز الوجبة بنجاح [اختبار]', 'meals');
+            setTimeout(function () { N.notify('حجز الوجبات', 'تعذر حجز الوجبة [اختبار]', 'meals'); }, 4000);
+            toast('اختبار الإشعارات: تذكير المحاضرة بعد دقيقتين', 'success');
+        } catch (e) {
+            toast('تعذر تشغيل الاختبار', 'error');
+        }
+    }
+
+    return { paint: paint, toggleMaster: toggleMaster, toggleAuto: toggleAuto, toggleClass: toggleClass, setTime: setTime, toggleMeal: toggleMeal, devTap: devTap, runNotifTests: runNotifTests };
 })();
 
 // Rebuild class reminders when returning to the app (covers reboot +
