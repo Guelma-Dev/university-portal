@@ -2264,6 +2264,26 @@ function sidFlip(force) {
     card.classList.toggle('is-flipped', _sidFlipped);
 }
 
+// Single-coordinate-space scaling: 1em = 1% of the card's own width, so
+// background, photo, QR and text always scale together, uniformly.
+function sidFitCard() {
+    try {
+        const card = document.getElementById('sid-card');
+        if (!card) return;
+        const w = card.offsetWidth;
+        if (w && w > 50) card.style.fontSize = (w / 100) + 'px';
+    } catch (e) {}
+}
+let _sidFitBound = false;
+function sidBindFit() {
+    if (_sidFitBound) return;
+    _sidFitBound = true;
+    try {
+        window.addEventListener('resize', () => { sidFitCard(); });
+        window.addEventListener('orientationchange', () => { setTimeout(sidFitCard, 120); });
+    } catch (e) {}
+}
+
 function _sidRow(lbl, inner) {
     return inner ? `<div class="sid-row"><span class="sid-lbl">${lbl}</span><span class="sid-val">${inner}</span></div>` : '';
 }
@@ -2600,7 +2620,7 @@ async function openProgresView(view) {
             setGradesCardView(false);
         }
         content.innerHTML = html;
-        if (view === 'card') { loadProgresImages(); sidResidence(); }
+        if (view === 'card') { loadProgresImages(); sidResidence(); sidBindFit(); requestAnimationFrame(() => { sidFitCard(); }); }
         updateBnActive();
     } catch (e) {
         setGradesCardView(false);

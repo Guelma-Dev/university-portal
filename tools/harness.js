@@ -211,7 +211,13 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
         check(vers.size === 1 && vers.has(verName), (f.includes('www') ? '[www] ' : '') + 'all busters equal release ' + verName);
     }
 
-    // ---------- Static CSS/JS checks ----------
+    // ---------- Single-coordinate card space (1em = 1% card width) ----------
+    check(_appJsP.includes('function sidFitCard') && _appJsP.includes('offsetWidth'), 'JS measures card width for em base');
+    check(_appJsP.includes('sidBindFit()'), 'fit bound on card open');
+    const _cardCssAll = fs.readFileSync(path.join(ROOT, 'css', 'portal-lux.css'), 'utf8');
+    const _cardCss = _cardCssAll.slice(_cardCssAll.indexOf('.sid-page {'), _cardCssAll.indexOf('.sid-res-empty'));
+    check(!_cardCss.includes('cqw') && !_cardCss.includes('container-type'), 'no container-query units in card (single space)');
+    check(_cardCss.includes('font-size: 6px;'), 'measured em base with static fallback');
     // ---------- Static CSS/JS checks ----------
     // ---------- Phase 4: in-app update system ----------
     const puJs = fs.readFileSync(path.join(ROOT, 'js', 'portal-update.js'), 'utf8');
@@ -243,9 +249,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const mani4 = fs.readFileSync(path.join(ROOT, 'android', 'app', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
     check(mani4.includes('REQUEST_INSTALL_PACKAGES') && mani4.includes('.UpdateInstallReceiver'), 'install permission + status receiver');
     const beManifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'backend', 'flask_backend', 'update.json'), 'utf8'));
-    check(beManifest.versionCode === 13 && beManifest.versionName === '1.4.9', 'production manifest advertises 1.4.5 (code 9)');
-    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-13\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
-    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-13.apk')), 'release APK present for hosting');
+    check(beManifest.versionCode === 14 && beManifest.versionName === '1.4.10', 'production manifest advertises 1.4.10 (code 14)');
+    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-14\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
+    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-14.apk')), 'release APK present for hosting');
     check(!upJava.includes('setDestinationUri(Uri.fromFile') && !upJava.includes('VISIBILITY_HIDDEN'), 'no banned download destination/visibility');
     check(upJava.includes('setDestinationInExternalFilesDir') && upJava.includes('VISIBILITY_VISIBLE'), 'store-compliant download target + visible progress');
     check(upJava.includes('installBegin') && upJava.includes('installAppend') && upJava.includes('installCommit'), 'chunked install handoff (bridge-safe)');
