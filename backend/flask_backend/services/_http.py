@@ -46,8 +46,13 @@ def _send(method, url, params=None, json=None, headers=None, timeout=25,
         req.add_header(k, v)
     req.add_header('Accept', 'application/json')
     ctx = None
-    if url.startswith('https://') and not verify:
-        ctx = _CTX_INSECURE
+    if url.startswith('https://'):
+        if verify is False:
+            ctx = _CTX_INSECURE
+        elif isinstance(verify, str) and verify:
+            # Pinned CA bundle augments (never replaces) system anchors.
+            ctx = ssl.create_default_context()
+            ctx.load_verify_locations(cafile=verify)
     try:
         with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
             return Response(r.status, r.read().decode('utf-8', 'replace'),

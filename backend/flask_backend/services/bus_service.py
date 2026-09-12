@@ -109,7 +109,7 @@ def _cached_json(cache_key: str, producer):
 # ============================================
 _RELAY_URL_MEM = None
 _RELAY_URL_TS = 0.0
-RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
+RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or ''
 _DIRECT_BLOCKED_UNTIL = 0
 DIRECT_COOLDOWN = 60
 

@@ -41,7 +41,7 @@ PORT = int(os.environ.get('PORT', 5000))
 EMAIL_API_KEY = os.environ.get('EMAIL_API_KEY', '')
 EMAIL_FROM = os.environ.get('EMAIL_FROM', '')
 
-JWT_EXP_SECONDS = 30 * 24 * 60 * 60  # tokens expire after 30 days
+JWT_EXP_SECONDS = 12 * 60 * 60  # tokens expire after 12 hours
 ADMIN_PASS_HASH = hashlib.sha256(ADMIN_PASS.encode()).hexdigest()
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
@@ -81,7 +81,7 @@ def _b64url_decode(data: str) -> bytes:
 def make_token(username: str) -> str:
     header = {'alg': 'HS256', 'typ': 'JWT'}
     now = int(time.time())
-    payload = {'sub': username, 'iat': now, 'exp': now + JWT_EXP_SECONDS}
+    payload = {'sub': username, 'iat': now, 'exp': now + JWT_EXP_SECONDS, 'jti': secrets.token_hex(8)}
     h = _b64url_encode(json.dumps(header, separators=(',', ':')).encode())
     p = _b64url_encode(json.dumps(payload, separators=(',', ':')).encode())
     sig = hmac.new(JWT_SECRET.encode(), f'{h}.{p}'.encode(), hashlib.sha256).digest()
@@ -98,9 +98,35 @@ def decode_token(token: str):
         payload = json.loads(_b64url_decode(p))
         if int(payload.get('exp', 0)) < time.time():
             return None
+        jti = payload.get('jti')
+        if not jti or not isinstance(jti, str):
+            return None
+        if _denylist_has(jti):
+            return None
         return payload
     except Exception:
         return None
+
+
+def _denylist_add(jti, exp_ts):
+    try:
+        with db.engine.connect() as c:
+            c.execute(db.text('INSERT INTO token_denylist (jti, exp) VALUES (:j, :e) '
+                              'ON CONFLICT(jti) DO NOTHING'),
+                      {'j': jti, 'e': datetime.fromtimestamp(int(exp_ts))})
+            c.execute(db.text('DELETE FROM token_denylist WHERE exp < :n'), {'n': datetime.utcnow()})
+            c.commit()
+    except Exception as e:
+        app.logger.error('denylist add: %s', type(e).__name__)
+
+
+def _denylist_has(jti):
+    try:
+        with db.engine.connect() as c:
+            row = c.execute(db.text('SELECT 1 FROM token_denylist WHERE jti = :j'), {'j': jti}).fetchone()
+        return bool(row)
+    except Exception:
+        return True
 
 
 def auth_required(f):
@@ -113,6 +139,7 @@ def auth_required(f):
         if not payload:
             return jsonify({'error': 'Invalid or expired token'}), 401
         request.user = payload.get('sub')
+        request.token_payload = payload
         return f(*args, **kwargs)
     return wrapper
 
@@ -450,7 +477,8 @@ def serve_uploaded_file(filename):
 #   3. Copy the APK to backend/flask_backend/releases/app-<versionCode>.apk
 #      and compute its SHA-256.
 #   4. Update backend/flask_backend/update.json with the new versionCode,
-#      versionName, apkUrl (/app/releases/app-<versionCode>.apk) and sha256.
+#      versionName, apkUrl (/app/releases/app-<versionCode>.apk), sha256 and
+#      size (exact APK byte count — clients reject manifests without them).
 # Until then update.json mirrors the current build: clients stay up to date.
 UPDATE_MANIFEST_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'update.json')
 
@@ -484,11 +512,16 @@ def app_update_manifest():
         vc = 0
     if vc <= 0:
         return jsonify({'error': 'update manifest unavailable'}), 502
+    try:
+        msize = int(data.get('size') or 0)
+    except (TypeError, ValueError):
+        msize = 0
     resp = jsonify({
         'versionName': str(data.get('versionName') or ('v' + str(vc))),
         'versionCode': vc,
         'apkUrl': str(data.get('apkUrl') or ''),
         'sha256': str(data.get('sha256') or ''),
+        'size': msize,
         'mandatory': data.get('mandatory') is True,
     })
     # Public manifest read by the APK WebView (origin https://localhost):
@@ -576,7 +609,7 @@ def get_public_exams():
 # ============================================
 PROGRES_DIRECT = 'https://progres.mesrs.dz'
 PROGRES_RELAY_URL = os.environ.get('PROGRES_RELAY_URL') or 'https://launch-stating-trunk-spread.trycloudflare.com'
-PROGRES_RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
+PROGRES_RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or ''
 
 _progres_client = httpx.Client(
     timeout=30,
@@ -709,6 +742,31 @@ def _vault_has(token: str) -> bool:
 
 
 _RELAY_REGISTER_KEY = os.environ.get('RELAY_REGISTER_KEY') or PROGRES_RELAY_KEY
+
+
+def _require_prod_secrets():
+    """Fail boot on default/missing secrets in prod; warn loudly elsewhere."""
+    prod = os.environ.get('ENV', '').lower() in ('prod', 'production') or bool(os.environ.get('RENDER'))
+    problems = []
+    if not JWT_SECRET:
+        problems.append('JWT_SECRET must be set')
+    elif JWT_SECRET == 'change-me-in-production':
+        problems.append('JWT_SECRET is still the default')
+    if ADMIN_PASS == 'admin123':
+        problems.append('ADMIN_PASS is still the default')
+    if not os.environ.get('GS_SECRET'):
+        problems.append('GS_SECRET must be set')
+    if not PROGRES_RELAY_KEY or PROGRES_RELAY_KEY == 'dz-relay-2026-x7k9p2':
+        problems.append('PROGRES_RELAY_KEY must be rotated')
+    if not problems:
+        return
+    msg = 'insecure secrets: ' + '; '.join(problems)
+    if prod:
+        raise SystemExit(msg)
+    print('[WARN] ' + msg, flush=True)
+
+
+_require_prod_secrets()
 
 
 _RELAY_URL_MEM = None
@@ -1316,11 +1374,20 @@ def get_me():
     return jsonify({**user.to_dict(), 'role': 'student'})
 
 
+@app.route('/api/auth/logout', methods=['POST'])
+@auth_required
+def logout():
+    payload = getattr(request, 'token_payload', None) or {}
+    if payload.get('jti'):
+        _denylist_add(payload['jti'], payload.get('exp', 0))
+    return jsonify({'message': 'logged out'})
+
+
 # ============================================
 # PROTECTED ADMIN API
 # ============================================
 @app.route('/api/admin/subjects', methods=['POST'])
-@auth_required
+@admin_required
 def create_subject():
     data = request.get_json(silent=True) or {}
     name = (data.get('name') or '').strip()
@@ -1333,7 +1400,7 @@ def create_subject():
 
 
 @app.route('/api/admin/subjects/<int:subject_id>', methods=['DELETE'])
-@auth_required
+@admin_required
 def delete_subject(subject_id):
     subject = Subject.query.get(subject_id)
     if not subject:
@@ -1344,7 +1411,7 @@ def delete_subject(subject_id):
 
 
 @app.route('/api/admin/exams', methods=['POST'])
-@auth_required
+@admin_required
 def create_exam():
     data = request.get_json(silent=True) or {}
     subject_name = (data.get('subject_name') or '').strip()
@@ -1366,7 +1433,7 @@ def create_exam():
 
 
 @app.route('/api/admin/exams/<int:exam_id>', methods=['DELETE'])
-@auth_required
+@admin_required
 def delete_exam(exam_id):
     exam = Exam.query.get(exam_id)
     if not exam:
@@ -1637,6 +1704,9 @@ with app.app_context():
                 token TEXT NOT NULL,
                 expires_at TIMESTAMP NOT NULL,
                 updated_at TIMESTAMP)'''))
+            _c.execute(db.text('''CREATE TABLE IF NOT EXISTS token_denylist (
+                jti TEXT PRIMARY KEY,
+                exp TIMESTAMP NOT NULL)'''))
             _c.commit()
     except Exception as e:
         app.logger.error('progres cache tables init: %s', e)

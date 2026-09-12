@@ -4,7 +4,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import urllib.request
 import urllib.error
 
-RELAY_KEY = os.environ.get('RELAY_KEY', 'dz-relay-2026-x7k9p2')
+RELAY_KEY = os.environ.get('RELAY_KEY', '')
+if not RELAY_KEY:
+    raise SystemExit('RELAY_KEY env is required (rotate: set a fresh random value here and as PROGRES_RELAY_KEY on the backend)')
 
 # v3: generic ministry bridge — every upstream is reachable only under its
 # prefix, every forwarded path must start with /api/, any method allowed.

@@ -1,7 +1,8 @@
 {
   "versionName": "1.4.12",
-  "versionCode": 16,
-  "apkUrl": "https://university-portal-gv78.onrender.com/app/releases/app-16.apk",
-  "sha256": "40d56ba9c99b712604c970a50134b5efad4451280ee39f19142849ce85b0c878",
+  "versionCode": 17,
+  "apkUrl": "https://university-portal-gv78.onrender.com/app/releases/app-17.apk",
+  "sha256": "f1ab78bf3b23199e5879a36d9beb63d051e0ee50f2c7b205a2f06d80ba914fef",
+  "size": 4648716,
   "mandatory": false
 }

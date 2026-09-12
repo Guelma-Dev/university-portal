@@ -53,15 +53,16 @@ window.PortalUpdate = (function () {
     }
 
     function manifestUrl() {
-        try {
-            var ov = localStorage.getItem('update_manifest_url');
-            if (ov && /^https:\/\//.test(ov)) return ov; // dev override only
-        } catch (e) {}
         return LIVE_ORIGIN + '/app/update.json';
     }
 
     function toast(msg, type) {
         if (typeof window.showToast === 'function') window.showToast(msg, type || 'info');
+    }
+
+    var UPDATE_HOST = 'university-portal-gv78.onrender.com';
+    function urlHost(u) {
+        try { return new URL(u).host.toLowerCase(); } catch (e) { return ''; }
     }
 
     function validManifest(d) {
@@ -70,12 +71,15 @@ window.PortalUpdate = (function () {
         if (!Number.isInteger(vc) || vc <= 0) return null;
         var url = String(d.apkUrl || '');
         if (!/^https:\/\/[^\/\s]+/.test(url)) return null;
-        var sha = (d.sha256 == null || d.sha256 === '') ? '' : String(d.sha256);
-        if (sha && !/^[0-9a-fA-F]{64}$/.test(sha)) return null;
+        if (urlHost(url) !== UPDATE_HOST) return null;
+        var sha = String(d.sha256 || '');
+        if (!/^[0-9a-fA-F]{64}$/.test(sha)) return null;
+        var size = Number(d.size);
+        if (!Number.isInteger(size) || size <= 0) return null;
         return {
             versionName: String(d.versionName || ('v' + vc)),
-            versionCode: vc, apkUrl: url,
-            sha256: sha.toLowerCase(), mandatory: d.mandatory === true,
+            versionCode: vc, apkUrl: url, host: urlHost(url),
+            sha256: sha.toLowerCase(), size: size, mandatory: d.mandatory === true,
         };
     }
 
@@ -143,7 +147,7 @@ window.PortalUpdate = (function () {
                 if (dl && dl.versionCode === m.versionCode) {
                     var present = await nativePresent(m.versionCode);
                     if (present) {
-                        if (await confirmDownloaded(m.versionCode, m.sha256, m)) return state;
+                        if (await confirmDownloaded(m.versionCode, m.sha256, m.size, m)) return state;
                         return state;
                     }
                     saveDl(null);
@@ -163,9 +167,9 @@ window.PortalUpdate = (function () {
 
     // Truth gate: a finished stream is NOT proof. Size (+checksum when
     // configured) must validate before the UI may claim DOWNLOADED.
-    async function confirmDownloaded(versionCode, sha, remote) {
+    async function confirmDownloaded(versionCode, sha, size, remote) {
         try {
-            var r = await plugin().validateDownload({ versionCode: versionCode, sha256: sha || '' });
+            var r = await plugin().validateDownload({ versionCode: versionCode, sha256: sha || '', size: size || 0 });
             if (r && r.valid) {
                 setState({ name: 'downloaded', remote: remote || state.remote, progress: { pct: 100, soFar: 0, total: 0 }, error: '' });
                 return true;
@@ -219,7 +223,7 @@ window.PortalUpdate = (function () {
             var r = await pl.downloadUpdate({ url: m.apkUrl, versionCode: m.versionCode });
             var id = r && (r.downloadId != null ? Number(r.downloadId) : 0);
             if (!id) throw new Error('no-id');
-            saveDl({ downloadId: id, versionCode: m.versionCode, sha256: m.sha256, apkUrl: m.apkUrl });
+            saveDl({ downloadId: id, versionCode: m.versionCode, sha256: m.sha256, size: m.size, apkUrl: m.apkUrl });
             pollLoop(id, m.versionCode);
         } catch (e) {
             return fallbackFetch(m);
@@ -327,7 +331,7 @@ window.PortalUpdate = (function () {
             // gzip/transform in flight, so decompressed bytes can EXCEED a
             // compressed Content-Length. The SHA-256 gate below is definitive.
             if (total > 0 && blob.size < total) throw new Error('incomplete');
-            saveDl({ downloadId: 0, versionCode: m.versionCode, sha256: m.sha256, apkUrl: m.apkUrl });
+            saveDl({ downloadId: 0, versionCode: m.versionCode, sha256: m.sha256, size: m.size, apkUrl: m.apkUrl });
             var begun = await pl.installBegin({ versionCode: m.versionCode });
             if (!begun) throw new Error('bad install spec');
             var off = 0, idx = 0;
@@ -340,7 +344,7 @@ window.PortalUpdate = (function () {
                 idx++;
                 setState({ name: 'downloading', progress: { pct: 99, soFar: Math.min(off, blob.size), total: blob.size } });
             }
-            var r = await pl.installCommit({ versionCode: m.versionCode, sha256: m.sha256 || '' });
+            var r = await pl.installCommit({ versionCode: m.versionCode, sha256: m.sha256 || '', size: m.size || 0 });
             if (r && r.status === 'pending_user_action') {
                 setState({ name: 'installing', progress: { pct: 100, soFar: 0, total: 0 }, error: '' });
             } else {
@@ -380,7 +384,7 @@ window.PortalUpdate = (function () {
                 } else if (st === 'complete') {
                     stopPoll();
                     var rmC = state.remote;
-                    if (rmC && rmC.versionCode === versionCode) { confirmDownloaded(versionCode, rmC.sha256, rmC); return; }
+                    if (rmC && rmC.versionCode === versionCode) { confirmDownloaded(versionCode, rmC.sha256, rmC.size, rmC); return; }
                     setState({ name: 'downloaded', progress: { pct: 100, soFar: 0, total: 0 }, error: '' });
                 } else if (st === 'failed' || st === 'unknown') {
                     stopPoll();
@@ -431,7 +435,7 @@ window.PortalUpdate = (function () {
         }
         setState({ name: 'installing', error: '' });
         try {
-            var r = await pl.verifyAndInstall({ versionCode: m.versionCode, sha256: m.sha256 || '' });
+            var r = await pl.verifyAndInstall({ versionCode: m.versionCode, sha256: m.sha256 || '', size: m.size || 0 });
             if (r && r.status === 'pending_user_action') {
                 // Android now shows its own confirmation; outcome arrives via installStatus.
                 return state;
@@ -478,8 +482,8 @@ window.PortalUpdate = (function () {
                 stopPoll();
                 var dl = readDl();
                 var rmO = state.remote;
-                if (dl && rmO && rmO.versionCode === dl.versionCode) { confirmDownloaded(dl.versionCode, rmO.sha256, rmO); return; }
-                if (dl) { confirmDownloaded(dl.versionCode, dl.sha256 || '', rmO); return; }
+                if (dl && rmO && rmO.versionCode === dl.versionCode) { confirmDownloaded(dl.versionCode, rmO.sha256, rmO.size, rmO); return; }
+                if (dl) { confirmDownloaded(dl.versionCode, dl.sha256 || '', dl.size || 0, rmO); return; }
                 setState({ name: 'downloaded', progress: { pct: 100, soFar: 0, total: 0 }, error: '' });
             } else if (r && (r.status === 'failed' || r.status === 'unknown')) {
                 stopPoll();
@@ -573,6 +577,11 @@ window.PortalUpdateUI = (function () {
             + '<p class="upd-pct">' + Math.max(0, Math.min(100, pct)) + '%</p>';
     }
 
+    function srcLine(rm) {
+        if (!rm) return '';
+        return '<p class="upd-src">المصدر ' + esc(rm.host || '') + ' • SHA ' + esc(String(rm.sha256 || '').slice(0, 12)) + '…</p>';
+    }
+
     function render(st) {
         var box = document.getElementById('update-box');
         if (!box || !window.PortalUpdate) return;
@@ -584,7 +593,7 @@ window.PortalUpdateUI = (function () {
                 + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.checkUpdate({manual:true})">التحقق من وجود تحديث</button></div>';
         } else if (st.name === 'update_available' && st.remote) {
             h = '<div class="upd-state"><p class="upd-avail"><i class="fas fa-arrow-up"></i> تحديث متوفر</p>'
-                + '<p class="upd-ver">الإصدار ' + esc(st.remote.versionName) + '</p>'
+                + '<p class="upd-ver">الإصدار ' + esc(st.remote.versionName) + '</p>' + srcLine(st.remote)
                 + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.startDownload()"><i class="fas fa-download"></i> تحديث</button></div>';
         } else if (st.name === 'downloading') {
             var p = st.progress || {};
@@ -592,7 +601,7 @@ window.PortalUpdateUI = (function () {
                 + bar(p.pct)
                 + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.cancelDownload()">إلغاء</button></div>';
         } else if (st.name === 'downloaded') {
-            h = '<div class="upd-state"><p class="upd-ok"><i class="fas fa-circle-check"></i> اكتمل تنزيل التحديث</p>'
+            h = '<div class="upd-state"><p class="upd-ok"><i class="fas fa-circle-check"></i> اكتمل تنزيل التحديث</p>' + srcLine(st.remote)
                 + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installUpdate()"><i class="fas fa-right-to-bracket"></i> تثبيت التحديث</button></div>';
         } else if (st.name === 'installing') {
             h = '<div class="upd-state"><p class="upd-msg"><i class="fas fa-spinner fa-spin"></i> التحديث جاهز — أكّد التثبيت في نافذة النظام</p>'

@@ -38,6 +38,8 @@ if DATABASE_URL.startswith('postgres://'):
 
 from sqlalchemy import create_engine, text  # noqa: E402
 
+from ._auth import require_uuid_owner
+
 _db = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 bp = Blueprint('inscription', __name__, url_prefix='/api/inscription')
@@ -169,6 +171,9 @@ def inscription_list():
         token = _vault_get(u)
         if not token:
             raise ApiError('انتهت الجلسة، سجّل دخول بروقرس من جديد', 401)
+        denied = require_uuid_owner(u, token)
+        if denied:
+            return denied
         raw = _webetu_get(f'/api/infos/bac/{u}/dias', token)
         cards = _as_list(raw)
         data = [_simplify_dia(c) for c in cards]

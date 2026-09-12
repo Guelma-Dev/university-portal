@@ -514,17 +514,48 @@ function adminLogout() {
 }
 
 function handleLogout() {
+    try {
+        const bt = localStorage.getItem('admin_token');
+        if (bt) fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', headers: { 'Authorization': `Bearer ${bt}` } }).catch(() => {});
+    } catch (e) {}
     localStorage.removeItem('admin_token');
     localStorage.removeItem('user_role');
     localStorage.removeItem('user_name');
     localStorage.removeItem('university_name');
     localStorage.removeItem('user_wilaya');
     localStorage.removeItem('user_specialty');
+    localStorage.removeItem('onou_session');
+    localStorage.removeItem('meals_session');
+    localStorage.removeItem('portal_notif_v1');
+    localStorage.removeItem('tg_config');
+    localStorage.removeItem('lmd_calc_v2');
+    localStorage.removeItem('personal_timetable_v1');
+    try {
+        const wipePrefix = (store, prefix) => {
+            const rm = [];
+            for (let i = 0; i < store.length; i++) {
+                const k = store.key(i);
+                if (k && k.startsWith(prefix)) rm.push(k);
+            }
+            rm.forEach(k => store.removeItem(k));
+        };
+        [localStorage, sessionStorage].forEach(store => {
+            wipePrefix(store, 'progres_photo_');
+            wipePrefix(store, 'progres_hebergement_');
+            wipePrefix(store, 'pn_cache:');
+            wipePrefix(store, 'onou_prefs:');
+        });
+    } catch (e) {}
     localStorage.removeItem(PROGRES_SESSION_KEY);
     sessionStorage.removeItem(PROGRES_SESSION_KEY);
     clearProgresCache();
     progresCache = null;
     DataCache.clear();
+    try { if (typeof progresLogout === 'function') progresLogout(); } catch (e) {}
+    try {
+        const NP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.NotifyPlugin;
+        if (NP && typeof NP.wipeSession === 'function') NP.wipeSession().catch(() => {});
+    } catch (e) {}
     APP_STATE.role = 'guest';
     APP_STATE.universityName = '';
     APP_STATE.wilaya = '';
@@ -921,11 +952,11 @@ function renderSubjects(filter = '') {
     grid.innerHTML = filtered.map(subject => {
         const totalFiles = (subject.lectures?.length || 0) + (subject.tdtp?.length || 0);
         return `
-        <div class="subject-card" onclick="openSubject(${subject.id})">
+        <div class="subject-card" data-act="open-subject" data-id="${Number(subject.id) || 0}">
             <div class="subject-card-icon">
-                <i class="fas ${subject.icon}"></i>
+                <i class="fas ${safeIcon(subject.icon)}"></i>
             </div>
-            <div class="subject-card-name">${subject.name}</div>
+            <div class="subject-card-name">${escHtml(subject.name)}</div>
             <div class="subject-card-count">${totalFiles} ملف</div>
         </div>`;
     }).join('');
@@ -985,17 +1016,17 @@ function renderFiles(type, filter = '') {
                 <i class="fas fa-file-pdf"></i>
             </div>
             <div class="file-info">
-                <div class="file-name">${file.name}</div>
+                <div class="file-name">${escHtml(file.name)}</div>
                 <div class="file-meta">
                     ${badge ? `<span class="file-badge ${badge.cls}">${badge.label}</span>` : ''}
-                    <span>${file.size}</span>
+                    <span>${escHtml(file.size)}</span>
                 </div>
             </div>
             <div class="file-actions">
-                <button class="btn-icon" onclick="openPdfViewer('${file.file}')" title="عرض">
+                <button class="btn-icon" data-act="open-pdf" data-file="${escHtml(file.file)}" title="عرض">
                     <i class="fas fa-eye"></i>
                 </button>
-                <button class="btn-icon" onclick="downloadFile('${file.file}')" title="تحميل">
+                <button class="btn-icon" data-act="dl-file" data-file="${escHtml(file.file)}" title="تحميل">
                     <i class="fas fa-download"></i>
                 </button>
             </div>
@@ -1283,7 +1314,7 @@ function renderSchedule() {
                     } else {
                         if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
                         if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
-                        text = cell.text || '';
+                        text = ptsEsc(cell.text || '');
                     }
                     const tap = ptsEditMode ? ' slot-tap" onclick="openSlotEditor(\'' + day + '\',' + i + ')"' : '';
                     return '<td class="' + cls + tap + '">' + text + '</td>';
@@ -1353,7 +1384,7 @@ function renderMobileSchedule() {
         } else {
             if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
             if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
-            inner = cell.text || '';
+            inner = ptsEsc(cell.text || '');
         }
         if (ptsEditMode) {
             inner = (inner || 'فارغ') + ' <i class="fas fa-pen pts-pen"></i>';
@@ -1707,9 +1738,9 @@ function renderAdminSubjects() {
     if (!list) return;
     list.innerHTML = subjects.map(s => `
         <div class="admin-subject-item">
-            <i class="fas ${s.icon}"></i>
-            <span>${s.name}</span>
-            <button class="btn-icon" onclick="deleteSubject(${s.id})" title="حذف">
+            <i class="fas ${safeIcon(s.icon)}"></i>
+            <span>${escHtml(s.name)}</span>
+            <button class="btn-icon" data-act="del-subject" data-id="${Number(s.id) || 0}" title="حذف">
                 <i class="fas fa-trash"></i>
             </button>
         </div>
@@ -1826,12 +1857,48 @@ async function saveAdminSchedule() {
 // ============================================
 // TOAST NOTIFICATIONS
 // ============================================
+// Global XSS helpers: escHtml covers text + attribute contexts (quotes escaped).
+function escHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function safeIcon(v, fallback) {
+    v = String(v || '');
+    return /^fa-[a-z0-9-]+$/.test(v) ? v : (fallback || 'fa-book');
+}
+function clampMark(v) {
+    if (v === '' || v === null || v === undefined) return '';
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '';
+    return Math.min(20, Math.max(0, n));
+}
+function clampCoef(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 1;
+    const i = Math.round(n);
+    if (!Number.isInteger(i)) return 1;
+    return Math.min(10, Math.max(1, i));
+}
+// Delegated actions replacing inline onclick (no string-injected handlers).
+document.addEventListener('click', (e) => {
+    const t = e.target && e.target.closest ? e.target.closest('[data-act]') : null;
+    if (!t) return;
+    const act = t.dataset.act;
+    if (act === 'open-subject') openSubject(Number(t.dataset.id) || 0);
+    else if (act === 'del-subject') deleteSubject(Number(t.dataset.id) || 0);
+    else if (act === 'open-pdf') openPdfViewer(t.dataset.file || '');
+    else if (act === 'dl-file') downloadFile(t.dataset.file || '');
+});
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
+    if (!container) return;
     const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle' };
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.innerHTML = `<i class="fas ${icons[type]}"></i><span>${message}</span>`;
+    const icon = document.createElement('i');
+    icon.className = `fas ${icons[type] || icons.info}`;
+    const label = document.createElement('span');
+    label.textContent = message;
+    toast.append(icon, label);
     container.appendChild(toast);
     setTimeout(() => {
         toast.style.opacity = '0';
@@ -2093,9 +2160,9 @@ async function progresFetch(path, params = '') {
 }
 
 function progresCardLabel(c) {
-    const niveau = c.niveauLibelleLongAr || c.niveauLibelleLongLt || '';
-    const year = c.anneeAcademiqueCode || '';
-    return [niveau, year].filter(Boolean).join(' — ') || `بطاقة ${c.id}`;
+    const niveau = escHtml(c.niveauLibelleLongAr || c.niveauLibelleLongLt || '');
+    const year = escHtml(c.anneeAcademiqueCode || '');
+    return [niveau, year].filter(Boolean).join(' — ') || `بطاقة ${escHtml(c.id)}`;
 }
 
 function progresCardHasData(r) {
@@ -2126,27 +2193,27 @@ function renderTranscripts(bilans) {
     html += bilans.map(t => `
         <div class="transcript-card">
             <div class="transcript-header">
-                <span class="period-name">${t.periodeLibelleAr || t.periodeLibelleFr || ''}</span>
+                <span class="period-name">${escHtml(t.periodeLibelleAr || t.periodeLibelleFr || '')}</span>
                 <span class="avg-badge ${t.moyenne >= 10 ? 'pass' : 'fail'}">${t.moyenne != null ? Number(t.moyenne).toFixed(2) : '--'}</span>
             </div>
             <div class="transcript-meta">
-                <span><i class="fas fa-coins"></i> الأرصدة المحصلة: ${t.creditAcquis ?? '--'}</span>
+                <span><i class="fas fa-coins"></i> الأرصدة المحصلة: ${escHtml(t.creditAcquis ?? '--')}</span>
             </div>
             ${(t.bilanUes || []).map(ue => {
                 const mcs = ue.bilanMcs || [];
                 return `
                 <details class="ue-details" ${mcs.length ? '' : 'open'}>
                     <summary class="ue-row">
-                        <span class="ue-name">${ue.ueNatureLcAr || ''} ${ue.ueLibelleAr || ''}</span>
+                        <span class="ue-name">${escHtml(ue.ueNatureLcAr || '')} ${escHtml(ue.ueLibelleAr || '')}</span>
                         <span class="ue-avg ${ue.moyenne >= 10 ? 'grade-pass' : 'grade-fail'}">${ue.moyenne != null ? Number(ue.moyenne).toFixed(2) : '--'}</span>
-                        <span class="ue-credit">${ue.creditAcquis ?? 0}/${ue.credit ?? '--'}</span>
+                        <span class="ue-credit">${escHtml(ue.creditAcquis ?? 0)}/${escHtml(ue.credit ?? '--')}</span>
                     </summary>
                     <div class="mc-list">
                         ${(mcs || []).map(mc => badgeRow(
                             mc.mcLibelleAr || mc.mcLibelleFr || '',
                             gradeBadge(mc.moyenneGenerale, mc.moyenneGenerale != null && mc.moyenneGenerale >= 10),
-                            `<span class="pbadge pb-info">معامل ${mc.coefficient ?? '-'}</span>` +
-                            `<span class="pbadge pb-dim">رصيد ${mc.creditObtenu ?? 0}</span>`
+                            `<span class="pbadge pb-info">معامل ${escHtml(mc.coefficient ?? '-')}</span>` +
+                            `<span class="pbadge pb-dim">رصيد ${escHtml(mc.creditObtenu ?? 0)}</span>`
                         )).join('') || '<div class="sub-row"><span class="sub-name">لا توجد مواد</span></div>'}
                     </div>
                 </details>`;
@@ -2158,14 +2225,14 @@ function renderTranscripts(bilans) {
 
 function badgeRow(name, gradeHtml, extraBadges = '') {
     return `<div class="sub-row">
-        <span class="sub-name">${name}</span>
+        <span class="sub-name">${escHtml(name)}</span>
         <div class="sub-badges">${extraBadges}${gradeHtml}</div>
     </div>`;
 }
 
 function gradeBadge(val, isPass, suffix = '') {
     if (val == null) return '<span class="pbadge pb-dim">--</span>';
-    return `<span class="pbadge ${isPass ? 'pb-pass' : 'pb-fail'}">${val}${suffix}</span>`;
+    return `<span class="pbadge ${isPass ? 'pb-pass' : 'pb-fail'}">${escHtml(val)}${suffix}</span>`;
 }
 
 // Strict hardcoded semester mapping (Finance & Accounting L1 official names).
@@ -2198,8 +2265,8 @@ function renderExamList(exams) {
     const rows = (list) => list.map(g => badgeRow(
         g.matiereLibelleAr || g.mcLibelleAr || g.mcLibelleFr || '',
         gradeBadge(g.noteExamen, g.noteExamen == null || g.noteExamen >= 10),
-        `${g.planningSessionIntitule ? `<span class="pbadge pb-dim">${g.planningSessionIntitule}</span>` : ''}` +
-        `<span class="pbadge pb-info">معامل ${g.rattachementMcCoefficient ?? '-'}</span>`
+        `${g.planningSessionIntitule ? `<span class="pbadge pb-dim">${escHtml(g.planningSessionIntitule)}</span>` : ''}` +
+        `<span class="pbadge pb-info">معامل ${escHtml(g.rattachementMcCoefficient ?? '-')}</span>`
     )).join('');
     const H3 = 'color: #D4AF37; margin: 20px 10px 10px 10px; font-size: 16px; border-bottom: 1px solid #D4AF37; padding-bottom: 8px; text-align: right;';
     const empty = '<p class="ins-empty">لا توجد مواد</p>';
@@ -2223,14 +2290,14 @@ function renderCcGroups(cc) {
     });
     return `<h4 class="grades-section-title"><i class="fas fa-pen-ruler"></i> التحكم المستمر (TD/TP)</h4>` +
         Object.entries(byPeriod).map(([period, grades]) => `
-            <p class="cc-period">${period}</p>
+            <p class="cc-period">${escHtml(period)}</p>
             <div class="pcard">
                 ${grades.map(g => badgeRow(
                     g.rattachementMcMcLibelleAr || g.rattachementMcMcLibelleFr || '',
                     g.absent
                         ? '<span class="pbadge pb-fail">غائب</span>'
                         : gradeBadge(g.note, g.note == null || g.note >= 10),
-                    `<span class="pbadge pb-dim">${g.apCode || '-'}</span>`
+                    `<span class="pbadge pb-dim">${escHtml(g.apCode || '-')}</span>`
                 )).join('')}
             </div>`).join('');
 }
@@ -2240,12 +2307,12 @@ function renderAnnual(annual, cardLabel) {
     const a = annual.value[0];
     return `<div class="annual-banner">
         <div>
-            <strong>${a.typeDecisionLibelleAr || a.typeDecisionLibelleFr || ''}</strong>
+            <strong>${escHtml(a.typeDecisionLibelleAr || a.typeDecisionLibelleFr || '')}</strong>
             <span>النتيجة السنوية — ${cardLabel}</span>
         </div>
         <div class="annual-stats">
             <span class="avg-badge ${a.moyenne >= 10 ? 'pass' : 'fail'}">${a.moyenne != null ? Number(a.moyenne).toFixed(2) : '--'}</span>
-            <span class="annual-credit">${a.creditAcquis ?? 0} رصيد</span>
+                <span class="annual-credit">${escHtml(a.creditAcquis ?? 0)} رصيد</span>
         </div>
     </div>`;
 }
@@ -2543,7 +2610,7 @@ async function ensureProgresData() {
     const wil = first.wilayaLibelle || first.wilaya || first.wilayaCode || first.etablissementWilaya || '';
     if (wil) setUserWilaya(String(wil).trim());
     const select = document.getElementById('grades-card-select');
-    if (select) select.innerHTML = cards.map(c => `<option value="${c.id}">${progresCardLabel(c)}</option>`).join('');
+    if (select) select.innerHTML = cards.map(c => `<option value="${escHtml(c.id)}">${progresCardLabel(c)}</option>`).join('');
     let cardId = session.selectedCard && cards.some(c => String(c.id) === String(session.selectedCard))
         ? String(session.selectedCard)
         : String(cards[0].id);
@@ -2711,6 +2778,8 @@ function toggleTd(sem, idx) {
 }
 
 function updateCalcField(sem, idx, field, val) {
+    if (field === 'coef') val = clampCoef(val);
+    else if (field === 'exam' || field === 'td') val = clampMark(val);
     calcData[sem][idx][field] = val;
     saveCalc();
     recalcSingle(sem, idx);
@@ -2867,9 +2936,9 @@ function renderCalcModules(sem) {
         card.setAttribute('data-idx', i);
 
         const examInput = m.hasTd
-            ? `<div class="calc-field calc-field-exam"><label>الامتحان (⁄20)</label><input type="number" min="0" max="20" step="0.01" placeholder="0-20" value="${m.exam}" oninput="updateCalcField('${sem}',${i},'exam',this.value)"></div>
-               <div class="calc-field calc-field-td"><label>TD / TP (⁄20)</label><input type="number" min="0" max="20" step="0.01" placeholder="0-20" value="${m.td}" oninput="updateCalcField('${sem}',${i},'td',this.value)"></div>`
-            : `<div class="calc-field calc-field-exam"><label>الامتحان (⁄20)</label><input type="number" min="0" max="20" step="0.01" placeholder="0-20" value="${m.exam}" oninput="updateCalcField('${sem}',${i},'exam',this.value)"></div>`;
+            ? `<div class="calc-field calc-field-exam"><label>الامتحان (⁄20)</label><input type="number" min="0" max="20" step="0.01" placeholder="0-20" value="${escHtml(m.exam ?? '')}" oninput="updateCalcField('${sem}',${i},'exam',this.value)"></div>
+               <div class="calc-field calc-field-td"><label>TD / TP (⁄20)</label><input type="number" min="0" max="20" step="0.01" placeholder="0-20" value="${escHtml(m.td ?? '')}" oninput="updateCalcField('${sem}',${i},'td',this.value)"></div>`
+            : `<div class="calc-field calc-field-exam"><label>الامتحان (⁄20)</label><input type="number" min="0" max="20" step="0.01" placeholder="0-20" value="${escHtml(m.exam ?? '')}" oninput="updateCalcField('${sem}',${i},'exam',this.value)"></div>`;
 
         card.innerHTML = `
             <div class="calc-module-header-row">
@@ -2879,12 +2948,12 @@ function renderCalcModules(sem) {
                 </button>
             </div>
             <input class="calc-module-name" type="text" placeholder="اسم المادة..."
-                value="${m.name}" oninput="updateCalcField('${sem}',${i},'name',this.value)">
+                value="${escHtml(m.name ?? '')}" oninput="updateCalcField('${sem}',${i},'name',this.value)">
             <div class="calc-module-fields ${m.hasTd ? 'has-td' : ''}">
                 <div class="calc-field calc-field-coef">
                     <label>المعامل</label>
                     <input type="number" min="1" max="10" step="0.5" placeholder="1"
-                        value="${m.coef}" oninput="updateCalcField('${sem}',${i},'coef',this.value)">
+                        value="${escHtml(m.coef ?? '')}" oninput="updateCalcField('${sem}',${i},'coef',this.value)">
                 </div>
                 ${examInput}
                 <div class="calc-module-avg ${getAvgClass(avg)}" id="avg-${sem}-${i}">
@@ -3914,6 +3983,7 @@ function initHideAppBar() {
     const bar = document.querySelector('.app-bar');
     if (!bar || bar.dataset.hidebound) return;
     bar.dataset.hidebound = '1';
+    const nav = document.querySelector('.bottom-nav');
     let tick = false;
     const apply = (y) => {
         if (tick) return;
@@ -3921,7 +3991,9 @@ function initHideAppBar() {
         const raf = window.requestAnimationFrame || ((fn) => setTimeout(fn, 16));
         raf(() => {
             tick = false;
-            bar.classList.toggle('app-hidden', y > _hideBarY && y > 90);
+            const hide = y > _hideBarY && y > 90;
+            bar.classList.toggle('app-hidden', hide);
+            if (nav) nav.classList.toggle('nav-hidden', hide);
             bar.classList.toggle('scrolled', y > 10);
             _hideBarY = y;
         });

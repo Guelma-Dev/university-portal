@@ -2300,6 +2300,18 @@ select option { background: var(--input-bg); color: var(--text-primary); }
 .sid-year { font-size: 11px; font-size: 2.3em; font-weight: 700; color: #141418; }
 .sid-res-empty { font-size: 10px; font-size: 2.2em; font-weight: 600; color: #55555C; }
 
+/* --- Residence back-face determinism (front face untouched) ---
+   The back face carries 7 rows in the band sized for 5, so one extra
+   wrapped line (long Arabic residence name, fallback font, larger text)
+   recenters the whole column and pushes fields into neighbouring bands.
+   These bounds keep every field inside its own card band on ANY device.
+   They are no-ops while content fits, so the official design is unchanged.
+   Caps are derived from the row line-heights above (local em!), not eyeballed:
+   value line = 1.52em, label line = 1.2em, 2 lines max + rounding slack. */
+.sid-backface .sid-unititle { overflow: hidden; max-height: 100%; }
+.sid-backface .sid-val { max-height: 3.2em; overflow: hidden; }
+.sid-backface .sid-lbl { max-height: 2.6em; overflow: hidden; }
+
 /* ==========================================================================
    PREMIUM POLISH — بطاقات الخدمات + الشريطان + المكتبة + ليلي البطاقة
    ========================================================================== */

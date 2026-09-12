@@ -39,8 +39,8 @@ let db = {
         { id: 9, name: 'نظم المعلومات المحاسبية', icon: 'fa-database', files: [] },
     ],
     config: {
-        botToken: process.env.TG_BOT_TOKEN || '8626034663:AAGjKhjCiiiZzE4UwzW6UXeKiHh-ixwGsLs',
-        chatId: process.env.TG_CHAT_ID || '6586489447'
+        botToken: process.env.TG_BOT_TOKEN || '',
+        chatId: process.env.TG_CHAT_ID || ''
     },
     stats: { visits: 0, files: 0 }
 };

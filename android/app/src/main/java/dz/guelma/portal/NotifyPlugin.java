@@ -42,6 +42,27 @@ import java.util.Calendar;
 )
 public class NotifyPlugin extends Plugin {
 
+    /** Bridge numbers arrive as Integer OR Long OR Double depending on
+     *  magnitude — never assume one exact type (Capacitor returns null
+     *  on mismatch, which silently broke scheduling before). */
+    static long numLong(com.getcapacitor.PluginCall call, String key, long def) {
+        try {
+            Object v = call.getData().opt(key);
+            if (v instanceof Number) return ((Number) v).longValue();
+            if (v instanceof String) return Long.parseLong((String) v);
+        } catch (Exception ignored) {}
+        return def;
+    }
+
+    static int numInt(com.getcapacitor.PluginCall call, String key, int def) {
+        try {
+            Object v = call.getData().opt(key);
+            if (v instanceof Number) return ((Number) v).intValue();
+            if (v instanceof String) return Integer.parseInt((String) v);
+        } catch (Exception ignored) {}
+        return def;
+    }
+
     static final String PREFS = "portal_notify";
     static final int REQ_BOOKING = 1001;
     static final String CH_MEALS = "meals";
@@ -105,8 +126,8 @@ public class NotifyPlugin extends Plugin {
     @PluginMethod
     public void scheduleBooking(PluginCall call) {
         try {
-            int hour = call.getInt("hour", 18);
-            int minute = call.getInt("minute", 0);
+            int hour = numInt(call, "hour", 18);
+            int minute = numInt(call, "minute", 0);
             Context ctx = getContext();
             SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
             p.edit()
@@ -116,7 +137,7 @@ public class NotifyPlugin extends Plugin {
                 .putString("apiBase", call.getString("apiBase", ""))
                 .putString("uuid", call.getString("uuid", ""))
                 .putString("dia", call.getString("dia", ""))
-                .putInt("depotId", call.getInt("depotId", 0))
+                .putInt("depotId", numInt(call, "depotId", 0))
                 .putString("depotName", call.getString("depotName", ""))
                 .putString("meals", call.getString("meals", ""))
                 .putString("mealNames", call.getString("mealNames", ""))
@@ -149,6 +170,24 @@ public class NotifyPlugin extends Plugin {
         }
     }
 
+    /** Logout wipe: drop stored identity (uuid/dia/depot) so the next
+     *  user cannot reuse the previous student's meal context. */
+    @PluginMethod
+    public void wipeSession(PluginCall call) {
+        try {
+            Context ctx = getContext();
+            disarmAlarm(ctx);
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().remove("uuid").remove("dia")
+                .remove("depotId").remove("depotName").apply();
+            JSObject r = new JSObject();
+            r.put("wiped", true);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("wipe failed: " + e.getMessage());
+        }
+    }
+
     // ---------- generic one-shot reminders (timetable, extensible) ----------
 
     @PluginMethod
@@ -157,10 +196,13 @@ public class NotifyPlugin extends Plugin {
             String id = call.getString("id", "");
             String tag = call.getString("tag", "general");
             double atD = 0;
-            try { Double d = call.getDouble("triggerAt"); if (d != null) atD = d; } catch (Exception ignored) {}
+            atD = (double) numLong(call, "triggerAt", 0);
             long at = (long) atD;
             if (id.isEmpty() || at <= System.currentTimeMillis()) {
-                call.reject("bad reminder spec");
+                Object raw = null;
+                String rtype = "null";
+                try { raw = call.getData().opt("triggerAt"); rtype = raw == null ? "null" : raw.getClass().getName(); } catch (Exception ignored) {}
+                call.reject("bad reminder spec t=" + at + " now=" + System.currentTimeMillis() + " type=" + rtype + " idlen=" + id.length());
                 return;
             }
             Context ctx = getContext();

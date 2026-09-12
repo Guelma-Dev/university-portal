@@ -8,7 +8,7 @@ api-webetu.mesrs.dz و gs-api.onou.dz دون تخزين أي كلمات سرّ:
 - تحديد الولاية تلقائياً من wilayaInscription (تخزين مؤقت 6 ساعات) والإقامة
   من demandesHebregement (12 ساعة) أو من قيمة يرسلها العميل.
 - تسجيل دخول موقّع بـ HMAC-SHA256 (X-Timestamp/X-Nonce/X-Signature) لخدمة
-  gs-api.onou.dz (شهادتها منتهية لذا verify=False) وجلب رمزها (20 ساعة).
+  gs-api.onou.dz عبر TLS موثّق (verify=True مع حزمة CA مثبّتة) وجلب رمزها (20 ساعة).
 - عرض المراكز (depots، ساعة واحدة) والحجوزات، الحجز الجديد، وإلغاء الحجز.
 - تفضيلات الحجز التلقائي في جدول onou_autobook (يُنشأ عند أول استخدام)
   وخيط خلفي daemon يحجز الأيام الثلاثة القادمة في الساعة المحددة، متخطياً
@@ -34,6 +34,8 @@ except ImportError:
 from flask import Blueprint, jsonify, request
 from sqlalchemy import create_engine, text
 
+from ._auth import assert_dia_owned, require_uuid_owner
+
 try:
     from requests.packages import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -45,11 +47,16 @@ except Exception:
 # ============================================
 WEBETU_BASE = 'https://api-webetu.mesrs.dz'
 GS_BASE = 'https://gs-api.onou.dz'
-_GS_SECRET = b'pUzHUW2WX54uCzhO8JC2eQ6g1Ol21upw'
+_GS_SECRET = os.environ.get('GS_SECRET', '').encode()
 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///university.db')
 if DATABASE_URL.startswith('postgres://'):
     DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+# Pinned CA bundle for gs-api.onou.dz (Sectigo chain as served; augments
+# system anchors, never replaces). If the ministry switches CA vendor,
+# refresh certs/onou-ca.pem in the same release.
+ONOU_CA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'certs', 'onou-ca.pem')
 
 _db = create_engine(DATABASE_URL, pool_pre_ping=True)
 
@@ -201,7 +208,7 @@ def _first_dia(claims):
 # WEBETU (raw progres JWT as authorization header)
 # ============================================
 _RELAY_URL_MEM = None
-RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
+RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or ''
 _DIRECT_BLOCK = {}
 DIRECT_COOLDOWN = 60
 
@@ -336,6 +343,8 @@ def _resolve_residence(u, token, residence=None):
 # GS-API (expired TLS cert + HMAC-signed requests)
 # ============================================
 def _gs_sign_headers(body_str=''):
+    if not _GS_SECRET:
+        raise ApiError('خدمة الوجبات غير مهيأة (GS_SECRET)', 503)
     ts = str(int(time.time()))
     nonce = uuidlib.uuid4().hex
     sig = hmac.new(_GS_SECRET, f'{ts}|{nonce}|{body_str}'.encode(), hashlib.sha256).hexdigest()
@@ -347,7 +356,9 @@ def _gs_request(method, path, gs_token=None, body=None, params=None):
     headers = _gs_sign_headers(body_str)
     if gs_token:
         headers['authorization'] = f'Bearer {gs_token}'
-    kwargs = {'params': params, 'timeout': 30, 'verify': False}
+    kwargs = {'params': params, 'timeout': 30, 'verify': ONOU_CA_FILE}
+    if not os.path.exists(ONOU_CA_FILE):
+        raise ApiError('خدمة الوجبات غير مهيأة (CA)', 503)
     if body is not None:
         headers['Content-Type'] = 'application/json'
         kwargs['data'] = body_str.encode('utf-8')
@@ -374,14 +385,22 @@ def _get_gs_token(u, token, wilaya, residence):
     return gs
 
 
-def _build_ctx(u, dia=None, residence=None):
+def _build_ctx(u, dia=None, residence=None, _internal=False):
     token = _vault_get(u)
     if not token:
         raise SessionExpired()
+    if not _internal:
+        denied = require_uuid_owner(u, token)
+        if denied:
+            raise ApiError(denied[0].get_json().get('error', 'غير مصرح'), denied[1])
     claims = _jwt_claims(token)
     dia = str(dia).strip() if dia else _first_dia(claims)
     if not dia:
         raise ApiError('تعذر تحديد رقم التسجيل (dia)', 400)
+    if not _internal:
+        denied = assert_dia_owned(claims, dia)
+        if denied:
+            raise ApiError(denied[0].get_json().get('error', 'غير مصرح'), denied[1])
     wilaya = _resolve_wilaya(u, token, dia)
     residence = _resolve_residence(u, token, residence)
     gs = _get_gs_token(u, token, wilaya, residence)
@@ -590,6 +609,9 @@ def get_prefs():
         u = _req_uuid()
         if not u:
             return jsonify({'error': 'uuid مطلوب'}), 400
+        denied = require_uuid_owner(u, _vault_get(u))
+        if denied:
+            return denied
         _ensure_autobook_table()
         row = None
         try:
@@ -623,6 +645,9 @@ def save_prefs():
         u = str(data.get('uuid') or '').strip()
         if not u:
             return jsonify({'error': 'uuid مطلوب'}), 400
+        denied = require_uuid_owner(u, _vault_get(u))
+        if denied:
+            return denied
         _ensure_autobook_table()
         depot = data.get('depot')
         try:
@@ -707,7 +732,7 @@ def _already_reserved(res_items, iso_date, menu_type):
 
 def _autobook_user(row):
     u = row['uuid']
-    ctx = _build_ctx(u)
+    ctx = _build_ctx(u, _internal=True)
     existing = _fetch_reservations(ctx)
     results = []
     today = datetime.now().date()

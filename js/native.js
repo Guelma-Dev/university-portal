@@ -8,8 +8,6 @@
     const API_HOST = 'https://api-webetu.mesrs.dz';
     const BASE = API_HOST + '/api/infos';
     const BUS_HOST = 'https://mybus.mesrs.dz';
-    const ONOU_HOST = 'https://gs-api.onou.dz';
-    const GS_SECRET = 'pUzHUW2WX54uCzhO8JC2eQ6g1Ol21upw';
     const LIVE_ORIGIN = 'https://university-portal-gv78.onrender.com';
 
     const DEFAULT_LAT = 36.4627;
@@ -82,45 +80,6 @@
     PN.authenticate = null;
     PN.release = release;
     PN.ping = ping;
-
-    function _uuidV4() {
-        try {
-            return (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : _legacyUuid();
-        } catch (e) {
-            return _legacyUuid();
-        }
-    }
-
-    function _legacyUuid() {
-        let s = '';
-        for (let i = 0; i < 32; i++) s += '0123456789abcdef'[Math.floor(Math.random() * 16)];
-        return s.slice(0, 8) + '-' + s.slice(8, 12) + '-4' + s.slice(13, 16) + '-' + '8ab9'[Math.floor(Math.random() * 4)] + s.slice(17, 20) + '-' + s.slice(20);
-    }
-
-    async function _hmacSha256(keyBytes, message) {
-        const imp = await window.crypto.subtle.importKey(
-            'raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-        );
-        const sig = await window.crypto.subtle.sign('HMAC', imp, PENV.enc.encode(message));
-        const bytes = new Uint8Array(sig);
-        let hex = '';
-        for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
-        return hex;
-    }
-
-    async function _signGs(bodyStr) {
-        const ts = String(Math.floor(Date.now() / 1000));
-        const nonce = _uuidV4().replace(/-/g, '');
-        const secret = PENV.enc.encode(GS_SECRET);
-        const sig = await _hmacSha256(secret, ts + '|' + nonce + '|' + bodyStr);
-        return { 'X-Timestamp': ts, 'X-Nonce': nonce, 'X-Signature': sig };
-    }
-
-    function _jsonCompact(obj) {
-        return JSON.stringify(obj, function (k, v) { return v; }, 0)
-            .replace(/:\s+/g, ':')
-            .replace(/,\s+/g, ',');
-    }
 
     function _b64ToBytes(b64) {
         try {
@@ -599,10 +558,12 @@
         if (p === '/api/academic/recours' && method === 'POST') return _routeRecours(body);
         if (p === '/api/academic/hebergement-renew' && method === 'POST') return _routeHebergementRenew(body);
 
-        if (p === '/api/onou/context' && method === 'GET') return _routeOnouContext(url);
-        if (p === '/api/onou/reservations' && method === 'GET') return _routeOnouReservations(url);
-        if (p === '/api/onou/reserve' && method === 'POST') return _routeOnouReserve(body);
-        if ((m = /^\/api\/onou\/reservations\/(\d+)$/.exec(p)) && method === 'DELETE') return _routeOnouDelete(m[1], url);
+        // ONOU/GS via Flask backend (server-side HMAC + ownership checks) —
+        // no embedded GS secret on the client anymore.
+        if (p === '/api/onou/context' && method === 'GET') return _proxyApi(p, urlText, init);
+        if (p === '/api/onou/reservations' && method === 'GET') return _proxyApi(p, urlText, init);
+        if (p === '/api/onou/reserve' && method === 'POST') return _proxyApi(p, urlText, init);
+        if ((m = /^\/api\/onou\/reservations\/(\d+)$/.exec(p)) && method === 'DELETE') return _proxyApi(p, urlText, init);
         if (p === '/api/onou/prefs' && method === 'GET') return _routePrefsGet(url);
         if (p === '/api/onou/prefs' && method === 'POST') return _routePrefsSet(body);
 
@@ -821,287 +782,10 @@
         }
     }
 
-    async function _resolveWilaya(token, dia) {
-        const cacheKey = 'wilaya:' + dia;
-        const cached = _cacheGet(cacheKey, TTL.wilaya);
-        if (cached != null) return cached;
-        const r = await _upstreamGet('/wilayaInscription/' + encodeURIComponent(dia), token, dia);
-        if (r.status !== 200) throw new Error('wilaya-fetch-failed');
-        const data = _parseBody(r.text);
-        let wilaya;
-        if (Array.isArray(data)) {
-            for (let i = 0; i < data.length; i++) {
-                const item = data[i];
-                if (item && typeof item === 'object') {
-                    for (let ki = 0; ki < ['idWilaya', 'wilaya', 'idWillaya', 'codeWilaya', 'code', 'id'].length; ki++) {
-                        const v = item[['idWilaya', 'wilaya', 'idWillaya', 'codeWilaya', 'code', 'id'][ki]];
-                        if (v != null) { wilaya = v; break; }
-                    }
-                    if (wilaya != null) break;
-                }
-            }
-        } else if (data && typeof data === 'object') {
-            for (let ki = 0; ki < ['idWilaya', 'wilaya', 'idWillaya', 'codeWilaya', 'code', 'id'].length; ki++) {
-                const v = data[['idWilaya', 'wilaya', 'idWillaya', 'codeWilaya', 'code', 'id'][ki]];
-                if (v != null) { wilaya = v; break; }
-            }
-        } else if (data != null) {
-            wilaya = data;
-        }
-        if (wilaya == null) throw new Error('تعذر تحديد ولاية الإقامة');
-        _cacheSet(cacheKey, wilaya);
-        return wilaya;
-    }
-
-    async function _resolveResidence(u, token, given) {
-        if (given) return given;
-        const cacheKey = 'residence:' + u;
-        const cached = _cacheGet(cacheKey, TTL.residence);
-        if (cached != null) return cached;
-        const r = await _upstreamGet('/bac/' + encodeURIComponent(u) + '/demandesHebregement', token, u);
-        if (r.status !== 200) throw new Error('residence-fetch-failed');
-        let data = _parseBody(r.text);
-        if (!Array.isArray(data)) data = data && typeof data === 'object' ? [data] : [];
-        const year = String(new Date().getFullYear());
-        let picked = null;
-        for (let i = 0; i < data.length; i++) {
-            const item = data[i];
-            if (item && typeof item === 'object' && year !== '' && String(item.idAnneeAcademique || '').indexOf(year) !== -1) {
-                picked = item;
-                break;
-            }
-        }
-        if (!picked && data.length && data[0] && typeof data[0] === 'object') picked = data[0];
-        const res = picked && picked.idResidance != null ? picked.idResidance : null;
-        if (res == null) throw new Error('تعذر تحديد مكان الإقامة');
-        _cacheSet(cacheKey, res);
-        return res;
-    }
-
-    async function _gsMethod(method, path, gsToken, body, params) {
-        const bodyStr = body != null ? _jsonCompact(body) : '';
-        const attempt = async (headers) => {
-            let url = ONOU_HOST + path + (params ? '?' + Object.keys(params).map(function (k) {
-                return encodeURIComponent(k) + '=' + encodeURIComponent(String(params[k]));
-            }).join('&') : '');
-            const r = await _http(method, url, headers, body != null ? bodyStr : null);
-            if (!r || !r.status) throw new Error('تعذر الوصول لخدمة الوجبات');
-            if (r.status >= 500) {
-                const snip = String(r.text || '').replace(/\s+/g, ' ').slice(0, 140);
-                throw new Error('gs-' + r.status + (snip ? ' :: ' + snip : ''));
-            }
-            return { status: r.status, text: r.text || '' };
-        };
-        let headers = await (async function () {
-            const sign = await _signGs(bodyStr);
-            const h = {
-                'X-Timestamp': sign['X-Timestamp'],
-                'X-Nonce': sign['X-Nonce'],
-                'X-Signature': sign['X-Signature'],
-                'User-Agent': GENERIC_UA,
-                Accept: 'application/json',
-            };
-            if (gsToken) h.authorization = 'Bearer ' + gsToken;
-            if (body != null) h['Content-Type'] = 'application/json';
-            return h;
-        })();
-        try {
-            return await attempt(headers);
-        } catch (e) {
-            PN.log({ kind: 'gs-transient', path: path, error: _errMsg(e) });
-            await _sleep(400);
-            const again = await _signGs(bodyStr);
-            headers['X-Timestamp'] = again['X-Timestamp'];
-            headers['X-Nonce'] = again['X-Nonce'];
-            headers['X-Signature'] = again['X-Signature'];
-            return attempt(headers);
-        }
-    }
-
-    async function _getGsToken(u, token, wilaya, residence) {
-        const cacheKey = 'gs:' + u;
-        const cached = _cacheGet(cacheKey, TTL.gs);
-        if (cached && cached.token) return cached.token;
-        const r = await _gsMethod('POST', '/api/loginpwebetu', null, {
-            uuid: u, wilaya: wilaya, residence: residence, token: token,
-        });
-        if (r.status >= 400) {
-            throw new Error('خطأ من خدمة الوجبات (' + r.status + ')');
-        }
-        const data = _parseBody(r.text);
-        const gs = data && data.token ? data.token : null;
-        if (!gs) throw new Error('تعذر تسجيل الدخول إلى خدمة الوجبات');
-        _cacheSet(cacheKey, { token: gs });
-        return gs;
-    }
-
-    async function _buildCtx(u, dia, residence) {
-        const session = _session();
-        if (!session || !session.token) throw new Error('session-expired');
-        const token = String(session.token);
-        const claims = _jwtClaims(token);
-        const firstDia = String(claims.dias || '').split(',')[0].trim();
-        dia = String(dia || '').trim() || firstDia;
-        if (!dia) throw new Error('تعذر تحديد رقم التسجيل (dia)', 400);
-        const wilaya = await _resolveWilaya(token, dia);
-        const res = await _resolveResidence(u, token, residence);
-        const gs = await _getGsToken(u, token, wilaya, res);
-        return { u: u, token: token, gs: gs, dia: dia, wilaya: wilaya, residence: res };
-    }
-
-    async function _fetchDepots(ctx) {
-        const r = await _gsMethod('GET', '/api/getdepotres', ctx.gs, null, {
-            uuid: ctx.u, wilaya: ctx.wilaya, residence: ctx.residence, token: ctx.gs,
-        });
-        if (r.status >= 400) throw new Error('خطأ من خدمة الوجبات (' + r.status + ')');
-        let data = _parseBody(r.text);
-        if (data && typeof data === 'object' && Array.isArray(data.depots)) data = data.depots;
-        else if (!Array.isArray(data)) data = [];
-        return data;
-    }
-
     function _toErrorText(status) {
         return status === 401
             ? 'انتهت صلاحية جلسة الوزارة، أعد تسجيل الدخول'
             : 'خوادم الوزارة غير متاحة حالياً، حاول لاحقاً';
-    }
-
-    async function _routeOnouContext(url) {
-        const u = _uuidFromReq(url.searchParams, null);
-        if (!u) return _errResp(400, 'uuid مطلوب');
-        const dia = (url.searchParams.get('dia') || '').trim();
-        const residence = (url.searchParams.get('residence') || '').trim() || null;
-        try {
-            let ctx = await _buildCtx(u, dia, residence);
-            const cacheKey = 'depots:' + u + ':' + ctx.wilaya + ':' + ctx.residence;
-            let depots = _cacheGet(cacheKey, TTL.depots);
-            if (depots == null) {
-                try {
-                    depots = await _fetchDepots(ctx);
-                } catch (e) {
-                    _cacheDel('gs:' + u);
-                    ctx = await _buildCtx(u, dia, residence);
-                    depots = await _fetchDepots(ctx);
-                }
-                if (depots && depots.length) _cacheSet(cacheKey, depots);
-            }
-            return _jsonResp(200, {
-                wilaya: ctx.wilaya,
-                residence: ctx.residence,
-                dia: ctx.dia,
-                depots: depots || [],
-            });
-        } catch (e) {
-            return _errResp(_session() ? 502 : 401, e && e.message ? e.message : 'خدمة الوجبات غير متاحة حالياً');
-        }
-    }
-
-    function _normalizeReservations(items) {
-        const out = [];
-        for (let i = 0; i < items.length; i++) {
-            const it = items[i];
-            if (!it || typeof it !== 'object') continue;
-            out.push({
-                id: it.id,
-                date_reserve: it.date_reserve,
-                mealtype_fr: it.mealtype_fr,
-                idDepot: it.idDepot,
-                depot_fr: it.depot_fr,
-                candelete: it.candelete != null ? it.candelete : it.canDelete,
-            });
-        }
-        return out;
-    }
-
-    async function _fetchReservations(ctx, page) {
-        const r = await _gsMethod('GET', '/api/meal-reservations/student', ctx.gs, null, {
-            uuid: ctx.u, wilaya: ctx.wilaya, residence: ctx.residence, token: ctx.gs, page: String(page || 1),
-        });
-        if (r.status >= 400) throw new Error('خطأ من خدمة الوجبات (' + r.status + ')');
-        let data = _parseBody(r.text);
-        if (data && typeof data === 'object' && !Array.isArray(data)) {
-            const inner = data.data;
-            if (inner && typeof inner === 'object') {
-                if (Array.isArray(inner.data)) data = inner.data;
-                else if (Array.isArray(inner)) data = inner;
-                else data = [];
-            } else if (Array.isArray(inner)) {
-                data = inner;
-            } else {
-                data = [];
-            }
-        }
-        return Array.isArray(data) ? data : [];
-    }
-
-    async function _routeOnouReservations(url) {
-        const u = _uuidFromReq(url.searchParams, null);
-        if (!u) return _errResp(400, 'uuid مطلوب');
-        const dia = (url.searchParams.get('dia') || '').trim();
-        try {
-            let ctx = await _buildCtx(u, dia, null);
-            try {
-                return _jsonResp(200, _normalizeReservations(await _fetchReservations(ctx, 1)));
-            } catch (e) {
-                _cacheDel('gs:' + u);
-                ctx = await _buildCtx(u, dia, null);
-                return _jsonResp(200, _normalizeReservations(await _fetchReservations(ctx, 1)));
-            }
-        } catch (e) {
-            return _errResp(_session() ? 502 : 401, e && e.message ? e.message : 'خدمة الوجبات غير متاحة حالياً');
-        }
-    }
-
-    async function _routeOnouReserve(body) {
-        if (!body || typeof body !== 'object') return _errResp(400, 'بيانات غير صحيحة');
-        const u = String(body.uuid || '').trim();
-        if (!u) return _errResp(400, 'uuid مطلوب');
-        let menu_type;
-        try { menu_type = parseInt(body.menu_type, 10); } catch (e) { menu_type = NaN; }
-        if (menu_type !== 1 && menu_type !== 2 && menu_type !== 3) return _errResp(400, 'نوع الوجبة غير صحيح');
-        const depot = body.idDepot;
-        const dates = body.dates;
-        if (depot == null || !Array.isArray(dates) || !dates.length) return _errResp(400, 'بيانات الحجز ناقصة');
-        const cleanDates = [];
-        for (let i = 0; i < dates.length; i++) {
-            const s = String(dates[i]).trim();
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return _errResp(400, 'صيغة تاريخ غير صالحة');
-            cleanDates.push(s);
-        }
-        const dia = body.dia != null ? String(body.dia) : '';
-        try {
-            const ctx = await _buildCtx(u, dia, body.residence != null ? String(body.residence) : null);
-            const details = cleanDates.map(function (d) {
-                return _jsonCompact({ date_reserve: d, menu_type: menu_type, idDepot: depot });
-            });
-            const r = await _gsMethod('POST', '/api/reservemeal', ctx.gs, {
-                uuid: u, wilaya: ctx.wilaya, residence: ctx.residence, token: ctx.gs, details: details,
-            }, null);
-            if (r.status >= 400) return _errResp(502, 'تعذر إتمام الحجز، حاول لاحقاً');
-            const data = _parseBody(r.text);
-            if (data != null) return _resp(r.status, JSON.stringify(data), 'application/json; charset=utf-8', null);
-            return _resp(r.status, r.text, 'application/json; charset=utf-8', null);
-        } catch (e) {
-            return _errResp(_session() ? 502 : 401, e && e.message ? e.message : 'خدمة الوجبات غير متاحة حالياً');
-        }
-    }
-
-    async function _routeOnouDelete(rid, url) {
-        const u = _uuidFromReq(url.searchParams, null);
-        if (!u) return _errResp(400, 'uuid مطلوب');
-        const dia = (url.searchParams.get('dia') || '').trim();
-        try {
-            const ctx = await _buildCtx(u, dia, null);
-            const r = await _gsMethod('DELETE', '/api/reservemeal/' + String(rid), ctx.gs, {
-                uuid: u, wilaya: ctx.wilaya, residence: ctx.residence, token: ctx.gs,
-            }, null);
-            if (r.status >= 400) return _errResp(502, 'تعذر إلغاء الحجز، حاول لاحقاً');
-            const data = _parseBody(r.text);
-            if (data != null) return _resp(r.status, JSON.stringify(data), 'application/json; charset=utf-8', null);
-            return _resp(r.status, r.text, 'application/json; charset=utf-8', null);
-        } catch (e) {
-            return _errResp(_session() ? 502 : 401, e && e.message ? e.message : 'خدمة الوجبات غير متاحة حالياً');
-        }
     }
 
     function _prefsKey(u) { return 'onou_prefs:' + u; }
@@ -1430,7 +1114,7 @@
     // placeholder the library runs on bundled mock data for testing.
     // NOTE: embedded token = anyone with the APK can read what this account
     // can read; never fetches user-level/personal endpoints.
-    const MOODLE_MASTER_TOKEN = 'b53b00b3fa0e4a77f5fb3086affd9a1d';
+    const MOODLE_MASTER_TOKEN = ''; // revoked: configure server-side, never embed
 
     function _moodleConfigured() {
         return typeof MOODLE_MASTER_TOKEN === 'string' && MOODLE_MASTER_TOKEN && MOODLE_MASTER_TOKEN !== 'YOUR_TOKEN_HERE';
@@ -1536,7 +1220,6 @@
         httpBinary: _httpBinary,
         json: _jsonParse,
         claims: _jwtClaims,
-        sign: _signGs,
         route: _route,
         extraHeaders: _extraHeaders,
     };

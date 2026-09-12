@@ -56,10 +56,40 @@ public class MinistryHttpPlugin extends Plugin {
     private static final String[] ALLOW_HOSTS = {"gs-api.onou.dz", "elearning.univ-guelma.dz"};
 
     private static boolean allowedHost(String url) {
-        for (String host : ALLOW_HOSTS) {
-            if (url != null && url.startsWith("https://" + host)) {
-                return true;
+        try {
+            android.net.Uri uri = android.net.Uri.parse(url);
+            if (uri == null || !"https".equalsIgnoreCase(uri.getScheme())) return false;
+            String host = uri.getHost();
+            if (host == null) return false;
+            for (String allowed : ALLOW_HOSTS) {
+                if (allowed.equalsIgnoreCase(host)) return true;
             }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    /** Live-measured leaf SPKI pins (2026-09-12). If a ministry rotates its
+     *  key, update the matching pin in the same release or that host breaks
+     *  closed (no silent fallback). */
+    private static final String[] SPKI_PINS = {
+        "jntSxqt6Sj7zrYOmzN7W9DtTxZJg/c8/0Oxo+2stX/k=", // gs-api.onou.dz
+        "xBIuvzEuxs8eK/+zO8gBHx0NM1wN0yN4lMoNHDOyRY8=", // elearning.univ-guelma.dz
+    };
+
+    private static boolean spkiPinned(X509Certificate[] chain) {
+        if (chain == null) return false;
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            for (X509Certificate cert : chain) {
+                if (cert == null || cert.getPublicKey() == null) continue;
+                String got = android.util.Base64.encodeToString(
+                        md.digest(cert.getPublicKey().getEncoded()), android.util.Base64.NO_WRAP);
+                for (String pin : SPKI_PINS) {
+                    if (pin.equals(got)) return true;
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "spki check failed: " + e.getMessage());
         }
         return false;
     }
@@ -104,9 +134,16 @@ public class MinistryHttpPlugin extends Plugin {
                             // anchor (expired + unknown/self-signed CA) — the exact failure
                             // reported on-device as
                             // "Trust anchor for certification path not found".
-                            // This client is used ONLY for gs-api.onou.dz (enforced by the
-                            // URL prefix check below AND the hostname verifier), so the
+                            // Relaxed trust applies ONLY when a pinned SPKI matches;
+                            // otherwise the failure is rethrown. Host scope is enforced
+                            // by allowedHost() AND the hostname verifier, so the
                             // weakened anchor check never escapes to other hosts.
+                            if (spkiPinned(chain)) {
+                                Log.w(TAG, "system trust failed; SPKI pin matched, proceeding");
+                            } else {
+                                Log.w(TAG, "system trust failed and no SPKI pin matched; refusing");
+                                throw e;
+                            }
                         }
                     }
 

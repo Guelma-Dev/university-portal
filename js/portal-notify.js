@@ -445,7 +445,9 @@ window.PortalNotifyUI = (function () {
             setTimeout(function () { N.notify('حجز الوجبات', 'تعذر حجز الوجبة [اختبار]', 'meals'); }, 4000);
             toast('اختبار الإشعارات: تذكير المحاضرة بعد دقيقتين', 'success');
         } catch (e) {
-            toast('تعذر تشغيل الاختبار', 'error');
+            var msg = '';
+            try { msg = String((e && e.message) || e || ''); } catch (e2) {}
+            toast('تعذر تشغيل الاختبار' + (msg ? ': ' + msg.slice(0, 120) : ''), 'error');
         }
     }
 

@@ -6,7 +6,10 @@
 set -e
 
 PORTAL="https://university-portal-gv78.onrender.com"
-RELAY_KEY="dz-relay-2026-x7k9p2"
+RELAY_KEY="${RELAY_KEY:-}"
+if [ -z "$RELAY_KEY" ]; then
+    echo "RELAY_KEY env is required (rotate: fresh random value, also set as PROGRES_RELAY_KEY on the backend)"; exit 1
+fi
 DIR="$HOME/progres-relay"
 
 echo "[1/5] تجهيز الحزم..."

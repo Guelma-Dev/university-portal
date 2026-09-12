@@ -39,6 +39,19 @@ import java.util.Arrays;
 @CapacitorPlugin(name = "UpdatePlugin")
 public class UpdatePlugin extends Plugin {
 
+    /** Bridge numbers arrive as Integer OR Long OR Double depending on
+     *  magnitude — never assume one exact type (Capacitor returns null
+     *  on mismatch, which silently broke scheduling/downloads before). */
+    static long numLong(com.getcapacitor.PluginCall call, String key, long def) {
+        try {
+            Object v = call.getData().opt(key);
+            if (v instanceof Number) return ((Number) v).longValue();
+            if (v instanceof String) return Long.parseLong((String) v);
+        } catch (Exception ignored) {}
+        return def;
+    }
+
+
     static final String PREFS = "portal_update";
     private static volatile UpdatePlugin instance;
 
@@ -89,7 +102,7 @@ public class UpdatePlugin extends Plugin {
     public void downloadUpdate(PluginCall call) {
         String url = call.getString("url", "");
         long versionCode = 0;
-        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        versionCode = numLong(call, "versionCode", versionCode);
         if (url.isEmpty() || versionCode <= 0) {
             call.reject("bad download spec");
             return;
@@ -149,7 +162,7 @@ public class UpdatePlugin extends Plugin {
     @PluginMethod
     public void pollDownload(PluginCall call) {
         long id = 0;
-        try { Long v = call.getLong("downloadId"); if (v != null) id = v; } catch (Exception ignored) {}
+        id = numLong(call, "downloadId", id);
         JSObject r = new JSObject();
         if (id <= 0) {
             r.put("status", "unknown");
@@ -204,7 +217,7 @@ public class UpdatePlugin extends Plugin {
     @PluginMethod
     public void cancelDownload(PluginCall call) {
         long id = 0;
-        try { Long v = call.getLong("downloadId"); if (v != null) id = v; } catch (Exception ignored) {}
+        id = numLong(call, "downloadId", id);
         try {
             if (id > 0) {
                 DownloadManager dm = (DownloadManager) getContext().getSystemService(Context.DOWNLOAD_SERVICE);
@@ -229,9 +242,16 @@ public class UpdatePlugin extends Plugin {
         return new File(base, "portal-update-" + versionCode + ".apk");
     }
 
+    static File partFile(Context ctx, long versionCode) {
+        File dest = destFile(ctx, versionCode);
+        if (dest == null || dest.getParent() == null) return null;
+        return new File(dest.getParent(), dest.getName() + ".part");
+    }
+
     static void cleanupExcept(Context ctx, long keepVersionCode) {
         String keep = "portal-update-" + keepVersionCode + ".apk";
         String legacyKeep = "app-" + keepVersionCode + ".apk";
+        String keepPart = keep + ".part";
         java.util.List<File> dirs = new java.util.ArrayList<>();
         try {
             File ext = ctx.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS);
@@ -249,8 +269,9 @@ public class UpdatePlugin extends Plugin {
             if (fs == null) continue;
             for (File f : fs) {
                 String n = f.getName();
-                boolean ours = (n.startsWith("portal-update-") || n.startsWith("app-")) && n.endsWith(".apk");
-                if (ours && !n.equals(keep) && !n.equals(legacyKeep)) {
+                boolean ours = (n.startsWith("portal-update-") || n.startsWith("app-"))
+                        && (n.endsWith(".apk") || n.endsWith(".apk.part"));
+                if (ours && !n.equals(keep) && !n.equals(legacyKeep) && !n.equals(keepPart)) {
                     try { f.delete(); } catch (Exception ignored) {}
                 }
             }
@@ -260,7 +281,7 @@ public class UpdatePlugin extends Plugin {
     @PluginMethod
     public void getDownloadedUpdate(PluginCall call) {
         long versionCode = 0;
-        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        versionCode = numLong(call, "versionCode", versionCode);
         JSObject r = new JSObject();
         try {
             if (versionCode > 0) {
@@ -287,7 +308,7 @@ public class UpdatePlugin extends Plugin {
     @PluginMethod
     public void installBegin(PluginCall call) {
         long versionCode = 0;
-        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        versionCode = numLong(call, "versionCode", versionCode);
         if (versionCode <= 0) {
             call.reject("bad install spec");
             return;
@@ -295,7 +316,11 @@ public class UpdatePlugin extends Plugin {
         try {
             Context ctx = getContext();
             cleanupExcept(ctx, versionCode);
-            File apk = destFile(ctx, versionCode);
+            File apk = partFile(ctx, versionCode);
+            if (apk == null) {
+                call.reject("storage unavailable");
+                return;
+            }
             if (apk.getParentFile() != null) apk.getParentFile().mkdirs();
             if (apk.exists() && !apk.delete()) {
                 call.reject("storage unavailable");
@@ -316,14 +341,18 @@ public class UpdatePlugin extends Plugin {
     @PluginMethod
     public void installAppend(PluginCall call) {
         long versionCode = 0;
-        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        versionCode = numLong(call, "versionCode", versionCode);
         String part = call.getString("part", "");
         if (versionCode <= 0 || part == null || part.isEmpty()) {
             call.reject("bad chunk");
             return;
         }
         try {
-            File apk = destFile(getContext(), versionCode);
+            File apk = partFile(getContext(), versionCode);
+            if (apk == null) {
+                call.reject("storage unavailable");
+                return;
+            }
             byte[] raw = android.util.Base64.decode(part, android.util.Base64.DEFAULT);
             java.io.FileOutputStream fos = null;
             try {
@@ -345,18 +374,35 @@ public class UpdatePlugin extends Plugin {
     @PluginMethod
     public void installCommit(PluginCall call) {
         long versionCode = 0;
-        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        versionCode = numLong(call, "versionCode", versionCode);
         String sha256 = call.getString("sha256", "");
-        if (versionCode <= 0) {
+        long expectedSize = 0;
+        expectedSize = numLong(call, "size", expectedSize);
+        if (versionCode <= 0 || expectedSize <= 0) {
             call.reject("bad install spec");
             return;
         }
         try {
             Context ctx = getContext();
-            File apk = destFile(ctx, versionCode);
-            String problem = verifyApkFile(ctx, apk, versionCode, sha256);
+            File part = partFile(ctx, versionCode);
+            if (part == null) {
+                call.reject("storage unavailable");
+                return;
+            }
+            String problem = verifyApkFile(ctx, part, versionCode, sha256, expectedSize);
             if (problem != null) {
                 call.reject(problem);
+                return;
+            }
+            File apk = destFile(ctx, versionCode);
+            if (apk.exists() && !apk.delete()) {
+                call.reject("storage unavailable");
+                return;
+            }
+            // Atomic publish: verified .part becomes the installable file.
+            if (!part.renameTo(apk) || !apk.exists() || apk.length() != expectedSize) {
+                try { apk.delete(); } catch (Exception ignored) {}
+                call.reject("install failed: atomic replace failed");
                 return;
             }
             UpdateInstaller.commit(ctx, apk);
@@ -371,30 +417,28 @@ public class UpdatePlugin extends Plugin {
     }
 
     /** Truth gate: size → checksum, no install. The UI may only show
-     *  DOWNLOADED after this returns valid. */
+     *  DOWNLOADED after this returns valid. Hash + exact byte count required. */
     @PluginMethod
     public void validateDownload(PluginCall call) {
         long versionCode = 0;
-        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        versionCode = numLong(call, "versionCode", versionCode);
         String sha256 = call.getString("sha256", "");
+        long expectedSize = 0;
+        expectedSize = numLong(call, "size", expectedSize);
         JSObject r = new JSObject();
         try {
             File apk = destFile(getContext(), versionCode);
-            if (versionCode <= 0 || !apk.exists() || apk.length() <= 1024 * 1024) {
+            String problem = (versionCode <= 0)
+                ? "bad install spec"
+                : verifyApkFile(getContext(), apk, versionCode, sha256, expectedSize);
+            if (problem != null) {
+                if (problem.equals("checksum mismatch")) {
+                    try { apk.delete(); } catch (Exception ignored) {}
+                }
                 r.put("valid", false);
-                r.put("reason", "incomplete");
+                r.put("reason", problem.equals("checksum mismatch") ? "checksum" : "incomplete");
                 call.resolve(r);
                 return;
-            }
-            if (sha256 != null && !sha256.trim().isEmpty()) {
-                String actual = sha256Of(apk);
-                if (!sha256.trim().equalsIgnoreCase(actual)) {
-                    try { apk.delete(); } catch (Exception ignored) {}
-                    r.put("valid", false);
-                    r.put("reason", "checksum");
-                    call.resolve(r);
-                    return;
-                }
             }
             r.put("valid", true);
             r.put("size", apk.length());
@@ -406,15 +450,17 @@ public class UpdatePlugin extends Plugin {
         }
     }
 
-    /** Best-effort removal of a partial file so retries start clean. */
+    /** Best-effort removal of partial/finished files so retries start clean. */
     @PluginMethod
     public void discardPartial(PluginCall call) {
         long versionCode = 0;
-        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        versionCode = numLong(call, "versionCode", versionCode);
         try {
             if (versionCode > 0) {
                 File apk = destFile(getContext(), versionCode);
                 if (apk.exists()) apk.delete();
+                File part = partFile(getContext(), versionCode);
+                if (part != null && part.exists()) part.delete();
             }
         } catch (Exception ignored) {}
         JSObject r = new JSObject();
@@ -422,16 +468,15 @@ public class UpdatePlugin extends Plugin {
         call.resolve(r);
     }
 
-    /** Shared gate: size → checksum → compatibility. Null = installable. */
-    static String verifyApkFile(Context ctx, File apk, long versionCode, String sha256) {
-        if (!apk.exists() || apk.length() <= 1024 * 1024) return "apk missing or incomplete";
+    /** Shared gate: hash + exact byte count → compatibility. Null = installable. */
+    static String verifyApkFile(Context ctx, File apk, long versionCode, String sha256, long expectedSize) {
+        if (sha256 == null || !sha256.trim().matches("(?i)[0-9a-f]{64}")) return "checksum mismatch";
+        if (expectedSize <= 0 || !apk.exists() || apk.length() != expectedSize) return "apk missing or incomplete";
         try {
-            if (sha256 != null && !sha256.trim().isEmpty()) {
-                String actual = sha256Of(apk);
-                if (!sha256.trim().equalsIgnoreCase(actual)) {
-                    try { apk.delete(); } catch (Exception ignored) {}
-                    return "checksum mismatch";
-                }
+            String actual = sha256Of(apk);
+            if (!sha256.trim().equalsIgnoreCase(actual)) {
+                try { apk.delete(); } catch (Exception ignored) {}
+                return "checksum mismatch";
             }
         } catch (Exception e) {
             return "checksum mismatch";
@@ -439,18 +484,21 @@ public class UpdatePlugin extends Plugin {
         return compatibilityProblem(ctx, apk, versionCode);
     }
 
+    @PluginMethod
     public void verifyAndInstall(PluginCall call) {
         long versionCode = 0;
-        try { Long v = call.getLong("versionCode"); if (v != null) versionCode = v; } catch (Exception ignored) {}
+        versionCode = numLong(call, "versionCode", versionCode);
         String sha256 = call.getString("sha256", "");
-        if (versionCode <= 0) {
+        long expectedSize = 0;
+        expectedSize = numLong(call, "size", expectedSize);
+        if (versionCode <= 0 || expectedSize <= 0) {
             call.reject("bad install spec");
             return;
         }
         try {
             Context ctx = getContext();
             File apk = destFile(ctx, versionCode);
-            String problem = verifyApkFile(ctx, apk, versionCode, sha256);
+            String problem = verifyApkFile(ctx, apk, versionCode, sha256, expectedSize);
             if (problem != null) {
                 call.reject(problem);
                 return;

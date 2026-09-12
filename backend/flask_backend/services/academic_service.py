@@ -17,6 +17,8 @@ except ImportError:
 from flask import Blueprint, Response, jsonify, request
 from sqlalchemy import create_engine, text
 
+from ._auth import assert_dia_owned, require_uuid_owner
+
 bp = Blueprint('academic', __name__, url_prefix='/api/academic')
 
 BASE_URL = 'https://api-webetu.mesrs.dz/api/infos'
@@ -210,11 +212,14 @@ def _auth_args():
     token = _resolve_token(uuid_)
     if not token:
         return None, _err('جلسة غير صالحة أو منتهية الصلاحية، أعد تسجيل الدخول', 401)
+    denied = require_uuid_owner(uuid_, token)
+    if denied:
+        return None, denied
     return (uuid_, token), None
 
 
 _RELAY_URL_MEM = None
-RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or 'dz-relay-2026-x7k9p2'
+RELAY_KEY = os.environ.get('PROGRES_RELAY_KEY') or ''
 _DIRECT_BLOCK = {}
 DIRECT_COOLDOWN = 60
 
@@ -435,6 +440,9 @@ def emploi():
     dia = (request.args.get('dia') or '').strip()
     if not dia or len(dia) > 40:
         return _err('dia مطلوب', 400)
+    denied = assert_dia_owned(_jwt_claims(token), dia)
+    if denied:
+        return denied
     return _cached_fetch(f'me:{uuid_}:emploi:{dia}',
                          f'/seanceEmploi/inscription/{dia}',
                          token, TTL_DEFAULT, dia=dia, uuid_suffix=dia)
@@ -449,6 +457,9 @@ def transport():
     dia = (request.args.get('dia') or '').strip()
     if not dia or len(dia) > 40:
         return _err('dia مطلوب', 400)
+    denied = assert_dia_owned(_jwt_claims(token), dia)
+    if denied:
+        return denied
 
     def transform(data):
         if isinstance(data, dict):
@@ -473,6 +484,9 @@ def setram():
     dia = (request.args.get('dia') or '').strip()
     if not dia or len(dia) > 40:
         return _err('dia مطلوب', 400)
+    denied = assert_dia_owned(_jwt_claims(token), dia)
+    if denied:
+        return denied
     return _cached_fetch(f'me:{uuid_}:setram:{dia}',
                          f'/getCardeTransportSetram/{uuid_}/{dia}',
                          token, TTL_DEFAULT, dia=dia, uuid_suffix=uuid_)
@@ -487,12 +501,18 @@ def recours():
     token = _resolve_token(uuid_)
     if not token:
         return _err('جلسة غير صالحة أو منتهية الصلاحية، أعد تسجيل الدخول', 401)
+    denied = require_uuid_owner(uuid_, token)
+    if denied:
+        return denied
     dia = str(data.get('dia') or '').strip()
     mc_id = data.get('mcId')
     motif = data.get('motif')
     kind = data.get('kind')
     if not dia or len(dia) > 40:
         return _err('dia مطلوب', 400)
+    denied = assert_dia_owned(_jwt_claims(token), dia)
+    if denied:
+        return denied
     if not isinstance(mc_id, int) or isinstance(mc_id, bool):
         return _err('mcId يجب أن يكون رقماً صحيحاً', 400)
     if motif not in (1, 2):
@@ -512,6 +532,9 @@ def hebergement_renew():
     token = _resolve_token(uuid_)
     if not token:
         return _err('جلسة غير صالحة أو منتهية الصلاحية، أعد تسجيل الدخول', 401)
+    denied = require_uuid_owner(uuid_, token)
+    if denied:
+        return denied
     residence_id = str(data.get('residenceId') or '').strip()
     if not residence_id.isdigit() or len(residence_id) > 20:
         return _err('residenceId غير صالح', 400)

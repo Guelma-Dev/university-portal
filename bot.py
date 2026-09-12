@@ -11,7 +11,9 @@ from app import app, db, Subject, File
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, MessageHandler, CallbackQueryHandler, CommandHandler, filters, ContextTypes
 
-TELEGRAM_BOT_TOKEN = os.environ.get('TG_BOT_TOKEN', '8626034663:AAGjKhjCiiiZzE4UwzW6UXeKiHh-ixwGsLs')
+TELEGRAM_BOT_TOKEN = os.environ.get('TG_BOT_TOKEN', '')
+if not TELEGRAM_BOT_TOKEN:
+    sys.exit('TG_BOT_TOKEN env is required (rotate via BotFather)')
 
 user_sessions = {}
 

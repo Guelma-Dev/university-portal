@@ -61,7 +61,17 @@
         return `uuid=${encodeURIComponent(s.uuid)}&dia=${encodeURIComponent(s.dia)}`;
     }
 
+    // Ministry session token proving uuid ownership (server enforces it).
+    function svcAuthHeader() {
+        try {
+            const s = (typeof getProgresSession === 'function') ? getProgresSession() : null;
+            if (s && s.token) return { 'Authorization': s.token };
+        } catch (e) { /* noop */ }
+        return {};
+    }
+
     async function jfetch(url, opts = {}) {
+        opts.headers = Object.assign(svcAuthHeader(), opts.headers || {});
         const res = await fetch(API_BASE + url, opts);
         let data = null;
         try { data = await res.json(); } catch (e) { /* non-json */ }

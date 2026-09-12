@@ -15,6 +15,15 @@
 
     var BASE = (typeof API_BASE !== 'undefined' && API_BASE) ? API_BASE : window.location.origin;
 
+    // Ministry session token proving uuid ownership (server enforces it).
+    function svcAuthHeader() {
+        try {
+            var s = (typeof getProgresSession === 'function') ? getProgresSession() : null;
+            if (s && s.token) return { 'Authorization': s.token };
+        } catch (e) { /* noop */ }
+        return {};
+    }
+
     function getSession() {
         var s = null;
         try { s = (typeof getProgresSession === 'function') ? getProgresSession() : null; } catch (e) { s = null; }
@@ -30,7 +39,7 @@
 
     function apiGet(path, params) {
         var qs = new URLSearchParams(params || {}).toString();
-        return fetch(BASE + '/api/academic/' + path + (qs ? '?' + qs : '')).then(function (res) {
+        return fetch(BASE + '/api/academic/' + path + (qs ? '?' + qs : ''), { headers: svcAuthHeader() }).then(function (res) {
             if (!res.ok) throw new Error('http-' + res.status);
             return res.json().catch(function () { return null; });
         });
@@ -39,7 +48,7 @@
     function apiPost(path, body) {
         return fetch(BASE + '/api/academic/' + path, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: Object.assign({ 'Content-Type': 'application/json' }, svcAuthHeader()),
             body: JSON.stringify(body),
         }).then(function (res) {
             return res.json().catch(function () { return null; }).then(function (data) {

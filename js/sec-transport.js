@@ -60,15 +60,25 @@
         const p = new URLSearchParams(params || {});
         const s = getSession();
         if (s && s.uuid) p.set('uuid', s.uuid);
-        if (s && s.token) p.set('token', s.token);
+        // Ministry token travels via Authorization header only (see svcAuthHeader),
+        // never in the query string (URLs leak into logs/history).
         return p.toString();
+    }
+
+    // Ministry session token proving uuid ownership (server enforces it).
+    function svcAuthHeader() {
+        try {
+            const s = getSession();
+            if (s && s.token) return { 'Authorization': s.token };
+        } catch (e) { /* noop */ }
+        return {};
     }
 
     async function api(path, params, signal) {
         const p = Object.assign({}, params || {});
         const w = (typeof getUserWilaya === 'function') ? getUserWilaya() : '';
         if (w && !p.wilaya) p.wilaya = w;
-        const res = await fetch(`${API_BASE}${path}?${authQS(p)}`, { signal });
+        const res = await fetch(`${API_BASE}${path}?${authQS(p)}`, { signal, headers: svcAuthHeader() });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
     }
