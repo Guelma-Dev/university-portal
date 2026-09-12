@@ -3223,7 +3223,7 @@ window.LibraryView = (function () {
         files: [],
         myCourses: {},     // course.id -> true when the account is enrolled
         busy: false,
-        mode: 'moodle',    // 'moodle' | 'dspace'
+        mode: 'dspace',    // dspace only (moodle retired: needs per-student login)
         dsRepo: 'ummto',
         dsChip: '',
         dsQ: '',
@@ -3282,8 +3282,7 @@ window.LibraryView = (function () {
     function renderModeTabs() {
         const t = $('lib-mode-tabs');
         if (!t) return;
-        t.innerHTML = `<button type="button" class="lib-tab${STATE.mode === 'moodle' ? ' active' : ''}" onclick="LibraryView.setMode('moodle')"><i class="fas fa-graduation-cap"></i>مقررات جامعتي</button>
-            <button type="button" class="lib-tab${STATE.mode === 'dspace' ? ' active' : ''}" onclick="LibraryView.setMode('dspace')"><i class="fas fa-university"></i>المستودعات المفتوحة</button>`;
+        t.innerHTML = `<button type="button" class="lib-tab active"><i class="fas fa-university"></i>الدروس المفتوحة</button>`;
     }
     function setMode(mode) {
         STATE.mode = mode;
@@ -3458,7 +3457,7 @@ window.LibraryView = (function () {
         STATE.subject = null;
         STATE.files = [];
         renderModeTabs();
-        go(1);
+        setMode('dspace');
     }
 
     async function selectLevel(i) {
@@ -3912,11 +3911,7 @@ window.LibraryView = (function () {
 
     // ---- back navigation: one step at a time ----
     function back() {
-        const dspace = $('lib-step-dspace');
-        if (dspace && dspace.classList.contains('active')) {
-            setMode('moodle');
-            return;
-        }
+        // dspace is the library home now (moodle retired): fall through to leave.
         if (STATE.subject && $('lib-step-5') && $('lib-step-5').classList.contains('active')) {
             STATE.subject = null;
             go(4);
@@ -3944,7 +3939,6 @@ window.LibraryView = (function () {
             return false;
         });
         open();
-        renderStep1();
     }
 
     if (document.readyState === 'loading') {

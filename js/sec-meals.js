@@ -243,13 +243,13 @@
         if (state.ctxError) {
             const loginNeeded = state.ctxReason === 'login';
             const hard = state.ctxHard;
-            let mainMsg = 'تعذر الوصول لخدمة الوجبات، أعد المحاولة بعد قليل';
+            let mainMsg = 'خدمات الوجبات متوقفة حالياً وستعود فور استئناف الخدمة';
             let sub = '';
             if (loginNeeded) {
                 mainMsg = 'تتطلب خدمة الوجبات جلسة Progres نشطة — سجّل دخولك أولاً';
             } else if (hard) {
-                mainMsg = 'خدمة الوجبات معطلة حالياً لدى الخادم الرسمي — ليست مشكلة في التطبيق';
-                sub = `<span class="lx-m-errsub">الخطأ قادم من الموقع نفسه (gs-api.onou.dz): HTTP 500. سنحاول تلقائياً كل 45 ثانية حتى تعود الخدمة.</span>`;
+                mainMsg = 'خدمات الوجبات متوقفة حالياً وستعود فور استئناف الخدمة';
+                sub = `<span class="lx-m-errsub">الخدمة متوقفة لدى الموقع الرسمي حالياً. سنحاول تلقائياً حتى تعود.</span>`;
             } else if (state.ctxDetail) {
                 sub = `<span class="lx-m-errsub">${esc(state.ctxDetail)}</span>`;
             }
