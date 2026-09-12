@@ -13,7 +13,7 @@ android {
         applicationId "dz.guelma.portal"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 18
+        versionCode 19
         versionName "1.4.12"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

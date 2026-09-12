@@ -444,7 +444,9 @@ window.PortalUpdate = (function () {
         } catch (e) {
             var msg = String((e && e.message) || '');
             if (/checksum|missing|incomplete/i.test(msg)) saveDl(null);
-            setState({ name: 'error', error: installErrFriendly(e) });
+            var friendly = installErrFriendly(e);
+            if (friendly === 'تعذر تثبيت التحديث' && msg && !/تعذر/.test(msg)) friendly += ' — ' + msg.slice(0, 160);
+            setState({ name: 'error', error: friendly });
         }
         return state;
     }
@@ -469,7 +471,10 @@ window.PortalUpdate = (function () {
                     setState({ name: 'downloaded', error: '' });
                     toast('تم إلغاء التثبيت', 'info');
                 } else if (phase === 'failed') {
-                    setState({ name: 'error', error: 'تعذر تثبيت التحديث' });
+                    // Surface the system reason (storage, signature, blocked...)
+                    // instead of hiding it behind a generic message.
+                    var detail = ev && ev.message ? ' — ' + String(ev.message).slice(0, 160) : '';
+                    setState({ name: 'error', error: 'تعذر تثبيت التحديث' + detail });
                 }
             });
         } catch (e) {}
