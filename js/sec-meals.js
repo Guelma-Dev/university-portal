@@ -196,6 +196,7 @@
         if (p && !state.showingResults) p.innerHTML = skCards();
         try {
             const data = await jfetch(`/api/onou/context?${authQS()}`);
+            if (!data || typeof data !== 'object') throw new Error('استجابة غير صالحة من الخادم');
             if (state.ctxRetryTimer) { clearTimeout(state.ctxRetryTimer); state.ctxRetryTimer = null; }
             state.ctxHard = false;
             state.ctx = Array.isArray(data.depots) ? data : { ...data, depots: [] };

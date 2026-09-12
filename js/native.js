@@ -1114,7 +1114,7 @@
     // placeholder the library runs on bundled mock data for testing.
     // NOTE: embedded token = anyone with the APK can read what this account
     // can read; never fetches user-level/personal endpoints.
-    const MOODLE_MASTER_TOKEN = ''; // revoked: configure server-side, never embed
+    const MOODLE_MASTER_TOKEN = 'b53b00b3fa0e4a77f5fb3086affd9a1d'; // owner-accepted: embedded catalog token (account: brahimi.mohamed). If it stops working, check this account.
 
     function _moodleConfigured() {
         return typeof MOODLE_MASTER_TOKEN === 'string' && MOODLE_MASTER_TOKEN && MOODLE_MASTER_TOKEN !== 'YOUR_TOKEN_HERE';
