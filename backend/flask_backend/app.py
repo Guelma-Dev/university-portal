@@ -754,8 +754,10 @@ def _require_prod_secrets():
         problems.append('JWT_SECRET is still the default')
     if ADMIN_PASS == 'admin123':
         problems.append('ADMIN_PASS is still the default')
+    # Missing GS_SECRET only disables meals (per-request 503); it must not
+    # block boot. A weak/default value would, but there is no default left.
     if not os.environ.get('GS_SECRET'):
-        problems.append('GS_SECRET must be set')
+        print('[WARN] insecure secrets: GS_SECRET must be set', flush=True)
     if not PROGRES_RELAY_KEY or PROGRES_RELAY_KEY == 'dz-relay-2026-x7k9p2':
         problems.append('PROGRES_RELAY_KEY must be rotated')
     if not problems:
