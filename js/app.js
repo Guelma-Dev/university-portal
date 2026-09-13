@@ -584,7 +584,11 @@ function hideEl(id) { const e = $id(id); if (e) e.style.display = 'none'; }
 function setNameEverywhere(name) {
     const raw = String(name || localStorage.getItem('user_name') || '').trim();
     const displayName = /^\d+$/.test(raw) ? '' : raw;
-    ['acc-name', 'hero-name'].forEach((i) => { const e = $id(i); if (e) e.textContent = displayName || 'طالب'; });
+    const fallback = displayName || 'طالب';
+    const hero = $id('hero-name');
+    if (hero) hero.textContent = 'أهلاً، ' + fallback;
+    const acc = $id('acc-name');
+    if (acc) acc.textContent = fallback;
     updateAccountSubtitle();
     renderDhIdentity();
 }
@@ -1471,14 +1475,15 @@ function progresFirstName() {
 }
 function renderDhIdentity() {
     const who = document.getElementById('dh-who');
-    const idsub = document.getElementById('dh-idsub');
-    if (!who && !idsub) return;
-    let reg = '';
-    try { reg = localStorage.getItem('user_name') || ''; } catch (e) {}
-    if (!reg) { try { const s = getProgresSession(); reg = (s && s.name) || ''; } catch (e) {} }
+    if (!who) {
+        const staleIdsub = document.getElementById('dh-idsub');
+        if (staleIdsub) staleIdsub.textContent = '';
+        return;
+    }
     const first = progresFirstName();
-    if (who) who.textContent = first ? ('أهلًا، ' + first) : 'أهلًا بك';
-    if (idsub) idsub.textContent = reg ? ('رقم التسجيل · ' + reg) : '';
+    who.textContent = first ? ('أهلًا، ' + first) : 'أهلًا بك';
+    const idsub = document.getElementById('dh-idsub');
+    if (idsub) idsub.textContent = '';
 }
 function renderHomeDashboard() {
     renderDhIdentity();
@@ -2725,7 +2730,8 @@ function renderGradesSection() {
     loginView.classList.toggle('hidden', !!session);
     dataView.classList.toggle('hidden', !session);
     if (session) {
-        document.getElementById('grades-student-name').textContent = 'نقاطي — ' + (session.name || '');
+        const nameEl = document.getElementById('grades-student-name');
+        if (nameEl) nameEl.textContent = 'نقاطي — ' + (session.name || '');
     } else {
         setGradesCardView(false);
         progresCurrentView = null;
@@ -4033,3 +4039,141 @@ function initLoginKeyboard() {
     update();
 }
 initLoginKeyboard();
+
+// ============================================
+// SWIPE NAVIGATION — bottom-nav sections only
+// Order mirrors the bottom bar: home → grades → card → library → account.
+// Swipe left (dx<0) → next, swipe right (dx>0) → prev, based on the real
+// touch direction (RTL-independent). Same code path as tapping the bar,
+// so back-stack, data loading and active state behave identically.
+// Safety: vertical scroll wins; inputs/buttons/modals/horizontal
+// scrollers/embedded content/edge system gestures never trigger.
+// ============================================
+(function initBottomNavSwipe() {
+    var ORDER = ['home', 'grades', 'card', 'library', 'account'];
+    var MIN_DX = 70;
+    var RATIO = 1.5;
+    var MAX_DT = 1500;
+
+    function currentBnIndex() {
+        try {
+            var app = document.getElementById('main-app');
+            if (!app || app.classList.contains('hidden')) return -1;
+            if (APP_STATE.currentSection === 'home') return 0;
+            if (APP_STATE.currentSection === 'grades') {
+                return (typeof progresCurrentView !== 'undefined' && progresCurrentView === 'card') ? 2 : 1;
+            }
+            if (APP_STATE.currentSection === 'library') return 3;
+            if (APP_STATE.currentSection === 'account') return 4;
+        } catch (e) {}
+        return -1;
+    }
+
+    function goToBnIndex(i) {
+        if (i < 0 || i >= ORDER.length) return;
+        if (i === currentBnIndex()) return;
+        var key = ORDER[i];
+        var cur = currentBnIndex();
+        var allowed = true;
+        try {
+            var sec = (key === 'card') ? 'grades' : key;
+            allowed = (typeof canAccessSection === 'function') ? canAccessSection(sec) : true;
+        } catch (e) {}
+        if (allowed) {
+            var dirClass = (i > cur) ? 'swipe-next' : 'swipe-prev';
+            try {
+                document.body.classList.remove('swipe-next', 'swipe-prev');
+                void document.body.offsetWidth;
+                document.body.classList.add(dirClass);
+                setTimeout(function () {
+                    try { document.body.classList.remove('swipe-next', 'swipe-prev'); } catch (e) {}
+                }, 320);
+            } catch (e) {}
+        }
+        if (key === 'home') switchSection('home');
+        else if (key === 'grades') switchSection('grades');
+        else if (key === 'card') goStudentCard();
+        else if (key === 'library') switchSection('library');
+        else if (key === 'account') switchSection('account');
+    }
+
+    function modalOpen() {
+        try {
+            if (document.querySelector('.modal-overlay:not(.hidden)')) return true;
+            if (document.querySelector('.mobile-sheet:not(.hidden)')) return true;
+        } catch (e) {}
+        return false;
+    }
+
+    function inHorizontalScroller(el) {
+        try {
+            var n = el;
+            while (n && n !== document.body) {
+                if (n.scrollWidth && n.clientWidth && (n.scrollWidth > n.clientWidth + 8)) {
+                    var ox = '';
+                    try { ox = window.getComputedStyle(n).overflowX; } catch (e) {}
+                    if (ox === 'auto' || ox === 'scroll') return true;
+                }
+                n = n.parentElement;
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    var sx = 0, sy = 0, st = 0, tracking = false;
+
+    document.addEventListener('touchstart', function (e) {
+        tracking = false;
+        try {
+            if (!e.touches || e.touches.length !== 1) return;
+            if (modalOpen()) return;
+            var t = e.touches[0];
+            var target = (e.target && e.target.closest) ? e.target : document.elementFromPoint(t.clientX, t.clientY);
+            if (!target || !target.closest) return;
+            var appMain = document.getElementById('app-main');
+            if (!appMain || !appMain.contains(target)) return;
+            if (target.closest('input, textarea, select, [contenteditable], button, a, iframe, video, audio, canvas, dialog, .pdf-viewer-container, [data-no-swipe]')) return;
+            if (inHorizontalScroller(target)) return;
+            if (t.clientX < 24 || t.clientX > window.innerWidth - 24) return;
+            if (currentBnIndex() < 0) return;
+            sx = t.clientX; sy = t.clientY; st = Date.now();
+            tracking = true;
+        } catch (err) { tracking = false; }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function (e) {
+        if (!tracking) return;
+        try {
+            if (!e.touches || e.touches.length !== 1) { tracking = false; return; }
+            var t = e.touches[0];
+            var dx = t.clientX - sx, dy = t.clientY - sy;
+            if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) tracking = false;
+        } catch (err) { tracking = false; }
+    }, { passive: true });
+
+    function endSwipe(e) {
+        if (!tracking) return;
+        tracking = false;
+        try {
+            var touch = (e.changedTouches && e.changedTouches[0]) || null;
+            if (!touch) return;
+            var dx = touch.clientX - sx, dy = touch.clientY - sy;
+            var dt = Date.now() - st;
+            if (dt > MAX_DT || dt < 30) return;
+            var adx = Math.abs(dx), ady = Math.abs(dy);
+            if (adx < MIN_DX) return;
+            if (adx <= RATIO * ady) return;
+            var velocity = adx / Math.max(dt, 1);
+            if (adx < 100 && velocity < 0.25) return;
+            var cur = currentBnIndex();
+            if (cur < 0) return;
+            if (dx < 0) {
+                if (cur < ORDER.length - 1) goToBnIndex(cur + 1);
+            } else {
+                if (cur > 0) goToBnIndex(cur - 1);
+            }
+        } catch (err) {}
+    }
+    document.addEventListener('touchend', endSwipe, { passive: true });
+    document.addEventListener('touchcancel', function () { tracking = false; }, { passive: true });
+})();

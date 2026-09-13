@@ -9,13 +9,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="المنصة الجامعية">
-    <link rel="manifest" href="manifest.json?v=1.4.12">
+    <link rel="manifest" href="manifest.json?v=1.4.13">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css?v=1.4.12">
-    <link rel="stylesheet" href="css/portal-lux.css?v=1.4.12">
+    <link rel="stylesheet" href="css/styles.css?v=1.4.13">
+    <link rel="stylesheet" href="css/portal-lux.css?v=1.4.13">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -157,11 +157,10 @@
             <!-- ========== الشاشة الرئيسية (Dashboard) ========== -->
             <section id="section-home" class="section active">
                 <!-- Hero Header Card -->
-                <div class="hero-card">
+                <div class="hero-card hero-greet">
                     <span class="hc-ico"><i class="fas fa-graduation-cap"></i></span>
                     <span class="hc-tx">
-                        <em class="hc-welcome" id="hero-welcome">مرحباً بك</em>
-                        <strong class="hc-name" id="hero-name">طالب مالية ومحاسبة 2</strong>
+                        <strong class="hc-name" id="hero-name">أهلاً، طالب</strong>
                     </span>
                     <span class="hc-date" id="hh-date"></span>
                 </div>
@@ -639,13 +638,6 @@
 
                 <!-- Data view -->
                 <div class="grades-container hidden" id="grades-data-view">
-                    <div class="calculator-header" style="position:relative">
-                        <i class="fas fa-user-graduate"></i>
-                        <h3 id="grades-student-name">نقاطي</h3>
-                        <button class="btn btn-ghost btn-sm" onclick="progresLogout()" style="position:absolute;left:0;top:50%;transform:translateY(-50%)" title="إنهاء جلسة بروقرس">
-                            <i class="fas fa-right-from-bracket"></i>
-                        </button>
-                    </div>
                     <div style="padding: 16px;">
                         <div class="grades-toolbar hidden" id="grades-toolbar-wrap">
                             <select id="grades-card-select" class="card-select" onchange="onProgresCardChange(this.value)"></select>
@@ -813,17 +805,17 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/native.js?v=1.4.12"></script>
-    <script src="js/app.js?v=1.4.12"></script>
-    <script src="js/sec-loader.js?v=1.4.12"></script>
-    <script src="js/sec-transport.js?v=1.4.12"></script>
-    <script src="js/sec-meals.js?v=1.4.12"></script>
-    <script src="js/sec-profile.js?v=1.4.12"></script>
-    <script src="js/portal-notify.js?v=1.4.12"></script>
-    <script src="js/portal-update.js?v=1.4.12"></script>
-    <script src="js/sec-inscription.js?v=1.4.12"></script>
-    <script src="js/native-shell.js?v=1.4.12" defer></script>
-    <script src="js/auth-ui.js?v=1.4.12" defer></script>
+    <script src="js/native.js?v=1.4.13"></script>
+    <script src="js/app.js?v=1.4.13"></script>
+    <script src="js/sec-loader.js?v=1.4.13"></script>
+    <script src="js/sec-transport.js?v=1.4.13"></script>
+    <script src="js/sec-meals.js?v=1.4.13"></script>
+    <script src="js/sec-profile.js?v=1.4.13"></script>
+    <script src="js/portal-notify.js?v=1.4.13"></script>
+    <script src="js/portal-update.js?v=1.4.13"></script>
+    <script src="js/sec-inscription.js?v=1.4.13"></script>
+    <script src="js/native-shell.js?v=1.4.13" defer></script>
+    <script src="js/auth-ui.js?v=1.4.13" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});
