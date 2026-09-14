@@ -277,8 +277,6 @@ def _upstream(method, base, path, headers, kwargs):
 def _webetu_get(path, token):
     r = _upstream('GET', WEBETU_BASE, path,
                   {'authorization': token}, {'timeout': 30})
-    if r.status_code == 401:
-        raise SessionExpired()
     if r.status_code != 200:
         raise ApiError('خوادم الوزارة غير متاحة حالياً، حاول لاحقاً')
     try:

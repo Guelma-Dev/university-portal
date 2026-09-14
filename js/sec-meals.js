@@ -207,7 +207,7 @@
             renderNewPane();
         } catch (e) {
             const msg = String(e && e.message || '');
-            state.ctxHard = /^gs-5\d\d|server error|kaboom|خدمة الوجبات \([5]\d\d\)|خوادم الوزارة غير متاحة/i.test(msg);
+            state.ctxHard = /^gs-5\d\d|server error|kaboom/i.test(msg);
             if (/انتهيت الجلسة|401/.test(msg)) state.ctxReason = 'login';
             else if (/uuid مطلوب/.test(msg)) state.ctxReason = 'login';
             state.ctxDetail = msg;
@@ -277,8 +277,8 @@
             return `
             <button type="button" class="lx-m-depot ${String(d.id) === String(state.depotId) ? 'sel' : ''}" data-action="depot" data-id="${esc(d.id)}">
                 <span class="lx-m-depot-check"><i class="fas fa-check"></i></span>
-                <div class="lx-m-depot-name">${esc(d.nameAR || d.nameFR || d.name || '')}</div>
-                <div class="lx-m-depot-latin">${esc(d.nameFR || d.nameEN || d.name || '')}</div>
+                <div class="lx-m-depot-name">${esc(d.nameAR)}</div>
+                <div class="lx-m-depot-latin">${esc(d.nameFR || d.nameEN || '')}</div>
                 ${Number(d.isRu) ? '<span class="lx-m-badge-ru"><i class="fas fa-bed"></i> مطعم الإقامة</span>' : ''}
                 <div class="lx-m-chips">
                     ${MEAL_ORDER.map((m) => `<span class="lx-m-chip ${sv.includes(m) ? 'on' : ''}"><i class="fas ${MEALS[m].icon}"></i>${MEALS[m].name}</span>`).join('')}
@@ -695,7 +695,7 @@
         const enabled = !!pr.enabled;
         const curHour = Number(pr.hour) || 6;
         const depotOptions = (state.ctx ? state.ctx.depots : [])
-            .map((d) => `<option value="${esc(d.id)}" ${String(pr.depot ?? '') === String(d.id) ? 'selected' : ''}>${esc(d.nameAR || d.nameFR || d.name || '')}</option>`)
+            .map((d) => `<option value="${esc(d.id)}" ${String(pr.depot ?? '') === String(d.id) ? 'selected' : ''}>${esc(d.nameAR)}</option>`)
             .join('');
         const hourOptions = [4, 5, 6, 7, 8, 9]
             .map((h) => `<option value="${h}" ${curHour === h ? 'selected' : ''}>${h} صباحاً</option>`)
