@@ -471,7 +471,6 @@ body {
     box-shadow: var(--shadow-gold);
 }
 .hc-tx { display: flex; flex-direction: column; min-width: 0; }
-.hc-welcome { font-style: normal; font-size: .8rem; color: var(--text-3); font-weight: 600; }
 .hc-name { font-size: 1.15rem; font-weight: 800; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hc-date {
     margin-inline-start: auto; flex: 0 0 auto;
@@ -1555,8 +1554,27 @@ body.native-app button:focus-visible { outline: 2px solid var(--gold); outline-o
     max-width: 620px; margin: 0 auto;
 }
 
-/* ---- الترحيب — الهوية داكنة مع ختم ذهبي ---- */
+/* ---- الترحيب — بطاقة تحية مدمجة مع ختم ذهبي ---- */
 .dh-greet { padding: 4px 2px 14px; }
+.dh-greet-card {
+    display: flex; align-items: center; gap: 14px;
+    box-sizing: border-box; width: 100%;
+    margin: 0 0 14px; padding: 18px;
+    background:
+        radial-gradient(130% 100% at 100% 0%, rgba(91,120,166,.14), transparent 55%),
+        linear-gradient(180deg, var(--s-card3), var(--s-card));
+    border: 1px solid var(--s-edge-hi);
+    border-radius: 22px;
+    box-shadow: var(--s-shadow-lg);
+    position: relative; overflow: hidden;
+}
+.dh-greet-card::before {
+    content: ""; position: absolute; top: 0; inset-inline: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--s-gold), transparent);
+    opacity: .8;
+}
+.dh-greet-card .dh-seal { margin-bottom: 0; flex: 0 0 auto; }
+.dh-greet-card .dh-who { margin: 0; flex: 1; min-width: 0; font-size: 1.45rem; }
 .dh-seal {
     display: inline-grid; place-items: center;
     width: 42px; height: 42px; border-radius: 13px; margin-bottom: 14px;
@@ -2546,3 +2564,14 @@ select option { background: var(--input-bg); color: var(--text-primary); }
 .upd-bar.indeterminate > span { width: 38% !important; animation: upd-slide 1.2s ease-in-out infinite; }
 @keyframes upd-slide { 0% { transform: translateX(120%); } 100% { transform: translateX(-320%); } }
 .upd-pct { text-align: center; font-weight: 800; color: var(--gold-soft); font-variant-numeric: tabular-nums; margin: 0; direction: ltr; }
+
+/* ---- Swipe navigation transitions (bottom-nav gestures) ----
+   Subtle horizontal slide matching swipe direction. Short, non-blocking,
+   reuses the existing spring system. Respects reduced-motion. */
+body.swipe-next .section.active { animation: swipeInFromRight .22s var(--spring, ease-out) both; }
+body.swipe-prev .section.active { animation: swipeInFromLeft .22s var(--spring, ease-out) both; }
+@keyframes swipeInFromRight { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes swipeInFromLeft { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+    body.swipe-next .section.active, body.swipe-prev .section.active { animation: none; }
+}
