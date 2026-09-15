@@ -1,8 +1,8 @@
 {
   "versionName": "1.4.13",
-  "versionCode": 27,
-  "apkUrl": "https://university-portal-gv78.onrender.com/app/releases/app-27.apk",
-  "sha256": "831c131629a7a725c480b2349bed3cfcc1b768b44dd6c6ac448051fefeaca9d6",
-  "size": 4725210,
+  "versionCode": 28,
+  "apkUrl": "https://university-portal-gv78.onrender.com/app/releases/app-28.apk",
+  "sha256": "f1df60ebc422c47df9458598b805327a8e90698328c8aa2ec31fca6edcf187f4",
+  "size": 4725208,
   "mandatory": false
 }
