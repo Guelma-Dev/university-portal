@@ -68,11 +68,11 @@ public class MinistryHttpPlugin extends Plugin {
         return false;
     }
 
-    /** Live-measured leaf SPKI pins (2026-09-12). If a ministry rotates its
+    /** Live-measured leaf SPKI pins (2026-09-14). If a ministry rotates its
      *  key, update the matching pin in the same release or that host breaks
      *  closed (no silent fallback). */
     private static final String[] SPKI_PINS = {
-        "jntSxqt6Sj7zrYOmzN7W9DtTxZJg/c8/0Oxo+2stX/k=", // gs-api.onou.dz
+        "sx1K9m9Ke/vrNOb+SIVUvHhSJDJTCB5OxuHNbtfPnks=", // gs-api.onou.dz
         "xBIuvzEuxs8eK/+zO8gBHx0NM1wN0yN4lMoNHDOyRY8=", // elearning.univ-guelma.dz
     };
 

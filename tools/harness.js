@@ -271,15 +271,24 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     for (const m of ['getInstalledVersion', 'downloadUpdate', 'pollDownload', 'cancelDownload', 'getDownloadedUpdate', 'verifyAndInstall']) {
         check(upJava.includes('public void ' + m), 'update plugin method ' + m);
     }
+    check(upJava.includes('getInstallState') && upJava.includes('canRequestPackageInstalls'), 'unknown-sources pre-flight exists');
+    check(upJava.includes('openUnknownSources') && upJava.includes('ACTION_MANAGE_UNKNOWN_APP_SOURCES'), 'one-tap settings shortcut exists');
+    const instJava = fs.readFileSync(path.join(ROOT, 'android', 'app', 'src', 'main', 'java', 'dz', 'guelma', 'portal', 'UpdateInstaller.java'), 'utf8');
+    check(instJava.includes('stage=create-session') && instJava.includes('stage=commit-session'), 'install stages tagged for diagnosis');
+    check(instJava.includes('abandonOrphans') && instJava.includes('getMySessions'), 'orphan sessions abandoned before commit');
+    const recvJava = fs.readFileSync(path.join(ROOT, 'android', 'app', 'src', 'main', 'java', 'dz', 'guelma', 'portal', 'UpdateInstallReceiver.java'), 'utf8');
+    check(recvJava.includes('Log.w') && !recvJava.includes('} catch (Exception ignored) {}'), 'receiver reports instead of swallowing');
+    check(recvJava.includes('system status=') && recvJava.includes('confirm blocked'), 'system reason always surfaced');
+    check(puJs.includes('installPrereq') && puJs.includes('openUnknownSources') && puJs.includes('errorCode'), 'UI gates install + guides to settings');
     check(upJava.includes('MODE_FULL_INSTALL') || fs.existsSync(path.join(ROOT, 'android', 'app', 'src', 'main', 'java', 'dz', 'guelma', 'portal', 'UpdateInstaller.java')), 'PackageInstaller session API (not deprecated)');
     check(!upJava.includes('ACTION_INSTALL_PACKAGE'), 'no deprecated install intent');
     check(upJava.includes('https'), 'https-only download URLs');
     const mani4 = fs.readFileSync(path.join(ROOT, 'android', 'app', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
     check(mani4.includes('REQUEST_INSTALL_PACKAGES') && mani4.includes('.UpdateInstallReceiver'), 'install permission + status receiver');
     const beManifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'backend', 'flask_backend', 'update.json'), 'utf8'));
-    check(beManifest.versionCode === 22 && beManifest.versionName === '1.4.12', 'production manifest advertises 1.4.12 (code 22)');
-    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-22\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
-    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-22.apk')), 'release APK present for hosting');
+    check(beManifest.versionCode === 23 && beManifest.versionName === '1.4.13', 'production manifest advertises 1.4.13 (code 23)');
+    check(/^https:\/\/[^\/\s]+\/app\/releases\/app-23\.apk$/.test(beManifest.apkUrl), 'manifest apkUrl points at hosted release');
+    check(fs.existsSync(path.join(ROOT, 'backend', 'flask_backend', 'releases', 'app-23.apk')), 'release APK present for hosting');
     check(!upJava.includes('setDestinationUri(Uri.fromFile') && !upJava.includes('VISIBILITY_HIDDEN'), 'no banned download destination/visibility');
     check(upJava.includes('setDestinationInExternalFilesDir') && upJava.includes('VISIBILITY_VISIBLE'), 'store-compliant download target + visible progress');
     check(upJava.includes('installBegin') && upJava.includes('installAppend') && upJava.includes('installCommit'), 'chunked install handoff (bridge-safe)');
@@ -338,8 +347,15 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(_appJs2.includes('rebuildClassReminders()'), 'rebuild hooked (render/timetable changes)');
     check(npJava.includes('setExactAndAllowWhileIdle') && npJava.includes('setAndAllowWhileIdle'), 'exact alarm with inexact fallback');
     const brJava = fs.readFileSync(path.join(ROOT, 'android', 'app', 'src', 'main', 'java', 'dz', 'guelma', 'portal', 'BookingReceiver.java'), 'utf8');
-    check(brJava.includes('/api/onou/reserve') && brJava.includes('/api/onou/reservations'), 'native replays booking + verifies list');
+    check(brJava.includes('/api/reservemeal') && brJava.includes('/api/meal-reservations/student') && !brJava.includes('/api/onou/'), 'native books + verifies DIRECT on gs-api (no backend)');
     check(brJava.includes('confirmed > 0'), 'success only on verified confirmation');
+    check(brJava.includes('GsAuthException') && brJava.includes('mealToken'), 'native uses stored ministry token, honest re-login prompt');
+    check(npJava.includes('saveMealSession') && npJava.includes('clearMealSession'), 'token sync methods exist');
+    check(_appJs2.includes('saveMealSession') && _appJs2.includes('clearMealSession'), 'token synced at login/logout');
+    const natJs = fs.readFileSync(path.join(ROOT, 'js', 'native.js'), 'utf8');
+    check(natJs.includes('_routeGsContext') && natJs.includes('_routeGsReserve') && natJs.includes('_routeGsReservations'), 'onou routes served on-device');
+    check(!natJs.includes('return _proxyApi(p, urlText, init)'), 'no onou proxy route remains');
+    check(natJs.includes('X-Signature') && natJs.includes('loginpwebetu'), 'gs HMAC signing present');
     check(brJava.includes('تعذر حجز الوجبة'), 'honest failure notification');
     check(brJava.includes('rescheduleIfEnabled'), 'daily rollover without duplicates');
     const bootJava = fs.readFileSync(path.join(ROOT, 'android', 'app', 'src', 'main', 'java', 'dz', 'guelma', 'portal', 'BootReceiver.java'), 'utf8');
@@ -393,6 +409,23 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const srcWww = fs.readFileSync(path.join(ROOT, 'www', 'index.html'), 'utf8');
     check((srcWww.match(/class="dh-sv-ico/g) || []).length >= 10, '[www] service + qa chips present');
     check(!srcIdx.includes('dh-qa-fic'), 'no legacy qa-fic in index.html');
+
+    // ---------- Home greeting card (app) ----------
+    check(!srcWww.includes('ملخص يومك') && !srcWww.includes('dh-ctx'), '[www] summary sentence removed');
+    check(!srcWww.includes('dh-idsub') && !srcWww.includes('رقم التسجيل ·'), '[www] reg number removed from home');
+    check(srcWww.includes('class="dh-greet"') && srcWww.includes('id="dh-who"'), '[www] greeting card keeps live name');
+    const wwwCss = fs.readFileSync(path.join(ROOT, 'www', 'css', 'styles.css'), 'utf8');
+    check(wwwCss.includes('.dh-greet') && wwwCss.includes('var(--s-card)') && wwwCss.includes('var(--s-radius)'), '[www] greeting uses design-system card');
+
+    // ---------- Grades session header removed (app) ----------
+    check(!srcWww.includes('grades-student-name'), '[www] redundant session header removed');
+    check(srcWww.includes('id="grades-toolbar-wrap"') && srcWww.includes('خروج'), '[www] single intentional logout kept');
+    check(appJs.includes("getElementById('grades-student-name')") && appJs.includes('if (gsn)'), 'grades name write guarded (shared JS)');
+
+    // ---------- Bottom-nav swipe ----------
+    check(appJs.includes('BN_SWIPE_ORDER') && appJs.includes('initBottomNavSwipe') && appJs.includes('bnSwipeKey'), 'swipe engine present');
+    check(appJs.includes("goStudentCard()") && appJs.includes('72') && appJs.includes('prefers-reduced-motion'), 'swipe order/threshold/motion guards');
+    check(wwwCss.includes('sw-in-next') && wwwCss.includes('@keyframes swInNext'), '[www] swipe transition CSS');
 
     // ---------- Login screen (acceptance criteria) ----------
     for (const f of ['index.html', path.join('www', 'index.html')]) {

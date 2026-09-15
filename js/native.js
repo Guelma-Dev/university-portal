@@ -558,12 +558,14 @@
         if (p === '/api/academic/recours' && method === 'POST') return _routeRecours(body);
         if (p === '/api/academic/hebergement-renew' && method === 'POST') return _routeHebergementRenew(body);
 
-        // ONOU/GS via Flask backend (server-side HMAC + ownership checks) —
-        // no embedded GS secret on the client anymore.
-        if (p === '/api/onou/context' && method === 'GET') return _proxyApi(p, urlText, init);
-        if (p === '/api/onou/reservations' && method === 'GET') return _proxyApi(p, urlText, init);
-        if (p === '/api/onou/reserve' && method === 'POST') return _proxyApi(p, urlText, init);
-        if ((m = /^\/api\/onou\/reservations\/(\d+)$/.exec(p)) && method === 'DELETE') return _proxyApi(p, urlText, init);
+        // ONOU/GS meals — DIRECT from the student's phone (no backend, no
+        // relay): local progres token -> wilaya + residence (api-webetu) ->
+        // gs session (gs-api loginpwebetu, HMAC-signed) -> depots /
+        // reservations / reserve / cancel. Response shapes match sec-meals.
+        if (p === '/api/onou/context' && method === 'GET') return _routeGsContext(url);
+        if (p === '/api/onou/reservations' && method === 'GET') return _routeGsReservations(url);
+        if (p === '/api/onou/reserve' && method === 'POST') return _routeGsReserve(body);
+        if ((m = /^\/api\/onou\/reservations\/(\d+)$/.exec(p)) && method === 'DELETE') return _routeGsDelete(m[1], url);
         if (p === '/api/onou/prefs' && method === 'GET') return _routePrefsGet(url);
         if (p === '/api/onou/prefs' && method === 'POST') return _routePrefsSet(body);
 
@@ -786,6 +788,343 @@
         return status === 401
             ? 'انتهت صلاحية جلسة الوزارة، أعد تسجيل الدخول'
             : 'خوادم الوزارة غير متاحة حالياً، حاول لاحقاً';
+    }
+
+    // ============================================
+    // ONOU/GS MEALS — direct ministry chain (on-device).
+    // wilaya + residence resolve via api-webetu with the LOCAL progres
+    // token; the gs session comes from gs-api loginpwebetu signed with the
+    // owner-supplied integration secret. gs/depots entries are cached in
+    // localStorage with the TTLs above; login purges them (see _routeLogin).
+    // ============================================
+    const GS_HOST = 'https://gs-api.onou.dz';
+    // Owner-supplied secret (same exposure class as the Moodle catalog
+    // token: readable from the APK, signs OUR gs-api calls only).
+    const GS_SECRET = 'pUzHUW2WX54uCzhO8JC2eQ6g1Ol21upw';
+    const GS_LOGIN_EXPIRED = 'انتهيت الجلسة، سجل دخول من جديد';
+
+    function _hexRand(n) {
+        try {
+            const b = new Uint8Array(n);
+            if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+                window.crypto.getRandomValues(b);
+            } else {
+                for (let i = 0; i < n; i++) b[i] = Math.floor(Math.random() * 256);
+            }
+            return Array.prototype.map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+        } catch (e) {
+            let s = '';
+            for (let i = 0; i < n * 2; i++) s += '0123456789abcdef'[Math.floor(Math.random() * 16)];
+            return s;
+        }
+    }
+
+    async function _hmacHex(secret, msg) {
+        if (!window.crypto || !window.crypto.subtle) throw new Error('التشفير غير متاح في هذه النسخة');
+        const enc = new TextEncoder();
+        const key = await window.crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+        const sig = await window.crypto.subtle.sign('HMAC', key, enc.encode(msg));
+        return Array.prototype.map.call(new Uint8Array(sig), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+    }
+
+    async function _gsHeaders(bodyStr, gsToken) {
+        const ts = String(Math.floor(Date.now() / 1000));
+        const nonce = _hexRand(16);
+        const sig = await _hmacHex(GS_SECRET, ts + '|' + nonce + '|' + bodyStr);
+        const h = { 'X-Timestamp': ts, 'X-Nonce': nonce, 'X-Signature': sig, 'User-Agent': GENERIC_UA, Accept: 'application/json' };
+        if (gsToken) h.authorization = 'Bearer ' + gsToken;
+        return h;
+    }
+
+    function _gsQS(params) {
+        return Object.keys(params).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+    }
+
+    function _asListGs(data) {
+        if (Array.isArray(data)) return data;
+        if (data && typeof data === 'object') {
+            const keys = ['data', 'items', 'results', 'depots'];
+            for (let i = 0; i < keys.length; i++) {
+                if (Array.isArray(data[keys[i]])) return data[keys[i]];
+            }
+        }
+        return [];
+    }
+
+    async function _gsFetch(method, path, opts) {
+        opts = opts || {};
+        let url = GS_HOST + path;
+        let bodyStr = '';
+        if (opts.params) url += '?' + _gsQS(opts.params);
+        if (opts.body !== undefined && opts.body !== null) {
+            bodyStr = typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body);
+        }
+        const headers = await _gsHeaders(bodyStr, opts.gsToken);
+        if (bodyStr) headers['Content-Type'] = 'application/json';
+        const r = await _http(method, url, headers, bodyStr || null);
+        const data = _parseBody(r.text);
+        if (r.status >= 400) {
+            const raw = data && (data.message || data.error);
+            const err = new Error(typeof raw === 'string' && raw ? raw : ('status-' + r.status));
+            err.status = r.status;
+            throw err;
+        }
+        return data;
+    }
+
+    function _numIfNumeric(v) {
+        if (typeof v === 'number') return v;
+        const s = String(v == null ? '' : v).trim();
+        if (s !== '' && isFinite(Number(s))) return Number(s);
+        return v;
+    }
+
+    function _gsSession() {
+        const s = _session();
+        if (!s || !s.uuid || !s.token) {
+            const err = new Error(GS_LOGIN_EXPIRED);
+            err.status = 401;
+            throw err;
+        }
+        const claims = _jwtClaims(String(s.token));
+        const dia = String(claims.dias || '').split(',')[0].trim();
+        return { uuid: String(s.uuid), token: String(s.token), dia: dia };
+    }
+
+    async function _gsWilaya(uuid, token, dia) {
+        const ck = 'wilaya:' + uuid;
+        const hit = _cacheGet(ck, TTL.wilaya);
+        if (hit !== null && hit !== undefined) return hit;
+        const r = await _http('GET', BASE + '/wilayaInscription/' + encodeURIComponent(dia), _extraHeaders(token, dia), null);
+        if (r.status === 401) throw new Error(GS_LOGIN_EXPIRED);
+        if (r.status !== 200) throw new Error('خوادم الوزارة غير متاحة حالياً، حاول لاحقاً');
+        const data = _parseBody(r.text);
+        const item = Array.isArray(data) ? data[0] : data;
+        let wilaya = null;
+        if (item && typeof item === 'object') {
+            const keys = ['idWilaya', 'wilaya', 'idWillaya', 'codeWilaya', 'code', 'id'];
+            for (let i = 0; i < keys.length; i++) {
+                if (item[keys[i]] !== undefined && item[keys[i]] !== null) { wilaya = item[keys[i]]; break; }
+            }
+        } else if (item !== undefined && item !== null) {
+            wilaya = item;
+        }
+        if (wilaya === null || wilaya === undefined || wilaya === '') throw new Error('تعذر تحديد ولاية الإقامة');
+        wilaya = _numIfNumeric(wilaya);
+        _cacheSet(ck, wilaya);
+        return wilaya;
+    }
+
+    async function _gsResidence(uuid, token) {
+        const ck = 'residence:' + uuid;
+        const hit = _cacheGet(ck, TTL.residence);
+        if (hit !== null && hit !== undefined) return hit;
+        const r = await _http('GET', BASE + '/bac/' + encodeURIComponent(uuid) + '/demandesHebregement', _extraHeaders(token), null);
+        if (r.status === 401) throw new Error(GS_LOGIN_EXPIRED);
+        if (r.status !== 200) throw new Error('خوادم الوزارة غير متاحة حالياً، حاول لاحقاً');
+        const items = _asListGs(_parseBody(r.text));
+        const year = String(new Date().getFullYear());
+        let picked = null;
+        for (let i = 0; i < items.length; i++) {
+            const it = items[i];
+            if (it && typeof it === 'object' && String(it.idAnneeAcademique || '').indexOf(year) !== -1) { picked = it; break; }
+        }
+        if (!picked && items.length && typeof items[0] === 'object') picked = items[0];
+        const res = picked ? picked.idResidance : null;
+        if (res === null || res === undefined) throw new Error('تعذر تحديد مكان الإقامة');
+        const out = _numIfNumeric(res);
+        _cacheSet(ck, out);
+        return out;
+    }
+
+    async function _gsLoginFresh(uuid, token, wilaya, residence) {
+        let data;
+        try {
+            data = await _gsFetch('POST', '/api/loginpwebetu', {
+                body: { uuid: uuid, wilaya: wilaya, residence: residence, token: token },
+            });
+        } catch (e) {
+            // gs rejects unknown/expired progres tokens with 403: the fix is
+            // a fresh Progres login, not a retry.
+            if (e && (e.status === 401 || e.status === 403)) throw new Error(GS_LOGIN_EXPIRED);
+            throw e;
+        }
+        const gs = data && data.token;
+        if (!gs) throw new Error('تعذر تسجيل الدخول إلى خدمة الوجبات');
+        _cacheSet('gs:' + uuid, gs);
+        return gs;
+    }
+
+    async function _gsCtx(dia) {
+        const s = _gsSession();
+        const d = (dia || s.dia || '').trim();
+        if (!d) throw new Error('تعذر تحديد رقم التسجيل (dia)');
+        const wilaya = await _gsWilaya(s.uuid, s.token, d);
+        const residence = await _gsResidence(s.uuid, s.token);
+        const hit = _cacheGet('gs:' + s.uuid, TTL.gs);
+        const gs = hit || await _gsLoginFresh(s.uuid, s.token, wilaya, residence);
+        return { uuid: s.uuid, token: s.token, dia: d, wilaya: wilaya, residence: residence, gs: gs };
+    }
+
+    async function _gsWithRefresh(dia, fn) {
+        // Run fn(ctx); on gs auth rejection purge the cached gs token,
+        // re-login once and retry. Anything else propagates untouched.
+        const c0 = await _gsCtx(dia);
+        try {
+            return await fn(c0);
+        } catch (e) {
+            if (e && (e.status === 401 || e.status === 403)) {
+                _cacheDel('gs:' + c0.uuid);
+                const gs = await _gsLoginFresh(c0.uuid, c0.token, c0.wilaya, c0.residence);
+                return await fn(Object.assign({}, c0, { gs: gs }));
+            }
+            throw e;
+        }
+    }
+
+    function _gsErr(e) {
+        const msg = String((e && e.message) || 'حدث خطأ غير متوقع، حاول لاحقاً');
+        if (/انتهيت الجلسة/.test(msg)) return _errResp(401, msg);
+        if (e && e.status === 401) return _errResp(401, GS_LOGIN_EXPIRED);
+        return _errResp(502, msg);
+    }
+
+    function _normDepot(d) {
+        if (!d || typeof d !== 'object') return null;
+        return {
+            id: d.id,
+            nameAR: d.nameAR || d.name_ar || d.name || '',
+            nameFR: d.nameFR || d.name_fr || '',
+            nameEN: d.nameEN || d.name_en || '',
+            isRu: d.isRu ? 1 : 0,
+            breakfast: !!d.breakfast,
+            lunch: !!d.lunch,
+            dinner: !!d.dinner,
+        };
+    }
+
+    async function _routeGsContext(url) {
+        try {
+            _gsSession();
+        } catch (e) {
+            return _gsErr(e);
+        }
+        const dia = _diaFromReq(url.searchParams, null);
+        try {
+            const out = await _gsWithRefresh(dia, async function (c) {
+                let depots = _cacheGet('depots:' + c.wilaya + ':' + c.residence, TTL.depots);
+                if (!depots) {
+                    const data = await _gsFetch('GET', '/api/getdepotres', {
+                        gsToken: c.gs,
+                        params: { uuid: c.uuid, wilaya: c.wilaya, residence: c.residence, token: c.gs },
+                    });
+                    const raw = data && data.depots !== undefined ? data.depots : data;
+                    depots = _asListGs(raw).map(_normDepot).filter(Boolean);
+                    _cacheSet('depots:' + c.wilaya + ':' + c.residence, depots);
+                }
+                return { wilaya: c.wilaya, residence: c.residence, dia: c.dia, depots: depots };
+            });
+            return _jsonResp(200, out);
+        } catch (e) {
+            return _gsErr(e);
+        }
+    }
+
+    function _normReservation(it) {
+        if (!it || typeof it !== 'object') return null;
+        return {
+            id: it.id,
+            date_reserve: it.date_reserve,
+            mealtype_fr: it.mealtype_fr,
+            idDepot: it.idDepot,
+            depot_fr: it.depot_fr,
+            candelete: it.candelete !== undefined ? it.candelete : it.canDelete,
+        };
+    }
+
+    async function _routeGsReservations(url) {
+        try {
+            _gsSession();
+        } catch (e) {
+            return _gsErr(e);
+        }
+        const dia = _diaFromReq(url.searchParams, null);
+        try {
+            const out = await _gsWithRefresh(dia, async function (c) {
+                const data = await _gsFetch('GET', '/api/meal-reservations/student', {
+                    gsToken: c.gs,
+                    params: { uuid: c.uuid, wilaya: c.wilaya, residence: c.residence, token: c.gs, page: 1 },
+                });
+                let items = data;
+                if (items && typeof items === 'object' && !Array.isArray(items)) {
+                    const inner = items.data;
+                    if (inner && typeof inner === 'object' && Array.isArray(inner.data)) items = inner.data;
+                    else if (Array.isArray(inner)) items = inner;
+                    else items = [];
+                }
+                return _asListGs(items).map(_normReservation).filter(Boolean);
+            });
+            return _jsonResp(200, out);
+        } catch (e) {
+            return _gsErr(e);
+        }
+    }
+
+    async function _routeGsReserve(body) {
+        let s;
+        try {
+            s = _gsSession();
+        } catch (e) {
+            return _gsErr(e);
+        }
+        if (!body || typeof body !== 'object') return _errResp(400, 'بيانات ناقصة');
+        let menuType = null;
+        try { menuType = parseInt(body.menu_type, 10); } catch (e) { menuType = null; }
+        if (menuType !== 1 && menuType !== 2 && menuType !== 3) return _errResp(400, 'نوع الوجبة غير صحيح');
+        const depot = body.idDepot;
+        const dates = body.dates;
+        if (depot === undefined || depot === null || !Array.isArray(dates) || !dates.length) return _errResp(400, 'بيانات الحجز ناقصة');
+        const clean = [];
+        for (let i = 0; i < dates.length; i++) {
+            const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(dates[i] || ''));
+            if (!m) return _errResp(400, 'صيغة تاريخ غير صالحة');
+            clean.push(m[1]);
+        }
+        const dia = String(body.dia || s.dia || '').trim();
+        try {
+            const out = await _gsWithRefresh(dia, async function (c) {
+                const details = clean.map(function (d) {
+                    return JSON.stringify({ date_reserve: d, menu_type: menuType, idDepot: depot });
+                });
+                return await _gsFetch('POST', '/api/reservemeal', {
+                    gsToken: c.gs,
+                    body: { uuid: c.uuid, wilaya: c.wilaya, residence: c.residence, token: c.gs, details: details },
+                });
+            });
+            return _jsonResp(200, out === null || out === undefined ? {} : out);
+        } catch (e) {
+            return _gsErr(e);
+        }
+    }
+
+    async function _routeGsDelete(rid, url) {
+        try {
+            _gsSession();
+        } catch (e) {
+            return _gsErr(e);
+        }
+        const dia = _diaFromReq(url.searchParams, null);
+        try {
+            const out = await _gsWithRefresh(dia, async function (c) {
+                return await _gsFetch('DELETE', '/api/reservemeal/' + encodeURIComponent(rid), {
+                    gsToken: c.gs,
+                    body: { uuid: c.uuid, wilaya: c.wilaya, residence: c.residence, token: c.gs },
+                });
+            });
+            return _jsonResp(200, out === null || out === undefined ? {} : out);
+        } catch (e) {
+            return _gsErr(e);
+        }
     }
 
     function _prefsKey(u) { return 'onou_prefs:' + u; }

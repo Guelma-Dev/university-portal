@@ -3,10 +3,11 @@
    - Preferences live in localStorage (survive restarts).
    - Native scheduling/notifications go through NotifyPlugin (Android);
      the web build degrades gracefully with an explanatory note.
-   - Booking itself is replayed NATIVELY (BookingReceiver) against OUR
-     backend (/api/onou/*), which resolves the ministry session
-     server-side — the result notification always reflects the ACTUAL
-     server-verified outcome, never mere task execution.
+   - Booking itself is replayed NATIVELY (BookingReceiver) DIRECTLY
+     against gs-api.onou.dz with the stored Progres token (synced at
+     login via saveMealSession) — the result notification always
+     reflects the ACTUAL server-verified outcome, never mere task
+     execution. No backend, no relay.
    ============================================================ */
 window.PortalNotify = (function () {
     'use strict';

@@ -96,6 +96,48 @@ public class UpdatePlugin extends Plugin {
         }
     }
 
+    /** Pre-flight gate: creating install sessions is pointless when the
+     *  user has not granted this app "install unknown apps". */
+    @PluginMethod
+    public void getInstallState(PluginCall call) {
+        JSObject r = new JSObject();
+        try {
+            boolean can = true;
+            if (Build.VERSION.SDK_INT >= 26) {
+                try {
+                    can = getContext().getPackageManager().canRequestPackageInstalls();
+                } catch (Exception ignored) {}
+            }
+            r.put("canInstall", can);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("state unavailable: " + e.getMessage());
+        }
+    }
+
+    /** Opens this app's "install unknown apps" settings screen so the
+     *  user can grant it with one tap instead of hunting for it. */
+    @PluginMethod
+    public void openUnknownSources(PluginCall call) {
+        try {
+            Context ctx = getContext();
+            android.content.Intent i;
+            if (Build.VERSION.SDK_INT >= 26) {
+                i = new android.content.Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + ctx.getPackageName()));
+            } else {
+                i = new android.content.Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS);
+            }
+            i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(i);
+            JSObject r = new JSObject();
+            r.put("opened", true);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("settings unavailable: " + e.getMessage());
+        }
+    }
+
     // ---------- download (system DownloadManager) ----------
 
     @PluginMethod

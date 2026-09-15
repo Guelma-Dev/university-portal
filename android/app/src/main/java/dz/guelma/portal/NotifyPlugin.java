@@ -170,7 +170,7 @@ public class NotifyPlugin extends Plugin {
         }
     }
 
-    /** Logout wipe: drop stored identity (uuid/dia/depot) so the next
+    /** Logout wipe: drop stored identity (uuid/dia/depot/token) so the next
      *  user cannot reuse the previous student's meal context. */
     @PluginMethod
     public void wipeSession(PluginCall call) {
@@ -179,12 +179,45 @@ public class NotifyPlugin extends Plugin {
             disarmAlarm(ctx);
             ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit().remove("uuid").remove("dia")
-                .remove("depotId").remove("depotName").apply();
+                .remove("depotId").remove("depotName")
+                .remove("mealToken").apply();
             JSObject r = new JSObject();
             r.put("wiped", true);
             call.resolve(r);
         } catch (Exception e) {
             call.reject("wipe failed: " + e.getMessage());
+        }
+    }
+
+    /** Persist the Progres session token so BookingReceiver can run the
+     *  direct gs-api chain while the app is closed. Called on every login
+     *  and session restore; cleared on logout (see wipeSession). */
+    @PluginMethod
+    public void saveMealSession(PluginCall call) {
+        try {
+            String uuid = call.getString("uuid", "");
+            String token = call.getString("token", "");
+            if (uuid.isEmpty() || token.isEmpty()) { call.reject("uuid+token required"); return; }
+            getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putString("mealUuid", uuid).putString("mealToken", token).apply();
+            JSObject r = new JSObject();
+            r.put("saved", true);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("save failed: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void clearMealSession(PluginCall call) {
+        try {
+            getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().remove("mealUuid").remove("mealToken").apply();
+            JSObject r = new JSObject();
+            r.put("cleared", true);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("clear failed: " + e.getMessage());
         }
     }
 

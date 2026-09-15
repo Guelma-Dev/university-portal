@@ -123,7 +123,7 @@ window.PortalUpdate = (function () {
                 }
             } catch (e) {}
         }
-        setState({ name: 'checking', error: '' });
+        setState({ name: 'checking', error: '', errorCode: '' });
         var ctrl = null, timer = null;
         try {
             if (typeof AbortController !== 'undefined') {
@@ -215,7 +215,7 @@ window.PortalUpdate = (function () {
             toast('التنزيل متاح في تطبيق الأندرويد', 'info');
             return state;
         }
-        setState({ name: 'downloading', progress: { pct: null, soFar: 0, total: 0 }, error: '' });
+        setState({ name: 'downloading', progress: { pct: null, soFar: 0, total: 0 }, error: '', errorCode: '' });
         if (!(await preflight(m.apkUrl))) {
             return fallbackFetch(m);
         }
@@ -235,10 +235,36 @@ window.PortalUpdate = (function () {
         msg = String((msg && msg.message) || msg || '');
         if (/checksum/i.test(msg)) return 'ملف التحديث تالف — أعد التنزيل';
         if (/incompatible|invalid/i.test(msg)) return 'ملف التحديث غير متوافق';
-        if (/missing|incomplete|bad chunk|bad install/i.test(msg)) return 'ملف التحديث ناقص — أعد التنزيل';
+        if (/missing|incomplete|bad chunk|bad install|atomic replace/i.test(msg)) return 'ملف التحديث ناقص — أعد التنزيل';
         if (/blocked/i.test(msg)) return 'التثبيت محظور من النظام — اسمح بتثبيت التطبيقات';
         if (/memory/i.test(msg)) return 'ذاكرة غير كافية لإتمام التثبيت';
         return 'تعذر تثبيت التحديث';
+    }
+
+    // Unknown-sources pre-flight: never start a doomed session. Returns
+    // { ok:true } or { ok:false } (UI then guides to Settings).
+    async function installPrereq() {
+        var pl = plugin();
+        if (!isNative() || !pl || typeof pl.getInstallState !== 'function') return { ok: true };
+        try {
+            var r = await pl.getInstallState();
+            if (r && r.canInstall === false) return { ok: false };
+        } catch (e) {}
+        return { ok: true };
+    }
+
+    async function openUnknownSources() {
+        var pl = plugin();
+        if (!pl || typeof pl.openUnknownSources !== 'function') {
+            toast('افتح إعدادات التطبيق وفعّل «تثبيت التطبيقات غير المعروفة»', 'info');
+            return;
+        }
+        try { await pl.openUnknownSources(); }
+        catch (e) { toast('افتح إعدادات التطبيق وفعّل «تثبيت التطبيقات غير المعروفة»', 'info'); }
+    }
+
+    function unknownSourcesState() {
+        setState({ name: 'error', error: 'التثبيت محظور: فعّل «تثبيت التطبيقات غير المعروفة» لهذا التطبيق ثم أعد المحاولة', errorCode: 'unknown-sources', progress: null });
     }
 
     function blobToB64(blob) {
@@ -332,6 +358,7 @@ window.PortalUpdate = (function () {
             // compressed Content-Length. The SHA-256 gate below is definitive.
             if (total > 0 && blob.size < total) throw new Error('incomplete');
             saveDl({ downloadId: 0, versionCode: m.versionCode, sha256: m.sha256, size: m.size, apkUrl: m.apkUrl });
+            if (!(await installPrereq()).ok) { unknownSourcesState(); return state; }
             var begun = await pl.installBegin({ versionCode: m.versionCode });
             if (!begun) throw new Error('bad install spec');
             var off = 0, idx = 0;
@@ -433,7 +460,8 @@ window.PortalUpdate = (function () {
             toast('التثبيت متاح في تطبيق الأندرويد', 'info');
             return state;
         }
-        setState({ name: 'installing', error: '' });
+        if (!(await installPrereq()).ok) { unknownSourcesState(); return state; }
+        setState({ name: 'installing', error: '', errorCode: '' });
         try {
             var r = await pl.verifyAndInstall({ versionCode: m.versionCode, sha256: m.sha256 || '', size: m.size || 0 });
             if (r && r.status === 'pending_user_action') {
@@ -545,6 +573,7 @@ window.PortalUpdate = (function () {
         startDownload: startDownload,
         cancelDownload: cancelDownload,
         installUpdate: installUpdate,
+        openUnknownSources: openUnknownSources,
         resume: resume,
         bootCheck: bootCheck,
         bindNativeEvents: bindNativeEvents,
@@ -613,6 +642,9 @@ window.PortalUpdateUI = (function () {
                 + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installUpdate()"><i class="fas fa-rotate"></i> إعادة تشغيل التطبيق</button></div>';
         } else if (st.name === 'error') {
             h = '<div class="upd-state"><p class="upd-err"><i class="fas fa-triangle-exclamation"></i> ' + esc(st.error || 'تعذر تحديث التطبيق') + '</p>'
+                + (st.errorCode === 'unknown-sources'
+                    ? '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openUnknownSources()"><i class="fas fa-gear"></i> فتح إعدادات التثبيت</button>'
+                    : '')
                 + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.checkUpdate({manual:true})">إعادة المحاولة</button></div>';
         }
         box.innerHTML = h;

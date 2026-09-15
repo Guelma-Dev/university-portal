@@ -1,6 +1,6 @@
 'use strict';
 
-// Copies the web app (index.html + css/ + js/) into www/ consumed by Capacitor.
+// Copies the web app (index.html + css/ + js/ + assets/) into www/ consumed by Capacitor.
 // Run: npm run app:prep   (auto-runs before `npx cap sync`)
 
 const fs = require('fs');
@@ -37,6 +37,9 @@ function main() {
 
     cp(path.join(ROOT, 'css'), path.join(WWW, 'css'));
     cp(path.join(ROOT, 'js'), path.join(WWW, 'js'));
+    if (fs.existsSync(path.join(ROOT, 'assets'))) {
+        cp(path.join(ROOT, 'assets'), path.join(WWW, 'assets'));
+    }
 
     let html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
