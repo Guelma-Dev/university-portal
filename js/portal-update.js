@@ -21,6 +21,7 @@ window.PortalUpdate = (function () {
     var listeners = [];
     var pollTimer = null;
     var bootChecked = false;
+    var installBusy = false;
 
     function emit() {
         for (var i = 0; i < listeners.length; i++) {
@@ -477,15 +478,21 @@ window.PortalUpdate = (function () {
             return state;
         }
         if (!(await installPrereq()).ok) { unknownSourcesState(); return state; }
+        // A second tap while a commit is in flight would abandon the first
+        // session (abandonOrphans) and surface its failure as OUR error.
+        if (installBusy) { toast('التثبيت جارٍ — انتظر نافذة النظام', 'info'); return state; }
+        installBusy = true;
         setState({ name: 'installing', error: '', errorCode: '' });
         try {
             var r = await pl.verifyAndInstall({ versionCode: m.versionCode, sha256: m.sha256 || '', size: m.size || 0 });
+            installBusy = false;
             if (r && r.status === 'pending_user_action') {
                 // Android now shows its own confirmation; outcome arrives via installStatus.
                 return state;
             }
             setState({ name: 'error', error: 'تعذر بدء التثبيت' });
         } catch (e) {
+            installBusy = false;
             var msg = String((e && e.message) || '');
             if (/checksum|missing|incomplete/i.test(msg)) saveDl(null);
             var friendly = installErrFriendly(e);

@@ -30,6 +30,24 @@ public final class UpdateInstaller {
         } catch (Exception ignored) {}
     }
 
+    static final String PREFS = "portal_update";
+    static final String KEY_LAST_SESSION = "last_session";
+
+    static void rememberSession(Context ctx, int sessionId) {
+        try {
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putInt(KEY_LAST_SESSION, sessionId).apply();
+        } catch (Exception ignored) {}
+    }
+
+    static int lastSession(Context ctx) {
+        try {
+            return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_LAST_SESSION, -1);
+        } catch (Exception ignored) {
+            return -1;
+        }
+    }
+
     static void commit(Context ctx, File apk) throws Exception {
         abandonOrphans(ctx);
         PackageInstaller pi;
@@ -40,9 +58,20 @@ public final class UpdateInstaller {
         }
         PackageInstaller.SessionParams params =
             new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+        try {
+            params.setAppPackageName(ctx.getPackageName());
+        } catch (Exception e) {
+            throw new Exception("stage=params: " + msg(e));
+        }
+        if (Build.VERSION.SDK_INT >= 31) {
+            try {
+                params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED);
+            } catch (Exception ignored) {}
+        }
         int sessionId;
         try {
             sessionId = pi.createSession(params);
+            rememberSession(ctx, sessionId);
         } catch (Exception e) {
             throw new Exception("stage=create-session: " + msg(e));
         }
@@ -54,7 +83,7 @@ public final class UpdateInstaller {
                 throw new Exception("stage=open-session #" + sessionId + ": " + msg(e));
             }
             try (InputStream in = new FileInputStream(apk);
-                 OutputStream out = session.openWrite("app", 0, -1)) {
+                 OutputStream out = session.openWrite("app", 0, apk.length())) {
                 byte[] buf = new byte[65536];
                 int n;
                 while ((n = in.read(buf)) != -1) out.write(buf, 0, n);

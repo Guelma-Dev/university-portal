@@ -39,6 +39,15 @@ public class UpdateInstallReceiver extends BroadcastReceiver {
             int sess = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1);
             android.util.Log.i(TAG, "install status=" + status + " legacy=" + legacy
                 + " pkg=" + pkg + " other=" + other + " session=" + sess + " msg=" + msg);
+            // Ignore events for superseded sessions (a newer tap abandoned
+            // them via abandonOrphans): only the latest commit owns the UI.
+            try {
+                int last = UpdateInstaller.lastSession(ctx);
+                if (last != -1 && sess != -1 && sess != last) {
+                    android.util.Log.i(TAG, "ignoring stale session " + sess + " (latest=" + last + ")");
+                    return;
+                }
+            } catch (Exception ignored) {}
             switch (status) {
                 case PackageInstaller.STATUS_PENDING_USER_ACTION: {
                     Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
