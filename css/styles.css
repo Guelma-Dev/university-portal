@@ -2809,22 +2809,33 @@ body.native-app [data-section='home'] .dashboard-wrap {
     max-width: 620px; margin: 0 auto;
 }
 
-/* ---- الترحيب — الهوية داكنة مع ختم ذهبي ---- */
-.dh-greet { padding: 4px 2px 14px; }
+/* ---- بطاقة الترحيب ---- */
+.dh-greet {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px; margin: 2px 0 14px;
+    background: var(--s-card);
+    border: 1px solid var(--s-edge);
+    border-radius: var(--s-radius);
+    box-shadow: var(--s-shadow);
+}
 .dh-seal {
-    display: inline-grid; place-items: center;
-    width: 42px; height: 42px; border-radius: 13px; margin-bottom: 14px;
+    display: inline-grid; place-items: center; flex-shrink: 0;
+    width: 46px; height: 46px; border-radius: 14px;
     font-size: 1.05rem; color: var(--s-ink);
     background: linear-gradient(150deg, #E8CD6E, var(--s-gold) 55%, #B7942C);
     box-shadow: 0 6px 20px rgba(212,175,55,.30), 0 1px 2px rgba(0,0,0,.4);
 }
-.dh-ctx { margin: 0; font-size: .76rem; font-weight: 700; color: var(--s-txt3); }
 .dh-who {
-    margin: 5px 0 0; font-size: 2.08rem; font-weight: 900;
-    letter-spacing: -.02em; line-height: 1.16; color: var(--s-txt);
+    margin: 0; font-size: 1.42rem; font-weight: 900;
+    letter-spacing: -.02em; line-height: 1.3; color: var(--s-txt);
     overflow-wrap: break-word;
 }
-.dh-idsub { margin: 9px 0 0; font-size: .68rem; font-weight: 600; color: var(--s-txt3); }
+
+/* ---- تنقل السحب بين أقسام الشريط السفلي (180ms, فيزيائي) ---- */
+#app-main.sw-in-next { animation: swInNext .18s ease-out; }
+#app-main.sw-in-prev { animation: swInPrev .18s ease-out; }
+@keyframes swInNext { from { opacity: .3; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+@keyframes swInPrev { from { opacity: .3; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
 
 /* ---- رأس قسم اليوم ---- */
 .dh-today { margin-top: 2px; }
