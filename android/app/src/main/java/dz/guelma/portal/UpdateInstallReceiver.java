@@ -33,7 +33,12 @@ public class UpdateInstallReceiver extends BroadcastReceiver {
             int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS,
                 PackageInstaller.STATUS_FAILURE);
             String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
-            android.util.Log.i(TAG, "install status=" + status + " msg=" + msg);
+            int legacy = intent.getIntExtra("android.content.pm.extra.LEGACY_STATUS", Integer.MIN_VALUE);
+            String pkg = intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME);
+            String other = intent.getStringExtra(PackageInstaller.EXTRA_OTHER_PACKAGE_NAME);
+            int sess = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1);
+            android.util.Log.i(TAG, "install status=" + status + " legacy=" + legacy
+                + " pkg=" + pkg + " other=" + other + " session=" + sess + " msg=" + msg);
             switch (status) {
                 case PackageInstaller.STATUS_PENDING_USER_ACTION: {
                     Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
@@ -87,7 +92,13 @@ public class UpdateInstallReceiver extends BroadcastReceiver {
                 default: {
                     JSObject r = new JSObject();
                     r.put("phase", "failed");
-                    r.put("message", "system status=" + status + (msg != null && !msg.isEmpty() ? ": " + msg : ""));
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("system status=").append(status);
+                    if (legacy != Integer.MIN_VALUE) sb.append(" legacy=").append(legacy);
+                    if (msg != null && !msg.isEmpty()) sb.append(": ").append(msg);
+                    if (pkg != null && !pkg.isEmpty()) sb.append(" pkg=").append(pkg);
+                    if (other != null && !other.isEmpty()) sb.append(" other=").append(other);
+                    r.put("message", sb.toString());
                     UpdatePlugin.emit("installStatus", r);
                     break;
                 }

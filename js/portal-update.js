@@ -267,6 +267,22 @@ window.PortalUpdate = (function () {
         setState({ name: 'error', error: 'التثبيت محظور: فعّل «تثبيت التطبيقات غير المعروفة» لهذا التطبيق ثم أعد المحاولة', errorCode: 'unknown-sources', progress: null });
     }
 
+    // Browser fallback: the system installer handles the APK directly
+    // (proven to work on devices where PackageInstaller sessions fail).
+    async function openInBrowser() {
+        var m = state.remote;
+        if (!m || !m.apkUrl) { toast('لا يوجد تحديث للتنزيل', 'error'); return; }
+        try {
+            if (window.PortalNative && typeof window.PortalNative.openInBrowser === 'function') {
+                await window.PortalNative.openInBrowser(m.apkUrl);
+                return;
+            }
+        } catch (e) {}
+        try {
+            if (typeof window.open === 'function') window.open(m.apkUrl, '_blank');
+        } catch (e) {}
+    }
+
     function blobToB64(blob) {
         return new Promise(function (resolve, reject) {
             var fr = new FileReader();
@@ -473,10 +489,44 @@ window.PortalUpdate = (function () {
             var msg = String((e && e.message) || '');
             if (/checksum|missing|incomplete/i.test(msg)) saveDl(null);
             var friendly = installErrFriendly(e);
-            if (friendly === 'تعذر تثبيت التحديث' && msg && !/تعذر/.test(msg)) friendly += ' — ' + msg.slice(0, 160);
-            setState({ name: 'error', error: friendly });
+            if (friendly === 'تعذر تثبيت التحديث' && msg && !/تعذر/.test(msg)) friendly += ' — ' + msg.slice(0, 200);
+            setState({ name: 'error', error: withLegacyHint(friendly), errorCode: 'install-failed' });
         }
         return state;
+    }
+
+    // Legacy PackageInstaller codes (EXTRA_LEGACY_STATUS) with short Arabic hints.
+    var LEGACY_AR = {
+        '-1': 'الحزمة مثبتة مسبقاً', '-2': 'ملف APK غير صالح', '-4': 'مساحة التخزين غير كافية',
+        '-7': 'تعارض مع النسخة المثبتة (توقيع/حزمة)', '-13': 'تعارض في المزودات',
+        '-22': 'فشل التحقق من الحزمة', '-25': 'تراجع إصدار مرفوض', '-26': 'تراجع صلاحيات مرفوض',
+    };
+
+    function withLegacyHint(text) {
+        try {
+            var m = /legacy=(-?\d+)/.exec(String(text || ''));
+            if (m && LEGACY_AR[m[1]]) return text + ' (' + LEGACY_AR[m[1]] + ')';
+        } catch (e) {}
+        return text;
+    }
+
+    // One-shot enrichment: attach the installer-of-record to an install
+    // failure so the next report names the blocking party (store, browser…).
+    function attachInstaller() {
+        try {
+            var pl = plugin();
+            if (!pl || typeof pl.getInstallState !== 'function') return;
+            pl.getInstallState().then(function (st) {
+                if (!st) return;
+                var cur = null;
+                try { cur = window.PortalUpdate.getState(); } catch (e2) { return; }
+                if (!cur || cur.name !== 'error' || !/تعذر تثبيت/.test(String(cur.error || ''))) return;
+                var add = [];
+                if (st.installer) add.push('المثبت: ' + st.installer);
+                if (st.freeMb != null) add.push('الحرة: ' + st.freeMb + 'MB');
+                if (add.length) setState({ error: cur.error + ' • ' + add.join(' • ') });
+            }).catch(function () {});
+        } catch (e) {}
     }
 
     function bindNativeEvents() {
@@ -501,8 +551,9 @@ window.PortalUpdate = (function () {
                 } else if (phase === 'failed') {
                     // Surface the system reason (storage, signature, blocked...)
                     // instead of hiding it behind a generic message.
-                    var detail = ev && ev.message ? ' — ' + String(ev.message).slice(0, 160) : '';
-                    setState({ name: 'error', error: 'تعذر تثبيت التحديث' + detail });
+                    var detail = ev && ev.message ? ' — ' + String(ev.message).slice(0, 200) : '';
+                    setState({ name: 'error', error: withLegacyHint('تعذر تثبيت التحديث' + detail), errorCode: 'install-failed' });
+                    attachInstaller();
                 }
             });
         } catch (e) {}
@@ -574,6 +625,7 @@ window.PortalUpdate = (function () {
         cancelDownload: cancelDownload,
         installUpdate: installUpdate,
         openUnknownSources: openUnknownSources,
+        openInBrowser: openInBrowser,
         resume: resume,
         bootCheck: bootCheck,
         bindNativeEvents: bindNativeEvents,
@@ -644,6 +696,9 @@ window.PortalUpdateUI = (function () {
             h = '<div class="upd-state"><p class="upd-err"><i class="fas fa-triangle-exclamation"></i> ' + esc(st.error || 'تعذر تحديث التطبيق') + '</p>'
                 + (st.errorCode === 'unknown-sources'
                     ? '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openUnknownSources()"><i class="fas fa-gear"></i> فتح إعدادات التثبيت</button>'
+                    : '')
+                + (st.errorCode === 'install-failed' && st.remote && st.remote.apkUrl
+                    ? '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openInBrowser()"><i class="fas fa-globe"></i> تنزيل عبر المتصفح</button>'
                     : '')
                 + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.checkUpdate({manual:true})">إعادة المحاولة</button></div>';
         }

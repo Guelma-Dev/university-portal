@@ -102,13 +102,32 @@ public class UpdatePlugin extends Plugin {
     public void getInstallState(PluginCall call) {
         JSObject r = new JSObject();
         try {
+            Context ctx = getContext();
             boolean can = true;
             if (Build.VERSION.SDK_INT >= 26) {
                 try {
-                    can = getContext().getPackageManager().canRequestPackageInstalls();
+                    can = ctx.getPackageManager().canRequestPackageInstalls();
                 } catch (Exception ignored) {}
             }
             r.put("canInstall", can);
+            try {
+                String installer = null;
+                if (Build.VERSION.SDK_INT >= 30) {
+                    try {
+                        android.content.pm.InstallSourceInfo info =
+                            ctx.getPackageManager().getInstallSourceInfo(ctx.getPackageName());
+                        if (info != null) installer = info.getInstallingPackageName();
+                    } catch (Exception ignored) {}
+                } else {
+                    try {
+                        installer = ctx.getPackageManager().getInstallerPackageName(ctx.getPackageName());
+                    } catch (Exception ignored) {}
+                }
+                if (installer != null) r.put("installer", installer);
+            } catch (Exception ignored) {}
+            try {
+                r.put("freeMb", ctx.getCacheDir().getUsableSpace() / 1048576L);
+            } catch (Exception ignored) {}
             call.resolve(r);
         } catch (Exception e) {
             call.reject("state unavailable: " + e.getMessage());
@@ -552,7 +571,11 @@ public class UpdatePlugin extends Plugin {
         } catch (SecurityException se) {
             call.reject("installation blocked by Android");
         } catch (Exception e) {
-            call.reject("install failed: " + e.getMessage());
+            String kind = "unknown";
+            String detail = null;
+            try { kind = e.getClass().getSimpleName(); } catch (Exception ignored) {}
+            try { detail = e.getMessage(); } catch (Exception ignored) {}
+            call.reject("install failed [" + kind + "]" + (detail != null && !detail.isEmpty() ? ": " + detail : ""));
         }
     }
 
