@@ -43,13 +43,13 @@ function main() {
 
     let html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
-    // Cache-bust local script tags.
-    html = html.replace(/(<script[^>]+src=")([^"]+)(\?v=[0-9a-z]+)?"/g, (m, pre, src, _old) => {
+    // Cache-bust local script tags (replace any existing ?v= query, don't append).
+    html = html.replace(/(<script[^>]+src=")([^"?]+)(\?[^"]*)?"/g, (m, pre, src, _old) => {
         if (/^https?:|^\/\//.test(src)) return m;
         return `${pre}${src}?${BUST}"`;
     });
     // Same for css links.
-    html = html.replace(/(<link[^>]+href=")([^"]+)(\?v=[0-9a-z]+)?"/g, (m, pre, href, _old) => {
+    html = html.replace(/(<link[^>]+href=")([^"?]+)(\?[^"]*)?"/g, (m, pre, href, _old) => {
         if (/^https?:|^\/\//.test(href)) return m;
         return `${pre}${href}?${BUST}"`;
     });

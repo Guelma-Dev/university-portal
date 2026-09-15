@@ -2784,3 +2784,94 @@ html[data-theme="light"] .lib-row .lr-meta .lr-badge { color: #6b5310; }
     pointer-events: none;
     filter: grayscale(0.6);
 }
+
+/* ==========================================================================
+   INSCRIPTION — تسجيلاتي (سجّل تسجيل الطالب الجامعي)
+   أُضيف ضمن تصميم الأندرويد القديم دون لمس باقي الأنماط
+   يعتمد متغيرات styles.css الموجودة (--brand/--surface/--text-*)
+   ========================================================================== */
+.ins-body { padding: 12px 14px 16px; }
+
+.ins-login-prompt {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    gap: 12px; padding: 22px 14px; color: var(--text-secondary);
+}
+.ins-login-prompt > i { font-size: 34px; color: var(--brand); opacity: 0.85; }
+.ins-login-prompt p { font: 600 14px/1.7 var(--font-family); color: var(--text-secondary); margin: 0; }
+.ins-login-prompt b { color: var(--text-primary); }
+
+.ins-note {
+    display: flex; align-items: flex-start; gap: 8px;
+    font: 500 12px/1.6 var(--font-family); color: var(--text-tertiary);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;
+}
+.ins-note i { color: var(--brand); margin-top: 2px; }
+
+.ins-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: var(--shadow-sm, 0 8px 24px rgba(0,0,0,.18));
+}
+.ins-card.ins-current { border-color: var(--brand); background: linear-gradient(160deg, rgba(212,175,55,0.12), var(--surface) 45%); }
+
+.ins-current-wrap { margin-bottom: 14px; }
+.ins-current { padding: 16px; }
+.ins-current-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-bottom: 10px; padding-bottom: 9px; border-bottom: 1px dashed var(--border);
+}
+.ins-current-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    font: 800 12px/1 var(--font-family); color: #1c1403;
+    background: linear-gradient(150deg, rgba(212,175,55,0.5), var(--brand) 50%, var(--brand-dark));
+    padding: 6px 12px; border-radius: 999px;
+}
+.ins-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font: 800 11px/1 var(--font-family); padding: 6px 10px; border-radius: 999px;
+}
+.ins-badge.ins-ok { color: var(--success); background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.3); }
+.ins-badge.ins-warn { color: var(--warning); background: rgba(255,194,75,0.12); border: 1px solid rgba(255,194,75,0.3); }
+
+.ins-main { display: flex; flex-direction: column; gap: 8px; }
+.data-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.data-row .label { flex: 0 0 auto; font: 700 12px/1.5 var(--font-family); color: var(--text-tertiary); }
+.data-row .value { font: 800 14px/1.5 var(--font-family); color: var(--text-primary); text-align: end; word-break: break-word; }
+.ins-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px; min-height: 30px;
+}
+.ins-chip em { font-style: normal; font: 700 12px/1 var(--font-family); color: var(--text-tertiary); }
+.ins-chip b { font: 800 13px/1.3 var(--font-family); color: var(--text-primary); word-break: break-word; }
+
+/* التسجيلات السابقة — أكورديون مدمج */
+.ins-prev-wrap { display: flex; flex-direction: column; gap: 6px; }
+.ins-prev-title { display: flex; align-items: center; gap: 7px; font: 800 13px/1 var(--font-family); color: var(--text-secondary); margin: 2px 0 2px; padding: 2px 4px; }
+.ins-prev-title i { color: var(--brand); }
+.ins-prev { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.ins-prev summary { display: flex; align-items: center; gap: 10px; list-style: none; cursor: pointer; padding: 10px 12px; min-height: 40px; }
+.ins-prev summary::-webkit-details-marker { display: none; }
+.ins-prev summary::after { content: "\f078"; font-family: "Font Awesome 6 Free"; font-weight: 900; margin-inline-start: auto; color: var(--text-tertiary); font-size: 11px; transition: transform .2s ease; }
+.ins-prev[open] summary::after { transform: rotate(180deg); }
+.ins-prev-year { display: inline-flex; align-items: center; gap: 7px; font: 800 13px/1 var(--font-family); color: var(--text-primary); }
+.ins-prev-year i { color: var(--brand); }
+.ins-prev-spec { font: 700 12px/1.4 var(--font-family); color: var(--text-tertiary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-prev-body { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 12px; border-top: 1px dashed var(--border); }
+.ins-prev-body .ins-chip { padding: 5px 9px; }
+.ins-prev-body .ins-chip em { font-size: 11px; }
+.ins-prev-body .ins-chip b { font-size: 12px; }
+
+.ins-skel { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.ins-skel .skel-block {
+    border-radius: 8px;
+    background: linear-gradient(110deg, rgba(255,255,255,0.04) 30%, rgba(212,175,55,0.16) 50%, rgba(255,255,255,0.04) 70%);
+    background-size: 240% 100%;
+    animation: skeleton-glow 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ins-skel .skel-block { animation: none; background: var(--surface); }
+}
+.ins-empty { color: var(--text-tertiary); font: 600 13px/1.6 var(--font-family); margin: 0; text-align: center; }
+
+@keyframes skeleton-glow { to { background-position: -120% 0; } }

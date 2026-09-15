@@ -5,17 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <title>بوابة الطالب الجامعي</title>
     <meta name="description" content="بوابة الطالب الجامعي — نقاطي، الملف الشامل، الوجبات، والنقل الجامعي لجميع الطلبة">
-    <meta name="theme-color" content="#08101D">
+    <meta name="theme-color" content="#0A0A0C">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="المنصة الجامعية">
     <link rel="manifest" href="manifest.json?v=1.4.13">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css?v=1.4.13">
-    <link rel="stylesheet" href="css/portal-lux.css?v=1.4.13">
+    <link rel="stylesheet" href="css/luxury.css?v=1.4.13">
+    <link rel="stylesheet" href="css/auth.css?v=1.4.13">
+    <link rel="stylesheet" href="css/native.css?v=1.4.13">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -35,7 +37,7 @@
         }
     </script>
     <script>
-        (function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#08101D':'#EFF2F6');})();
+        (function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#0A0A0C':'#F6F4EF');})();
         (function(){var d=document.getElementById('hh-date');if(d){try{d.textContent=new Date().toLocaleDateString('ar-DZ',{weekday:'long',day:'numeric',month:'long'});}catch(e){}}}());
     </script>
 </head>
@@ -107,7 +109,49 @@
         </div>
     </div>
 
-    <!-- Student Login Modal (Direct Progres gateway — no local accounts) -->
+    <!-- Slot Editor (edits the tapped fixed timetable slot — day/time shown, never asked) -->
+    <div id="session-editor-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <i class="fas fa-graduation-cap"></i>
+                <h3>تعديل الحصة</h3>
+                <p id="pt-ctx" style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;"></p>
+            </div>
+            <form onsubmit="saveSlotOverride(event)">
+                <input type="hidden" id="pt-id">
+                <input type="hidden" id="pt-type" value="lecture">
+                <div class="pt-type-row">
+                    <button type="button" class="pt-type-btn" data-type="lecture" onclick="selectPtsType('lecture')">محاضرة</button>
+                    <button type="button" class="pt-type-btn" data-type="td" onclick="selectPtsType('td')">TD</button>
+                    <button type="button" class="pt-type-btn" data-type="tp" onclick="selectPtsType('tp')">TP</button>
+                </div>
+                <div class="input-group">
+                    <label>المادة</label>
+                    <input type="text" id="pt-subject" placeholder="مثال: محاسبة أعمال موجهة" required>
+                </div>
+                <div class="input-group">
+                    <label>القاعة (اختياري)</label>
+                    <input type="text" id="pt-room" placeholder="مثال: 5">
+                </div>
+                <div class="input-group">
+                    <label>الأستاذ (اختياري)</label>
+                    <input type="text" id="pt-teacher" placeholder="اسم الأستاذ">
+                </div>
+                <div class="input-group">
+                    <label>ملاحظات (اختياري)</label>
+                    <input type="text" id="pt-notes" placeholder="ملاحظات">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">
+                    <i class="fas fa-check"></i> حفظ
+                </button>
+                <button type="button" id="pt-del" class="btn btn-ghost btn-full" onclick="deleteSlotOverride()" style="display:none;">
+                    <i class="fas fa-trash"></i> حذف الحصة
+                </button>
+                <button type="button" class="btn btn-ghost btn-full" onclick="closeAllModals()">إلغاء</button>
+            </form>
+        </div>
+    </div>
+
     <!-- ===== MAIN APP ===== -->
     <div id="main-app" class="main-app hidden">
             <!-- ===== شريط تنبيه عدم الاتصال ===== -->
@@ -156,57 +200,70 @@
 
             <!-- ========== الشاشة الرئيسية (Dashboard) ========== -->
             <section id="section-home" class="section active">
-                <!-- Hero Header Card -->
-                <div class="hero-card">
-                    <span class="hc-ico"><i class="fas fa-graduation-cap"></i></span>
-                    <span class="hc-tx">
-                        <em class="hc-welcome" id="hero-welcome">مرحباً بك</em>
-                        <strong class="hc-name" id="hero-name">طالب مالية ومحاسبة 2</strong>
-                    </span>
-                    <span class="hc-date" id="hh-date"></span>
-                </div>
-
-                <!-- قائمة 2 عمود نظيفة -->
-                <div class="menu-grid">
-                    <button class="menu-card pressable" onclick="switchSection('grades')" aria-label="كشف النقاط">
-                        <i class="fas fa-file-lines"></i><span>كشف النقاط</span>
-                    </button>
-                    <button class="menu-card pressable" onclick="goStudentCard()" aria-label="بطاقة الطالب">
-                        <i class="fas fa-id-card"></i><span>بطاقة الطالب</span>
-                    </button>
-                    <button class="menu-card pressable" onclick="switchSection('library')" aria-label="المكتبة">
-                        <i class="fas fa-book-open"></i><span>المكتبة</span>
-                    </button>
-                    <button class="menu-card pressable" onclick="switchSection('meals')" aria-label="الوجبات">
-                        <i class="fas fa-utensils"></i><span>الوجبات</span>
-                    </button>
-                    <button class="menu-card pressable" onclick="switchSection('calculator')" aria-label="حاسبة المعدل">
-                        <i class="fas fa-calculator"></i><span>حاسبة المعدل</span>
-                    </button>
-                    <button class="menu-card pressable" onclick="switchSection('exams')" aria-label="الامتحانات">
-                        <i class="fas fa-calendar-days"></i><span>الامتحانات</span>
-                    </button>
-                    <button class="menu-card pressable" onclick="switchSection('schedule')" aria-label="الرزنامة">
-                        <i class="fas fa-calendar-week"></i><span>الرزنامة</span>
-                    </button>
-                    <button class="menu-card pressable" onclick="switchSection('transport')" aria-label="النقل">
-                        <i class="fas fa-bus"></i><span>النقل</span>
-                    </button>
-                    <button class="menu-card pressable" onclick="goCC()" aria-label="التقييم المستمر">
-                        <i class="fas fa-pen-ruler"></i><span>التقييم المستمر</span>
-                    </button>
-                    <button class="menu-card pressable" onclick="goExamMarks()" aria-label="علامات الامتحانات">
-                        <i class="fas fa-clipboard-check"></i><span>علامات الامتحانات</span>
-                    </button>
-                    <button class="menu-card pressable" onclick="switchSection('profile360')" aria-label="ملفي الشامل">
-                        <i class="fas fa-id-badge"></i><span>ملفي الشامل</span>
-                    </button>
-                    <button class="menu-card pressable" onclick="switchSection('inscription')" aria-label="تسجيلاتي">
-                        <i class="fas fa-clipboard-list"></i><span>تسجيلاتي</span>
-                    </button>
-                    <button class="menu-card pressable" onclick="switchSection('admin')" id="admin-tile" aria-label="لوحة التحكم" style="display:none;">
-                        <i class="fas fa-cog"></i><span>لوحة التحكم</span>
-                    </button>
+                <div class="dh-wrap">
+                    <header class="dh-greet">
+                        <div class="dh-seal"><svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><polygon points="32,9 58,21 32,33 6,21" fill="#D9A93F"/><path d="M22 27.5v6.8c0 5.2 20 5.2 20 0v-6.8l-10 4.2z" fill="currentColor"/><rect x="54.8" y="21" width="2.6" height="14.5" rx="1.3" fill="#A87B22"/><circle cx="56.1" cy="38.2" r="3.1" fill="#A87B22"/><path d="M10 43.5c7-3.6 15-3.6 22 0 7-3.6 15-3.6 22 0v9.5c-7-3.6-15-3.6-22 0-7-3.6-15-3.6-22 0z" fill="currentColor"/><path d="M32 43.5v9.5" stroke="#A87B22" stroke-width="2.1" stroke-linecap="round" fill="none"/></svg></div>
+                        <p class="dh-ctx">إليك ملخص يومك الجامعي</p>
+                        <h1 class="dh-who" id="dh-who">أهلًا بك</h1>
+                        <p class="dh-idsub" id="dh-idsub"></p>
+                    </header>
+                    <section class="dh-today" aria-label="اليوم">
+                        <div class="dh-sech">
+                            <h2>اليوم</h2>
+                            <div class="dh-sech-meta">
+                                <span id="hh-date"></span>
+                                <span class="dh-cnt" id="dh-cnt"></span>
+                            </div>
+                        </div>
+                        <div id="dh-next" class="dh-hero-card"></div>
+                        <div class="dh-tlwrap" id="dh-tlwrap"><div id="dh-today"></div></div>
+                    </section>
+                    <section aria-label="وصول سريع">
+                        <h2 class="dh-minihead">وصول سريع</h2>
+                        <div class="dh-qa">
+                            <button class="dh-qa-feat pressable" onclick="switchSection('grades')" aria-label="كشف النقاط">
+                                <span class="dh-sv-ico sx-gold"><i class="fas fa-file-lines"></i></span>
+                                <span class="dh-qa-m"><span class="dh-qa-fname">كشف النقاط</span><small>النقاط والمعدلات</small></span>
+                                <i class="fas fa-chevron-left dh-qa-go"></i>
+                            </button>
+                            <div class="dh-qa-grid">
+                                <button class="dh-qa-cell pressable" onclick="switchSection('schedule')" aria-label="الرزنامة">
+                                    <span class="dh-sv-ico sx-blue"><i class="fas fa-calendar-week"></i></span>
+                                    <span class="dh-qa-m"><span>الرزنامة</span></span>
+                                </button>
+                                <button class="dh-qa-cell pressable" onclick="goStudentCard()" aria-label="بطاقة الطالب">
+                                    <span class="dh-sv-ico sx-gold"><i class="fas fa-id-card"></i></span>
+                                    <span class="dh-qa-m"><span>بطاقة الطالب</span></span>
+                                </button>
+                            </div>
+                            <button class="dh-qa-wide pressable" onclick="switchSection('library')" aria-label="المكتبة">
+                                <span class="dh-sv-ico sx-gold"><i class="fas fa-book-open"></i></span>
+                                <span class="dh-qa-m"><span class="dh-qa-fname">المكتبة</span><small>مكتبة رقمية</small></span>
+                                <i class="fas fa-chevron-left dh-qa-go"></i>
+                            </button>
+                        </div>
+                    </section>
+                    <section class="dh-sv-sec" aria-label="الخدمات">
+                        <h2 class="dh-minihead">الخدمات</h2>
+                        <p class="dh-sv-head">النتائج الدراسية</p>
+                        <div class="dh-sv">
+                            <button class="dh-sv-row pressable" onclick="goExamMarks()" aria-label="علامات الامتحانات"><span class="dh-sv-ico sx-gold"><i class="fas fa-clipboard-check"></i></span><span class="dh-sv-name">علامات الامتحانات</span><i class="fas fa-chevron-left dh-go"></i></button>
+                            <button class="dh-sv-row pressable" onclick="goCC()" aria-label="التقييم المستمر"><span class="dh-sv-ico sx-blue"><i class="fas fa-pen-ruler"></i></span><span class="dh-sv-name">التقييم المستمر</span><i class="fas fa-chevron-left dh-go"></i></button>
+                            <button class="dh-sv-row pressable" onclick="switchSection('calculator')" aria-label="حاسبة المعدل"><span class="dh-sv-ico sx-gold"><i class="fas fa-calculator"></i></span><span class="dh-sv-name">حاسبة المعدل</span><i class="fas fa-chevron-left dh-go"></i></button>
+                        </div>
+                        <p class="dh-sv-head">الحياة الجامعية</p>
+                        <div class="dh-sv">
+                            <button class="dh-sv-row pressable" onclick="switchSection('meals')" aria-label="الوجبات"><span class="dh-sv-ico sx-green"><i class="fas fa-utensils"></i></span><span class="dh-sv-name">الوجبات</span><i class="fas fa-chevron-left dh-go"></i></button>
+                            <button class="dh-sv-row pressable" onclick="switchSection('transport')" aria-label="النقل الحي"><span class="dh-sv-ico sx-blue"><i class="fas fa-bus"></i></span><span class="dh-sv-name">النقل الحي</span><i class="fas fa-chevron-left dh-go"></i></button>
+                            <button class="dh-sv-row pressable" onclick="switchSection('exams')" aria-label="الامتحانات"><span class="dh-sv-ico sx-amber"><i class="fas fa-calendar-days"></i></span><span class="dh-sv-name">الامتحانات</span><i class="fas fa-chevron-left dh-go"></i></button>
+                        </div>
+                        <p class="dh-sv-head">الملف الجامعي</p>
+                        <div class="dh-sv">
+                            <button class="dh-sv-row pressable" onclick="switchSection('profile360')" aria-label="ملفي الشامل"><span class="dh-sv-ico sx-blue"><i class="fas fa-id-badge"></i></span><span class="dh-sv-name">ملفي الشامل</span><i class="fas fa-chevron-left dh-go"></i></button>
+                            <button class="dh-sv-row pressable" onclick="switchSection('inscription')" aria-label="تسجيلاتي"><span class="dh-sv-ico sx-gold"><i class="fas fa-clipboard-list"></i></span><span class="dh-sv-name">تسجيلاتي</span><i class="fas fa-chevron-left dh-go"></i></button>
+                            <button class="dh-sv-row pressable" onclick="switchSection('admin')" id="admin-tile" aria-label="لوحة التحكم" style="display:none;"><span class="dh-sv-ico sx-neutral"><i class="fas fa-cog"></i></span><span class="dh-sv-name">لوحة التحكم</span><i class="fas fa-chevron-left dh-go"></i></button>
+                        </div>
+                    </section>
                 </div>
             </section>
 
@@ -437,7 +494,7 @@
             <section id="section-schedule" class="section">
                 <!-- Mobile day picker (hidden on desktop) -->
                 <div class="schedule-day-picker" id="schedule-day-picker">
-                    <div class="day-picker-title"><i class="fas fa-calendar-day"></i> اختر اليوم</div>
+                    <div class="day-picker-title"><span><i class="fas fa-calendar-day"></i> اختر اليوم</span><button type="button" id="sched-edit-btn" class="sched-edit-btn" onclick="togglePtsEditMode()"><i class="fas fa-pen"></i> تعديل الجدول</button></div>
                     <div class="day-picker-grid">
                         <button class="day-btn" data-day="0" onclick="selectScheduleDay(0)"><i class="fas fa-sun"></i> الأحد</button>
                         <button class="day-btn" data-day="1" onclick="selectScheduleDay(1)"><i class="fas fa-cloud-sun"></i> الاثنين</button>
@@ -646,7 +703,7 @@
                             <i class="fas fa-right-from-bracket"></i>
                         </button>
                     </div>
-                    <div style="padding: 16px;">
+                    <div style="padding: 16px;" id="grades-body-wrap">
                         <div class="grades-toolbar hidden" id="grades-toolbar-wrap">
                             <select id="grades-card-select" class="card-select" onchange="onProgresCardChange(this.value)"></select>
                             <button class="btn btn-ghost btn-sm" onclick="progresLogout()">
@@ -828,19 +885,6 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});
         }
-    </script>
-    <script>
-        (function () {
-            // تموّج ذهبي عند النقر — يحسب موقع النقر في كل عنصر قابل للضغط (GPU-only)
-            var sel = '.pressable, .tile, .btn, .lib-row, .lib-select, .lib-file, .ds-result, .bn-btn, .appbar-btn, .account-list button, .stat-card, .calc-module-card, .file-card, .subject-card';
-            document.addEventListener('pointerdown', function (e) {
-                var t = e.target.closest ? e.target.closest(sel) : null;
-                if (!t) return;
-                var r = t.getBoundingClientRect();
-                t.style.setProperty('--rx', ((e.clientX - r.left) / r.width * 100) + '%');
-                t.style.setProperty('--ry', ((e.clientY - r.top) / r.height * 100) + '%');
-            }, { passive: true });
-        })();
     </script>
 </body>
 </html>

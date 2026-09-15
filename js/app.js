@@ -264,7 +264,6 @@ function bootDataPhase() {
     }).catch(() => {});
 }
 document.addEventListener('DOMContentLoaded', async () => {
-    try { initBottomNavSwipe(); } catch (e) {}
     applyTheme(APP_STATE.theme);
     loadProgresCache();
     // Slow data loads run in the background so the auth decision below
@@ -892,98 +891,6 @@ function navigateToSection(section) {
     }
 }
 
-// ============================================
-// SWIPE NAVIGATION — bottom-nav sections only.
-// Physical direction: swipe left → next, swipe right → previous.
-// Guards: vertical scroll wins, inputs/modals/scroll-x containers/menu
-// never trigger. Same calls as tapping the bottom-nav buttons.
-// ============================================
-const BN_SWIPE_ORDER = [
-    { key: 'home', go: () => switchSection('home') },
-    { key: 'grades', go: () => switchSection('grades') },
-    { key: 'card', go: () => { if (typeof goStudentCard === 'function') goStudentCard(); } },
-    { key: 'library', go: () => switchSection('library') },
-    { key: 'account', go: () => switchSection('account') },
-];
-
-function bnSwipeKey() {
-    let k = { home: 'home', grades: 'grades', account: 'account', library: 'library' }[APP_STATE.currentSection] || '';
-    if (APP_STATE.currentSection === 'grades' && typeof progresCurrentView !== 'undefined' && progresCurrentView === 'card') k = 'card';
-    return k;
-}
-
-function bnSwipeAnim(dir) {
-    try {
-        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        const pane = document.getElementById('app-main');
-        if (!pane) return;
-        const cls = dir > 0 ? 'sw-in-next' : 'sw-in-prev';
-        pane.classList.remove('sw-in-next', 'sw-in-prev');
-        void pane.offsetWidth;
-        pane.classList.add(cls);
-        const done = () => pane.classList.remove(cls);
-        pane.addEventListener('animationend', done, { once: true });
-        setTimeout(done, 400);
-    } catch (e) {}
-}
-
-function initBottomNavSwipe() {
-    const pane = document.getElementById('app-main');
-    if (!pane || pane.dataset.swipeInit) return;
-    pane.dataset.swipeInit = '1';
-    let sx = 0, sy = 0, st = 0, tracking = false;
-    const INPUT_SEL = 'input,textarea,select,option,[contenteditable="true"],[contenteditable=""]';
-    function scrollXAncestor(el) {
-        while (el && el !== pane && el !== document.body) {
-            if (el.scrollWidth > el.clientWidth + 8) {
-                let ox = '';
-                try { ox = getComputedStyle(el).overflowX; } catch (e) {}
-                if (ox === 'auto' || ox === 'scroll') return true;
-            }
-            el = el.parentElement;
-        }
-        return false;
-    }
-    pane.addEventListener('touchstart', (e) => {
-        tracking = false;
-        try {
-            if (!e.touches || e.touches.length !== 1) return;
-            const t = e.target;
-            if (t && t.closest) {
-                if (t.closest(INPUT_SEL)) return;
-                if (t.closest('.modal-overlay,.lx-m-modal,.pomo-panel,.app-menu')) return;
-            }
-            if (document.querySelector('.modal-overlay:not(.hidden),.lx-m-modal')) return;
-            const menu = document.getElementById('app-menu');
-            if (menu && !menu.classList.contains('hidden')) return;
-            if (scrollXAncestor(t)) return;
-            if (!bnSwipeKey()) return;
-            const touch = e.touches[0];
-            sx = touch.clientX; sy = touch.clientY; st = Date.now();
-            tracking = true;
-        } catch (err) { tracking = false; }
-    }, { passive: true });
-    pane.addEventListener('touchend', (e) => {
-        if (!tracking) return;
-        tracking = false;
-        try {
-            const ch = e.changedTouches;
-            if (!ch || ch.length !== 1) return;
-            const dx = ch[0].clientX - sx;
-            const dy = ch[0].clientY - sy;
-            if (Date.now() - st > 900) return;
-            const ax = Math.abs(dx), ay = Math.abs(dy);
-            if (ax < 72 || ax < ay * 1.4) return;
-            const idx = BN_SWIPE_ORDER.findIndex(o => o.key === bnSwipeKey());
-            if (idx === -1) return;
-            const next = dx < 0 ? idx + 1 : idx - 1;
-            if (next < 0 || next >= BN_SWIPE_ORDER.length) return;
-            bnSwipeAnim(dx < 0 ? 1 : -1);
-            BN_SWIPE_ORDER[next].go();
-        } catch (err) {}
-    }, { passive: true });
-}
-
 window.addEventListener('hashchange', () => {
     const app = document.getElementById('main-app');
     if (!app || app.classList.contains('hidden')) return;
@@ -1564,9 +1471,14 @@ function progresFirstName() {
 }
 function renderDhIdentity() {
     const who = document.getElementById('dh-who');
-    if (!who) return;
+    const idsub = document.getElementById('dh-idsub');
+    if (!who && !idsub) return;
+    let reg = '';
+    try { reg = localStorage.getItem('user_name') || ''; } catch (e) {}
+    if (!reg) { try { const s = getProgresSession(); reg = (s && s.name) || ''; } catch (e) {} }
     const first = progresFirstName();
-    who.textContent = first ? ('أهلًا، ' + first) : 'أهلًا بك';
+    if (who) who.textContent = first ? ('أهلًا، ' + first) : 'أهلًا بك';
+    if (idsub) idsub.textContent = reg ? ('رقم التسجيل · ' + reg) : '';
 }
 function renderHomeDashboard() {
     renderDhIdentity();
