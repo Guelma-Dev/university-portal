@@ -687,7 +687,7 @@ window.PortalUpdateUI = (function () {
         } else if (st.name === 'update_available' && st.remote) {
             h = '<div class="upd-state"><p class="upd-avail"><i class="fas fa-arrow-up"></i> تحديث متوفر</p>'
                 + '<p class="upd-ver">الإصدار ' + esc(st.remote.versionName) + '</p>' + srcLine(st.remote)
-                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.startDownload()"><i class="fas fa-download"></i> تحديث</button></div>';
+                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openInBrowser()"><i class="fas fa-download"></i> تنزيل التحديث</button></div>';
         } else if (st.name === 'downloading') {
             var p = st.progress || {};
             h = '<div class="upd-state"><p class="upd-msg"><i class="fas fa-spinner fa-spin"></i> جاري تنزيل التحديث...</p>'
