@@ -153,6 +153,14 @@ body.native-app .sec-card:active {
     transition-duration: 120ms;
 }
 
+/* Student card owns its transform for centering (translate(-50%,-50%)).
+   The global press squash above must not replace it, or the card jumps
+   out of place while held. ID specificity beats the [role='button'] rule
+   (and the reduced-motion override below), so no !important is needed. */
+body.native-app #sid-card:active {
+    transform: translate(-50%, -50%);
+}
+
 /* Keyboard-visible focus (accessibility): never hide focus rings */
 body.native-app button:focus-visible,
 body.native-app .tile:focus-visible,
