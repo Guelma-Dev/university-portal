@@ -11,7 +11,7 @@
 window.PortalUpdate = (function () {
     'use strict';
 
-    var LIVE_ORIGIN = 'https://university-portal-gv78.onrender.com';
+    var LIVE_ORIGIN = 'https://guelma-dev.github.io/university-portal';
     var LS_DL = 'portal_update_dl';
     var LS_CHECK = 'portal_update_check';
     var CHECK_TTL = 6 * 3600 * 1000;
@@ -61,7 +61,7 @@ window.PortalUpdate = (function () {
         if (typeof window.showToast === 'function') window.showToast(msg, type || 'info');
     }
 
-    var UPDATE_HOST = 'university-portal-gv78.onrender.com';
+    var UPDATE_HOST = 'guelma-dev.github.io';
     function urlHost(u) {
         try { return new URL(u).host.toLowerCase(); } catch (e) { return ''; }
     }
