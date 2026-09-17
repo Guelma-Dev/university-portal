@@ -138,6 +138,53 @@ async function loadExams() {
         renderExams(sem);
     }));
     DataCache.set('exams_data', examsData);
+    renderMinistryExams();
+}
+
+// برنامج الامتحانات من الوزارة (planningSession): دورات + مواد + علامات.
+// يظهر فوق تواريخ الإدارة عند توفر جلسة Progres، وإلا يبقى المخفي.
+async function renderMinistryExams() {
+    const box = document.getElementById('exam-ministry');
+    if (!box) return;
+    box.innerHTML = '';
+    let session = null;
+    try { session = (typeof getProgresSession === 'function') ? getProgresSession() : null; } catch (e) {}
+    if (!session || !session.uuid || typeof progresFetch !== 'function') return;
+    try {
+        let cards = Array.isArray(session.cards) ? session.cards : null;
+        if (!cards) {
+            cards = await progresFetch('cards');
+            if (!Array.isArray(cards)) return;
+        }
+        const all = [];
+        for (const card of cards.slice(0, 4)) {
+            const id = card && (card.id ?? card);
+            if (id === undefined || id === null) continue;
+            try {
+                const list = await progresFetch(`exams/${id}`);
+                if (Array.isArray(list)) {
+                    const label = card.anneeAcademiqueCode || card.anneeAcademique || '';
+                    list.forEach(g => all.push({ g, label }));
+                }
+            } catch (e) { /* card without published notes */ }
+        }
+        if (!all.length) return;
+        const bySession = {};
+        all.forEach(({ g, label }) => {
+            const s = g.planningSessionIntitule || g.sessionLibelle || label || 'دورة الامتحانات';
+            (bySession[s] = bySession[s] || []).push(g);
+        });
+        const H3 = 'color: #D4AF37; margin: 20px 10px 10px 10px; font-size: 16px; border-bottom: 1px solid #D4AF37; padding-bottom: 8px; text-align: right;';
+        box.innerHTML = Object.entries(bySession).map(([sess, items]) => `
+            <h3 style="${H3}"><i class="fas fa-building-columns"></i> ${escHtml(sess)}</h3>
+            <div class="semester-items">${items.map(({ g }) => badgeRow(
+                g.matiereLibelleAr || g.mcLibelleAr || g.mcLibelleFr || 'مادة',
+                gradeBadge(g.noteExamen, g.noteExamen == null || g.noteExamen >= 10),
+                `${g.dateExamen ? `<span class="pbadge pb-dim">${escHtml(g.dateExamen)}</span>` : ''}` +
+                `${g.heureExamen ? `<span class="pbadge pb-dim">${escHtml(g.heureExamen)}</span>` : ''}` +
+                `${g.salleExamen ? `<span class="pbadge pb-info">${escHtml(g.salleExamen)}</span>` : ''}`
+            )).join('')}</div>`).join('');
+    } catch (e) { /* ministry unreachable: admin dates remain */ }
 }
 
 function renderExams(sem) {
@@ -862,6 +909,9 @@ function navigateToSection(section) {
         transport: 'النقل الحي',
         meals: 'الوجبات',
         profile360: 'ملفي الشامل',
+        groupe: 'المجموعة والفوج',
+        coeffs: 'النسب المئوية للمقاييس',
+        congesx: 'العطلة الأكاديمية',
     };
     const sub = $id('appbar-subtitle');
     if (sub) sub.textContent = titles[section] || '';
@@ -874,6 +924,7 @@ function navigateToSection(section) {
         window.LibraryView.open();
     }
     if (section === 'account') loadAccountProfile();
+    try { if (section === 'account' && typeof renderProgresAccounts === 'function') renderProgresAccounts(); } catch (e) {}
     try { if (section === 'account' && window.PortalNotifyUI) window.PortalNotifyUI.paint(); } catch (e) {}
     try { if (section === 'account' && window.PortalUpdateUI) window.PortalUpdateUI.refresh(); } catch (e) {}
     if (section === 'home') renderHomeDashboard();
@@ -1024,6 +1075,80 @@ function goCC() {
 function goExamMarks() {
     switchSection('grades');
     setTimeout(() => { if (getProgresSession()) openProgresView('exams'); }, 250);
+}
+
+function goDebts() {
+    switchSection('grades');
+    setTimeout(() => { if (getProgresSession()) openProgresView('debts'); }, 250);
+}
+
+function _normAr(s) {
+    return String(s == null ? '' : s).replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').toLowerCase();
+}
+
+// الدورة الاستدراكية: فلترة عناصر النقاط حسب حقل الدورة (عربي/فرنسي)
+function _isRattrap(o) {
+    if (!o || typeof o !== 'object') return false;
+    const keys = ['ncTypeSessionLibelleFr', 'ncTypeSessionLibelleAr', 'session', 'typeSession', 'sessionLibelle', 'llPeriode', 'llPeriodeAr', 'periodeLibelleAr', 'periodeLibelleFr'];
+    for (const k of keys) {
+        const v = _normAr(o[k]);
+        if (v && (v.indexOf('rattrap') !== -1 || v.indexOf('استدراك') !== -1 || v.indexOf('استدراكية') !== -1)) return true;
+    }
+    return false;
+}
+
+async function fetchAcademicDettes() {
+    try {
+        const s = getProgresSession();
+        if (!s || !s.uuid || !s.token) return null;
+        const res = await fetch(`${API_BASE}/api/academic/dettes?uuid=${encodeURIComponent(s.uuid)}`, {
+            headers: { 'Authorization': s.token },
+        });
+        if (!res.ok) return null;
+        const data = await res.json().catch(() => null);
+        return Array.isArray(data) ? data : [];
+    } catch (e) { return null; }
+}
+
+function renderDebts(exams, cc, dettes) {
+    const rattExams = (Array.isArray(exams) ? exams : []).filter(_isRattrap);
+    const rattCc = (Array.isArray(cc) ? cc : []).filter(_isRattrap);
+    const detList = Array.isArray(dettes) ? dettes.filter(Boolean) : null;
+    const rattHtml = (rattExams.length || rattCc.length)
+        ? renderExamList(rattExams) + renderCcGroups(rattCc)
+        : '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط استدراكية منشورة بعد</p></div>';
+    const detHtml = detList === null
+        ? '<div class="mobile-empty"><i class="fas fa-triangle-exclamation"></i><p>تعذر جلب الديون حالياً</p></div>'
+        : detList.length
+            ? detList.map(d => {
+                if (d && typeof d === 'object') {
+                    const name = d.mcLibelleAr || d.mcLibelleFr || d.matiere || d.libelle || 'مقياس';
+                    return badgeRow(name, `<span class="pbadge pb-fail">دين</span>`);
+                }
+                return badgeRow(String(d), `<span class="pbadge pb-fail">دين</span>`);
+            }).join('')
+            : '<div class="mobile-empty"><i class="fas fa-circle-check"></i><p>لا توجد ديون — وضعيتك سليمة</p></div>';
+    return `
+        <h4 class="grades-section-title"><i class="fas fa-file-invoice-dollar"></i> الديون</h4>
+        <div class="exam-tabs">
+            <button class="exam-tab active" id="debts-tab-ratt" onclick="switchDebtsTab('ratt')">الدورة الاستدراكية</button>
+            <button class="exam-tab" id="debts-tab-det" onclick="switchDebtsTab('det')">الديون</button>
+        </div>
+        <div id="debts-pane-ratt">${rattHtml}</div>
+        <div id="debts-pane-det" class="hidden">${detHtml}</div>`;
+}
+
+function switchDebtsTab(which) {
+    const r = document.getElementById('debts-pane-ratt');
+    const d = document.getElementById('debts-pane-det');
+    const tr = document.getElementById('debts-tab-ratt');
+    const td = document.getElementById('debts-tab-det');
+    if (!r || !d) return;
+    const showR = which !== 'det';
+    r.classList.toggle('hidden', !showR);
+    d.classList.toggle('hidden', showR);
+    if (tr) tr.classList.toggle('active', showR);
+    if (td) td.classList.toggle('active', !showR);
 }
 
 // ============================================
@@ -2121,6 +2246,76 @@ function updatePomoUI() {
 // back to the login screen (Progres JWTs cannot be refreshed without login).
 // ============================================
 const PROGRES_SESSION_KEY = 'progres_session';
+const PROGRES_ACCOUNTS_KEY = 'progres_accounts';
+
+// حسابات Progres المحفوظة (متعددة): [{token,uuid,etab,name,addedAt}]
+function getProgresAccounts() {
+    try {
+        const arr = JSON.parse(localStorage.getItem(PROGRES_ACCOUNTS_KEY) || '[]');
+        return Array.isArray(arr) ? arr.filter(a => a && a.uuid && a.token) : [];
+    } catch (e) { return []; }
+}
+
+function saveProgresAccounts(list) {
+    try { localStorage.setItem(PROGRES_ACCOUNTS_KEY, JSON.stringify(list.slice(0, 5))); } catch (e) {}
+}
+
+function rememberProgresAccount(session) {
+    if (!session || !session.uuid || !session.token) return;
+    const list = getProgresAccounts().filter(a => String(a.uuid) !== String(session.uuid));
+    list.unshift({ token: session.token, uuid: session.uuid, etab: session.etab || '', name: session.name || '', addedAt: Date.now() });
+    saveProgresAccounts(list);
+}
+
+function switchProgresAccount(uuid) {
+    const acc = getProgresAccounts().find(a => String(a.uuid) === String(uuid));
+    if (!acc) return;
+    setProgresSession({ token: acc.token, uuid: acc.uuid, etab: acc.etab, name: acc.name });
+    clearProgresCache();
+    renderGradesSection();
+    if (typeof greetStudent === 'function') { try { greetStudent(); } catch (e) {} }
+    showToast('تم التبديل إلى حساب ' + (acc.name || 'آخر'), 'success');
+    renderProgresAccounts();
+}
+
+function removeProgresAccount(uuid) {
+    saveProgresAccounts(getProgresAccounts().filter(a => String(a.uuid) !== String(uuid)));
+    const cur = getProgresSession();
+    if (cur && String(cur.uuid) === String(uuid)) progresLogout();
+    else renderProgresAccounts();
+}
+
+function renderProgresAccounts() {
+    const box = document.getElementById('progres-accounts');
+    if (!box) return;
+    const cur = getProgresSession();
+    const list = getProgresAccounts();
+    if (!list.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<p class="set-head">حسابات Progres</p>' + list.map(a => {
+        const active = cur && String(cur.uuid) === String(a.uuid);
+        const label = escHtml(a.name || a.uuid.slice(0, 8) + '…');
+        return `<div class="set-row">
+            <span class="set-lbl"><i class="fas fa-user-graduate"></i>${label}${active ? ' <span class="pbadge pb-pass">الحالي</span>' : ''}</span>
+            <span style="display:flex;gap:8px;">
+                ${active ? '' : `<button type="button" class="btn btn-ghost btn-sm" onclick="switchProgresAccount('${escHtml(a.uuid)}')">تبديل</button>`}
+                <button type="button" class="btn btn-ghost btn-sm" onclick="removeProgresAccount('${escHtml(a.uuid)}')"><i class="fas fa-trash"></i></button>
+            </span>
+        </div>`;
+    }).join('') + '<p class="set-note">لإضافة حساب جديد: سجّل الخروج ثم ادخل بالحساب الآخر — سيُحفظ تلقائياً هنا.</p>';
+}
+
+function openQuittance() {
+    let uuid = '';
+    try { const s = getProgresSession(); uuid = (s && s.uuid) || ''; } catch (e) {}
+    const url = 'https://quittance.mesrs.dz/api/qitus' + (uuid ? ('?uuid=' + encodeURIComponent(uuid)) : '');
+    const openExt = (u) => {
+        try {
+            if (window.PortalNative && typeof window.PortalNative.openInBrowser === 'function') { window.PortalNative.openInBrowser(u); return; }
+        } catch (e) {}
+        try { window.open(u, '_blank'); } catch (e) { showToast('تعذر فتح الرابط', 'error'); }
+    };
+    openExt(url);
+}
 
 function getProgresSession() {
     try {
@@ -2142,6 +2337,7 @@ function getValidProgresSession() {
 
 function setProgresSession(session) {
     localStorage.setItem(PROGRES_SESSION_KEY, JSON.stringify(session));
+    rememberProgresAccount(session);
     // Keep the native auto-booker armed with the current ministry token.
     try {
         const NP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.NotifyPlugin;
@@ -2171,6 +2367,7 @@ function progresLogout() {
     } catch (e) {}
     try { if (window.PortalNotify) window.PortalNotify.onLogout(); } catch (e) {}
     renderGradesSection();
+    try { if (typeof renderProgresAccounts === 'function') renderProgresAccounts(); } catch (e) {}
     showToast('تم إنهاء جلسة بروقرس', 'info');
 }
 
@@ -2786,7 +2983,15 @@ async function openProgresView(view) {
                 ? (renderExamList(c.data.exams.status === 'fulfilled' ? c.data.exams.value : []) || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط امتحانات بعد</p></div>')
                 : view === 'cc'
                     ? (renderCcGroups(c.data.cc.status === 'fulfilled' ? c.data.cc.value : []) || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط تحكم مستمر بعد</p></div>')
-                    : (() => {
+                    : view === 'debts'
+                        ? (await (async () => {
+                            const dettes = await fetchAcademicDettes();
+                            return renderDebts(
+                                c.data.exams.status === 'fulfilled' ? c.data.exams.value : [],
+                                c.data.cc.status === 'fulfilled' ? c.data.cc.value : [],
+                                dettes);
+                        })())
+                        : (() => {
                         const body = c.notice + renderAnnual(c.data.annual, c.cardLabel) + renderTranscripts(c.data.transcripts.status === 'fulfilled' ? c.data.transcripts.value : []);
                         return body.trim() ? body : '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط منشورة بعد</p></div>';
                     })());

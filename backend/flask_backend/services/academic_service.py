@@ -577,3 +577,35 @@ def configuration():
     uuid_, token = args
     return _cached_fetch(f'me:{uuid_}:configuration', '/configuration',
                          token, TTL_CONFIG)
+
+
+@bp.get('/groupe')
+def groupe():
+    args, err = _auth_args()
+    if err:
+        return err
+    uuid_, token = args
+    dia = (request.args.get('dia') or '').strip()
+    if not dia or len(dia) > 40:
+        return _err('dia مطلوب', 400)
+    denied = assert_dia_owned(_jwt_claims(token), dia)
+    if denied:
+        return denied
+    return _cached_fetch(f'me:{uuid_}:groupe:{dia}',
+                         f'/dia/{dia}/groups',
+                         token, TTL_DEFAULT, dia=dia, uuid_suffix=uuid_)
+
+
+@bp.get('/coefficients')
+def coefficients():
+    args, err = _auth_args()
+    if err:
+        return err
+    uuid_, token = args
+    oid = (request.args.get('oid') or '').strip()
+    nid = (request.args.get('nid') or '').strip()
+    if not oid.isdigit() or not nid.isdigit() or len(oid) > 20 or len(nid) > 20:
+        return _err('oid و nid مطلوبان', 400)
+    return _cached_fetch(f'me:{uuid_}:coeffs:{oid}:{nid}',
+                         f'/offreFormation/{oid}/niveau/{nid}/Coefficients',
+                         token, TTL_DEFAULT, uuid_suffix=uuid_)

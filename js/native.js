@@ -552,7 +552,7 @@
         if ((m = /^\/api\/progres\/logo\/(\d+)$/.exec(p))) return _routeLogo(m[1], url);
         if ((m = /^\/api\/progres\/me$/.exec(p))) return _routeMe(url);
 
-        if ((m = /^\/api\/academic\/(quitus|dettes|absences|exclusions|conges|emploi|transport|setram|hebergement|banner)$/.exec(p))) {
+        if ((m = /^\/api\/academic\/(quitus|dettes|absences|exclusions|conges|emploi|transport|setram|hebergement|banner|groupe|coefficients)$/.exec(p))) {
             return _routeAcademicGet(m[1], url);
         }
         if (p === '/api/academic/recours' && method === 'POST') return _routeRecours(body);
@@ -686,7 +686,9 @@
         const token = String(session.token || '');
         if (!token) return _errResp(401, 'جلسة غير صالحة أو منتهية الصلاحية، أعد تسجيل الدخول');
         const dia = (url.searchParams.get('dia') || '').trim();
-        const cacheKey = 'acad:' + uuid + ':' + route + ':' + dia;
+        const oid = (url.searchParams.get('oid') || '').trim();
+        const nid = (url.searchParams.get('nid') || '').trim();
+        const cacheKey = 'acad:' + uuid + ':' + route + ':' + dia + ':' + oid + ':' + nid;
         const cached = _cacheGet(cacheKey, route === 'banner' ? TTL.banner : TTL.academic);
         if (cached) return _resp(200, JSON.stringify(cached), 'application/json; charset=utf-8', null);
 
@@ -701,9 +703,12 @@
         else if (route === 'setram') path = '/getCardeTransportSetram/' + encodeURIComponent(uuid) + '/' + encodeURIComponent(dia);
         else if (route === 'hebergement') path = '/bac/' + encodeURIComponent(uuid) + '/demandesHebregement';
         else if (route === 'banner') path = '/bannerInformations';
+        else if (route === 'groupe') path = '/dia/' + encodeURIComponent(dia) + '/groups';
+        else if (route === 'coefficients') path = '/offreFormation/' + encodeURIComponent(oid) + '/niveau/' + encodeURIComponent(nid) + '/Coefficients';
         else return _errResp(404, 'لا يوجد');
 
-        if (['emploi', 'transport', 'setram'].indexOf(route) !== -1 && !dia) return _errResp(400, 'dia مطلوب');
+        if (['emploi', 'transport', 'setram', 'groupe'].indexOf(route) !== -1 && !dia) return _errResp(400, 'dia مطلوب');
+        if (route === 'coefficients' && (!/^\d{1,20}$/.test(oid) || !/^\d{1,20}$/.test(nid))) return _errResp(400, 'oid و nid مطلوبان');
 
         try {
             const retrySuffix = route === 'banner' ? null : '/' + encodeURIComponent(uuid);

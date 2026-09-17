@@ -18,7 +18,7 @@ window.PortalNotify = (function () {
     var MEAL_NAMES = { 1: 'فطور الصباح', 2: 'الغداء', 3: 'العشاء' };
 
     function defaults() {
-        return { enabled: false, mealAuto: false, classRemind: false, clsSig: '', hour: 18, minute: 0, meals: [2], depotId: 0, depotName: '' };
+        return { enabled: false, mealAuto: false, classRemind: false, examRemind: false, examSig: '', clsSig: '', hour: 18, minute: 0, meals: [2], depotId: 0, depotName: '' };
     }
 
     function load() {
@@ -159,9 +159,10 @@ window.PortalNotify = (function () {
     // scheduling from saved prefs without touching the prefs themselves.
     async function restore() {
         var p = load();
-        if (!p.mealAuto && !p.classRemind) return;
+        if (!p.mealAuto && !p.classRemind && !p.examRemind) return;
         if (p.mealAuto) await applySchedule();
         if (p.classRemind) await rebuildClassReminders();
+        if (p.examRemind) await rebuildExamReminders();
     }
 
     // Logout must not leave orphaned tasks behind (booking needs the
@@ -261,6 +262,90 @@ window.PortalNotify = (function () {
         if (pl) { try { await pl.cancelReminders({ tag: 'cls' }); } catch (e) {} }
     }
 
+    // Exam reminders: source = admin exam dates (/api/exams, guest fallback).
+    // One alarm per exam, evening before (20:00). Ministry notes carry no
+    // dates, so published admin dates are the only schedulable source.
+    async function fetchAdminExams() {
+        var out = [];
+        var urls = [apiBase() + '/api/exams', apiBase() + '/api/guest/exams'];
+        for (var i = 0; i < urls.length; i++) {
+            try {
+                var headers = {};
+                try {
+                    var t = localStorage.getItem('admin_token');
+                    if (t && urls[i].indexOf('/guest/') === -1) headers['Authorization'] = 'Bearer ' + t;
+                } catch (e) {}
+                var res = await fetch(urls[i], { headers: headers });
+                if (!res.ok) continue;
+                var data = await res.json().catch(function () { return null; });
+                ['sem1', 'sem2'].forEach(function (k) {
+                    if (data && Array.isArray(data[k])) out = out.concat(data[k]);
+                });
+                if (Array.isArray(data)) out = out.concat(data);
+                if (out.length) break;
+            } catch (e) {}
+        }
+        return out;
+    }
+
+    function examAt(ex) {
+        try {
+            var ds = String(ex.date || ex.exam_date || '').trim();
+            if (!ds) return 0;
+            var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ds);
+            if (!m) return 0;
+            var at = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 20, 0, 0).getTime();
+            return at;
+        } catch (e) { return 0; }
+    }
+
+    async function rebuildExamReminders() {
+        var p = load();
+        var pl = plugin();
+        if (!p.enabled || !p.examRemind || !isNative() || !pl) {
+            if ((p.examSig || '') !== '') {
+                p.examSig = '';
+                save(p);
+                if (pl) { try { await pl.cancelReminders({ tag: 'exam' }); } catch (e) {} }
+            }
+            return { ok: false };
+        }
+        var list = [];
+        try {
+            var exams = await fetchAdminExams();
+            var now = Date.now();
+            exams.forEach(function (ex, i) {
+                var at = examAt(ex);
+                if (!at || at <= now + 60000) return;
+                var subject = String(ex.subject || ex.subject_name || ex.module || 'امتحان').trim();
+                var time = String(ex.time || ex.start_time || '').trim();
+                var place = String(ex.place || ex.location || ex.room || '').trim();
+                list.push({ id: 'exam-' + at + '-' + i, at: at, subject: subject, time: time, place: place });
+            });
+        } catch (e) { return { ok: false }; }
+        var sig = list.map(function (r) { return r.id + '#' + r.subject; }).join(';');
+        if (sig === (p.examSig || '')) return { ok: true, unchanged: true };
+        p.examSig = sig;
+        save(p);
+        try { await pl.cancelReminders({ tag: 'exam' }); } catch (e) {}
+        for (var k = 0; k < list.length; k++) {
+            var r = list[k];
+            var body = 'غداً امتحان ' + r.subject + (r.time ? ' على الساعة ' + r.time : '') + (r.place ? '\nالقاعة: ' + r.place : '');
+            try {
+                await pl.scheduleReminder({ id: r.id, tag: 'exam', triggerAt: r.at, title: 'تذكير بالامتحان', body: body, channel: 'general' });
+            } catch (e) {}
+        }
+        return { ok: true, count: list.length };
+    }
+
+    async function cancelExamReminders() {
+        var p = load();
+        p.examSig = '';
+        save(p);
+        var pl = plugin();
+        if (pl) { try { await pl.cancelReminders({ tag: 'exam' }); } catch (e) {} }
+    }
+
     return {
         load: load, save: save, isNative: isNative,
         rememberCtx: rememberCtx, bookingCtx: bookingCtx,
@@ -270,6 +355,8 @@ window.PortalNotify = (function () {
         computeClassReminders: computeClassReminders,
         rebuildClassReminders: rebuildClassReminders,
         cancelClassReminders: cancelClassReminders,
+        rebuildExamReminders: rebuildExamReminders,
+        cancelExamReminders: cancelExamReminders,
     };
 })();
 /* ---- settings-screen bindings (account section) ---- */
@@ -289,6 +376,7 @@ window.PortalNotifyUI = (function () {
         set('sw-notif', p.enabled);
         set('sw-auto', p.mealAuto);
         set('sw-class', p.classRemind);
+        set('sw-exam', p.examRemind);
         var sub = document.getElementById('auto-sub');
         if (sub) sub.classList.toggle('hidden', !p.mealAuto);
         var t = document.getElementById('auto-time');
@@ -307,7 +395,7 @@ window.PortalNotifyUI = (function () {
         var denied = document.getElementById('notif-denied');
         if (denied) {
             denied.classList.add('hidden');
-            if ((p.enabled || p.mealAuto || p.classRemind) && N.isNative()) {
+            if ((p.enabled || p.mealAuto || p.classRemind || p.examRemind) && N.isNative()) {
                 N.areEnabled().then(function (ok) {
                     if (!ok) denied.classList.remove('hidden');
                 }).catch(function () {});
@@ -402,6 +490,27 @@ window.PortalNotifyUI = (function () {
         paint();
     }
 
+    async function toggleExam() {
+        var N = window.PortalNotify;
+        if (!N) return;
+        var p = N.load();
+        if (!p.examRemind) {
+            if (!(await N.ensurePermission('لتلقي تذكير الامتحانات قبل موعدها بيوم، يحتاج التطبيق إلى إذن الإشعارات.'))) { paint(); return; }
+            p.examRemind = true;
+            if (!p.enabled) p.enabled = true;
+            N.save(p);
+            var r = await N.rebuildExamReminders();
+            if (r && r.count) toast('تم تفعيل تذكير الامتحانات', 'success');
+            else toast('تم التفعيل — لا توجد تواريخ امتحانات قادمة', 'info');
+        } else {
+            p.examRemind = false;
+            N.save(p);
+            await N.rebuildExamReminders(); // cancels stale ones
+            toast('تم إيقاف تذكير الامتحانات', 'info');
+        }
+        paint();
+    }
+
     async function toggleMeal(m) {        var N = window.PortalNotify;
         if (!N) return;
         m = Number(m);
@@ -452,15 +561,16 @@ window.PortalNotifyUI = (function () {
         }
     }
 
-    return { paint: paint, toggleMaster: toggleMaster, toggleAuto: toggleAuto, toggleClass: toggleClass, setTime: setTime, toggleMeal: toggleMeal, devTap: devTap, runNotifTests: runNotifTests };
+    return { paint: paint, toggleMaster: toggleMaster, toggleAuto: toggleAuto, toggleClass: toggleClass, toggleExam: toggleExam, setTime: setTime, toggleMeal: toggleMeal, devTap: devTap, runNotifTests: runNotifTests };
 })();
 
-// Rebuild class reminders when returning to the app (covers reboot +
-// late-granted permission); the signature guard makes this a no-op usually.
+// Rebuild class + exam reminders when returning to the app (covers reboot +
+// late-granted permission); the signature guards make this a no-op usually.
 try {
     document.addEventListener('visibilitychange', function () {
         if (!document.hidden && window.PortalNotify) {
             try { window.PortalNotify.rebuildClassReminders(); } catch (e) {}
+            try { window.PortalNotify.rebuildExamReminders(); } catch (e) {}
         }
     });
 } catch (e) {}
