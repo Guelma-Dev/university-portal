@@ -358,10 +358,12 @@ footer { background: var(--foot); color: #fff; padding: 56px 0 0; margin-top: 20
 .lb.open img { transform: scale(1); }
 
 /* ---------- Reveal on scroll ---------- */
-html.js-anim .rv { opacity: 0; transform: translateY(22px); }
+/* Uses the standalone `translate` property (not `transform`) so hover
+   lifts defined via `transform` compose with it instead of fighting it. */
+html.js-anim .rv { opacity: 0; translate: 0 22px; }
 html.js-anim .rv.in {
-    opacity: 1; transform: none;
-    transition: opacity .55s ease, transform .55s cubic-bezier(.22, 1, .36, 1);
+    opacity: 1; translate: 0 0;
+    transition: opacity .55s ease, translate .55s cubic-bezier(.22, 1, .36, 1);
     transition-delay: var(--d, 0s);
 }
 
@@ -393,6 +395,6 @@ html.js-anim .rv.in {
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    html.js-anim .rv { opacity: 1; transform: none; }
+    html.js-anim .rv { opacity: 1; translate: 0 0; }
     *, *::before, *::after { transition-duration: .01ms !important; }
 }
