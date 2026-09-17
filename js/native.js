@@ -712,7 +712,10 @@
             if (r.status === 404) return _errResp(404, 'لا توجد بيانات متوفرة');
             if (r.status !== 200) return _errResp(502, 'تعذر جلب البيانات من خوادم الوزارة، حاول لاحقاً');
             let data = _parseBody(r.text);
-            if (data === null) return _errResp(502, 'استجابة غير صالحة من خوادم الوزارة');
+            if (data === null) {
+                if (route === 'dettes' || route === 'absences' || route === 'exclusions' || route === 'conges') data = [];
+                else return _errResp(502, 'استجابة غير صالحة من خوادم الوزارة');
+            }
             if (route === 'quitus' && data && typeof data === 'object' && !Array.isArray(data)) {
                 let valid = 0;
                 for (let i = 0; i < QUITUS_KEYS.length; i++) {

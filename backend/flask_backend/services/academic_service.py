@@ -348,6 +348,11 @@ def _post_plain(path, token, dia=None):
 # ============================================
 # ROUTES
 # ============================================
+def _as_list(data):
+    """Ministry returns JSON null for 'no rows' — normalize to []."""
+    if isinstance(data, list):
+        return [x for x in data if x]
+    return []
 @bp.get('/quitus')
 def quitus():
     args, err = _auth_args()
@@ -383,7 +388,7 @@ def dettes():
     def transform(data):
         if isinstance(data, list):
             return [x for x in data if x]
-        return data
+        return []
 
     return _cached_fetch(f'me:{uuid_}:dettes', f'/dettes/{uuid_}',
                          token, TTL_DEFAULT, uuid_suffix=uuid_, transform=transform)
@@ -396,7 +401,8 @@ def absences():
         return err
     uuid_, token = args
     return _cached_fetch(f'me:{uuid_}:absences', f'/bac/{uuid_}/absences',
-                         token, TTL_DEFAULT, uuid_suffix=uuid_)
+                         token, TTL_DEFAULT, uuid_suffix=uuid_,
+                         transform=_as_list)
 
 
 @bp.get('/exclusions')
@@ -406,7 +412,8 @@ def exclusions():
         return err
     uuid_, token = args
     return _cached_fetch(f'me:{uuid_}:exclusions', f'/bac/{uuid_}/exclusions',
-                         token, TTL_DEFAULT, uuid_suffix=uuid_)
+                         token, TTL_DEFAULT, uuid_suffix=uuid_,
+                         transform=_as_list)
 
 
 @bp.get('/conges')
