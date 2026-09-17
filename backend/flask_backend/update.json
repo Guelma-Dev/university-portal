@@ -1,8 +1,8 @@
 {
-  "versionName": "1.4.14",
-  "versionCode": 30,
-  "apkUrl": "https://university-portal-gv78.onrender.com/app/releases/app-30.apk",
-  "sha256": "9a1d30b7b4a1a8399ac641e11a9c47161f0a49a53975f7716a0abbe533bfd4ec",
-  "size": 4725368,
+  "versionName": "1.4.15",
+  "versionCode": 31,
+  "apkUrl": "https://university-portal-gv78.onrender.com/app/releases/app-31.apk",
+  "sha256": "e2a133d1b67bcc0d487b72b9936b1ec6b1c85a0c56acb8003c4c9fc19bc44882",
+  "size": 5288003,
   "mandatory": false
 }

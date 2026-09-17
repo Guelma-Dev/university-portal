@@ -268,20 +268,34 @@ window.PortalUpdate = (function () {
         setState({ name: 'error', error: 'التثبيت محظور: فعّل «تثبيت التطبيقات غير المعروفة» لهذا التطبيق ثم أعد المحاولة', errorCode: 'unknown-sources', progress: null });
     }
 
+    // Download landing page: version info, screenshots and install guide.
+    // The raw APK url stays the direct file (old clients keep working).
+    function downloadPageUrl() {
+        return LIVE_ORIGIN + '/download.html';
+    }
+
+    async function openUrlExternal(url) {
+        try {
+            if (window.PortalNative && typeof window.PortalNative.openInBrowser === 'function') {
+                await window.PortalNative.openInBrowser(url);
+                return;
+            }
+        } catch (e) {}
+        try {
+            if (typeof window.open === 'function') window.open(url, '_blank');
+        } catch (e) {}
+    }
+
     // Browser fallback: the system installer handles the APK directly
     // (proven to work on devices where PackageInstaller sessions fail).
     async function openInBrowser() {
         var m = state.remote;
         if (!m || !m.apkUrl) { toast('لا يوجد تحديث للتنزيل', 'error'); return; }
-        try {
-            if (window.PortalNative && typeof window.PortalNative.openInBrowser === 'function') {
-                await window.PortalNative.openInBrowser(m.apkUrl);
-                return;
-            }
-        } catch (e) {}
-        try {
-            if (typeof window.open === 'function') window.open(m.apkUrl, '_blank');
-        } catch (e) {}
+        return openUrlExternal(m.apkUrl);
+    }
+
+    async function openDownloadPage() {
+        return openUrlExternal(downloadPageUrl());
     }
 
     function blobToB64(blob) {
@@ -633,6 +647,7 @@ window.PortalUpdate = (function () {
         installUpdate: installUpdate,
         openUnknownSources: openUnknownSources,
         openInBrowser: openInBrowser,
+        openDownloadPage: openDownloadPage,
         resume: resume,
         bootCheck: bootCheck,
         bindNativeEvents: bindNativeEvents,
@@ -687,7 +702,7 @@ window.PortalUpdateUI = (function () {
         } else if (st.name === 'update_available' && st.remote) {
             h = '<div class="upd-state"><p class="upd-avail"><i class="fas fa-arrow-up"></i> تحديث متوفر</p>'
                 + '<p class="upd-ver">الإصدار ' + esc(st.remote.versionName) + '</p>' + srcLine(st.remote)
-                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openInBrowser()"><i class="fas fa-download"></i> تنزيل التحديث</button></div>';
+                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openDownloadPage()"><i class="fas fa-download"></i> تنزيل التحديث</button></div>';
         } else if (st.name === 'downloading') {
             var p = st.progress || {};
             h = '<div class="upd-state"><p class="upd-msg"><i class="fas fa-spinner fa-spin"></i> جاري تنزيل التحديث...</p>'
@@ -705,7 +720,7 @@ window.PortalUpdateUI = (function () {
                     ? '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openUnknownSources()"><i class="fas fa-gear"></i> فتح إعدادات التثبيت</button>'
                     : '')
                 + (st.errorCode === 'install-failed' && st.remote && st.remote.apkUrl
-                    ? '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openInBrowser()"><i class="fas fa-globe"></i> تنزيل عبر المتصفح</button>'
+                    ? '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openDownloadPage()"><i class="fas fa-globe"></i> تنزيل عبر المتصفح</button>'
                     : '')
                 + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.checkUpdate({manual:true})">إعادة المحاولة</button></div>';
         }
