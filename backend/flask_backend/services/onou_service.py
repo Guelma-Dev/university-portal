@@ -364,6 +364,17 @@ def _gs_request(method, path, gs_token=None, body=None, params=None):
         kwargs['data'] = body_str.encode('utf-8')
     r = _upstream(method, GS_BASE, path, headers, kwargs)
     if r.status_code >= 400:
+        msg = None
+        try:
+            payload = r.json()
+            if isinstance(payload, dict):
+                msg = payload.get('message') or payload.get('error')
+                if isinstance(msg, list):
+                    msg = '، '.join(str(x) for x in msg if x)
+        except ValueError:
+            msg = None
+        if msg and str(msg).strip():
+            raise ApiError(str(msg).strip())
         raise ApiError(f'خطأ من خدمة الوجبات ({r.status_code})')
     try:
         return r.json()

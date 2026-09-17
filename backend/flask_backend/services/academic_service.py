@@ -609,3 +609,42 @@ def coefficients():
     return _cached_fetch(f'me:{uuid_}:coeffs:{oid}:{nid}',
                          f'/offreFormation/{oid}/niveau/{nid}/Coefficients',
                          token, TTL_DEFAULT, uuid_suffix=uuid_)
+
+
+@bp.get('/examplan')
+def examplan():
+    args, err = _auth_args()
+    if err:
+        return err
+    uuid_, token = args
+    oid = (request.args.get('oid') or '').strip()
+    nid = (request.args.get('nid') or '').strip()
+    if not oid.isdigit() or not nid.isdigit() or len(oid) > 20 or len(nid) > 20:
+        return _err('oid و nid مطلوبان', 400)
+    return _cached_fetch(f'me:{uuid_}:examplan:{oid}:{nid}',
+                         f'/Examens/{oid}/niveau/{nid}/examens',
+                         token, TTL_DEFAULT, uuid_suffix=uuid_)
+
+
+@bp.get('/periodes')
+def periodes():
+    args, err = _auth_args()
+    if err:
+        return err
+    uuid_, token = args
+    nid = (request.args.get('nid') or '').strip()
+    if not nid.isdigit() or len(nid) > 20:
+        return _err('nid مطلوب', 400)
+    return _cached_fetch(f'me:{uuid_}:periodes:{nid}',
+                         f'/niveau/{nid}/periodes',
+                         token, TTL_DEFAULT, uuid_suffix=uuid_)
+
+
+@bp.get('/annee')
+def annee():
+    args, err = _auth_args()
+    if err:
+        return err
+    uuid_, token = args
+    return _cached_fetch(f'me:{uuid_}:annee', '/AnneeAcademiqueEncours',
+                         token, TTL_DEFAULT, uuid_suffix=uuid_)

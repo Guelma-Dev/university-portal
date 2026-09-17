@@ -552,7 +552,7 @@
         if ((m = /^\/api\/progres\/logo\/(\d+)$/.exec(p))) return _routeLogo(m[1], url);
         if ((m = /^\/api\/progres\/me$/.exec(p))) return _routeMe(url);
 
-        if ((m = /^\/api\/academic\/(quitus|dettes|absences|exclusions|conges|emploi|transport|setram|hebergement|banner|groupe|coefficients)$/.exec(p))) {
+        if ((m = /^\/api\/academic\/(quitus|dettes|absences|exclusions|conges|emploi|transport|setram|hebergement|banner|groupe|coefficients|examplan|periodes|annee)$/.exec(p))) {
             return _routeAcademicGet(m[1], url);
         }
         if (p === '/api/academic/recours' && method === 'POST') return _routeRecours(body);
@@ -705,10 +705,14 @@
         else if (route === 'banner') path = '/bannerInformations';
         else if (route === 'groupe') path = '/dia/' + encodeURIComponent(dia) + '/groups';
         else if (route === 'coefficients') path = '/offreFormation/' + encodeURIComponent(oid) + '/niveau/' + encodeURIComponent(nid) + '/Coefficients';
+        else if (route === 'examplan') path = '/Examens/' + encodeURIComponent(oid) + '/niveau/' + encodeURIComponent(nid) + '/examens';
+        else if (route === 'periodes') path = '/niveau/' + encodeURIComponent(nid) + '/periodes';
+        else if (route === 'annee') path = '/AnneeAcademiqueEncours';
         else return _errResp(404, 'لا يوجد');
 
         if (['emploi', 'transport', 'setram', 'groupe'].indexOf(route) !== -1 && !dia) return _errResp(400, 'dia مطلوب');
-        if (route === 'coefficients' && (!/^\d{1,20}$/.test(oid) || !/^\d{1,20}$/.test(nid))) return _errResp(400, 'oid و nid مطلوبان');
+        if (['coefficients', 'examplan'].indexOf(route) !== -1 && (!/^\d{1,20}$/.test(oid) || !/^\d{1,20}$/.test(nid))) return _errResp(400, 'oid و nid مطلوبان');
+        if (route === 'periodes' && !/^\d{1,20}$/.test(nid)) return _errResp(400, 'nid مطلوب');
 
         try {
             const retrySuffix = route === 'banner' ? null : '/' + encodeURIComponent(uuid);

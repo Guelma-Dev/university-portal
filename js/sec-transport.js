@@ -136,6 +136,7 @@
                 <button type="button" class="lx-tr-locate" data-locate aria-label="تحديد موقعي" title="تحديد موقعي"><i class="fas fa-location-crosshairs"></i></button>
             </header>
             <div class="lx-tr-flash" data-flash hidden></div>
+            <button type="button" class="lx-m-btn-xs" data-goto-profile style="margin:0 0 8px"><i class="fas fa-ticket-simple"></i> طلب النقل و بطاقة سيترام (ملفي الشامل)</button>
             <div class="lx-tr-search">
                 <i class="fas fa-magnifying-glass lx-tr-sicon"></i>
                 <input id="lx-q" class="lx-tr-input" type="search" inputmode="search" placeholder="ابحث عن خط أو وجهة..." autocomplete="off">
@@ -275,8 +276,43 @@
         </li>`;
     }
 
-    function depHTML(d, i) {
-        const cd = countdown(d && d.time);
+        // اشتراك تنبيه قبل انطلاق رحلة بـ15 دقيقة (محلي فقط، مثل الرسمي).
+    async function subscribeDep(idx) {
+        const say = (msg, type) => { try { if (typeof window.showToast === 'function') window.showToast(msg, type); } catch (e) {} };
+        try {
+            const B = S.board;
+            const d = B && B.deps && B.deps[Number(idx)];
+            if (!d || !d.time) return;
+            const m = /^(\d{1,2})[:hH](\d{2})/.exec(String(d.time).trim());
+            if (!m) { say('توقيت غير صالح', 'error'); return; }
+            const now = new Date();
+            const dep = new Date(now.getFullYear(), now.getMonth(), now.getDate(), +m[1], +m[2], 0, 0);
+            const at = dep.getTime() - 15 * 60000;
+            if (at <= Date.now() + 60000) { say('الانطلاق وشيك أو مرّ — لا يمكن الجدولة', 'info'); return; }
+            const N = window.PortalNotify;
+            if (!N) return;
+            if (!(await N.ensurePermission('لتنبيهك قبل انطلاق الحافلة يحتاج التطبيق إلى إذن الإشعارات.'))) return;
+            let C = null;
+            try { C = window.Capacitor.Plugins.NotifyPlugin; } catch (e) {}
+            if (!C || typeof C.scheduleReminder !== 'function') { say('التنبيهات تعمل في تطبيق الأندرويد', 'info'); return; }
+            const L = (B && B.line) || {};
+            const line = L.name_ar || L.name_fr || ('خط ' + (L.id || ''));
+            const dest = L.destination_ar || L.destination_fr || L.destination || '';
+            await C.scheduleReminder({
+                id: 'bus-' + String(L.id || 'x') + '-' + m[1] + m[2] + '-' + dep.getDate(),
+                tag: 'bus',
+                triggerAt: at,
+                title: 'النقل الجامعي',
+                body: line + (dest ? ' نحو ' + dest : '') + ' — الانطلاق ' + d.time,
+                channel: 'general',
+            });
+            say('تم الاشتراك — تنبيه قبل الانطلاق بـ15 دقيقة', 'success');
+        } catch (e) {
+            say('تعذر جدولة التنبيه', 'error');
+        }
+    }
+
+    function depHTML(d, i) {        const cd = countdown(d && d.time);
         const st = statusOf(d);
         const opn = i === S.board.openIdx;
         const stops = Array.isArray(d && d.stops) ? d.stops : [];
@@ -286,6 +322,7 @@
                 <span class="lx-tr-time">${esc(d && d.time)}</span>
                 <span class="lx-tr-cd${cd.soon ? ' lx-tr-hot' : ''}" data-cd data-time="${esc(d && d.time)}">${esc(cd.txt)}</span>
                 <span class="lx-tr-st lx-tr-${st.cls}"><i class="lx-tr-dot"></i>${st.label}</span>
+                ${cd.gone ? '' : `<span class="lx-tr-sub" role="button" tabindex="0" title="نبهني قبل الانطلاق" data-sub="${i}"><i class="fas fa-bell"></i></span>`}
                 <i class="fas fa-chevron-down lx-tr-chev"></i>
             </button>
             <div class="lx-tr-depbody">${tl}</div>
@@ -504,6 +541,9 @@
             if (fav) { e.stopPropagation(); toggleFav(fav.getAttribute('data-fav')); return; }
             if (e.target.closest('[data-clear]')) { resetToNearby(); return; }
             if (e.target.closest('[data-locate]')) { locate(); return; }
+            if (e.target.closest('[data-goto-profile]')) { if (typeof switchSection === 'function') switchSection('profile360'); return; }
+            const sub = e.target.closest('[data-sub]');
+            if (sub) { e.stopPropagation(); subscribeDep(sub.getAttribute('data-sub')); return; }
             if (e.target.closest('[data-retry]')) {
                 if (S.board) loadDeps(S.board.deps.length ? S.board.page + 1 : 1);
                 else loadList();

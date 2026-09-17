@@ -548,6 +548,7 @@
                     </span>
                     <span class="lx-m-ractions" data-row="${esc(r.id)}">
                         <span class="lx-m-chip-ok">مؤكد</span>
+                        <button type="button" class="lx-m-btn-xs" data-action="ticket" data-id="${esc(r.id)}" title="عرض التذكرة"><i class="fas fa-qrcode"></i> تذكرتي</button>
                         ${canDel ? `<button type="button" class="lx-m-del" data-action="del-start" data-id="${esc(r.id)}" title="إلغاء الحجز"><i class="fas fa-trash-can"></i></button>` : ''}
                     </span>
                 </div>`;
@@ -581,13 +582,14 @@
         const row = btn.closest('.lx-m-rrow');
         if (row) row.classList.add('gone');
         try {
-            await jfetch(`/api/onou/reservations/${encodeURIComponent(id)}?${authQS()}`, { method: 'DELETE' });
+            const out = await jfetch(`/api/onou/reservations/${encodeURIComponent(id)}?${authQS()}`, { method: 'DELETE' });
             state.res = state.res.filter((r) => String(r.id) !== String(id));
             setTimeout(() => renderMinePane(), 220);
-            toast('تم إلغاء الحجز', 'success');
+            toast((out && (out.message || out.error)) || 'تم إلغاء الحجز', 'success');
         } catch (e) {
             if (row) row.classList.remove('gone');
-            toast(e.message === 'Failed to fetch' ? 'تعذر الاتصال بالخادم' : 'تعذر إلغاء الحجز، حاول مجدداً', 'error');
+            const m = e && e.message ? String(e.message) : '';
+            toast(!m || m.indexOf('status-') === 0 || m === 'Failed to fetch' ? 'تعذر إلغاء الحجز، حاول مجدداً' : m, 'error');
         }
     }
 
@@ -811,6 +813,11 @@
         else if (a === 'del-start') askDelete(el.dataset.id, el);
         else if (a === 'del-confirm') doDelete(el.dataset.id, el);
         else if (a === 'del-cancel') cancelDelete(el.dataset.id, el);
+        else if (a === 'ticket') {
+            const r = state.res.find((x) => String(x.id) === String(el.dataset.id));
+            if (r) openTicket(r);
+            else toast('تعذر فتح التذكرة', 'error');
+        }
         else if (a === 'pref-master') {
             const on = el.classList.toggle('on');
             el.setAttribute('aria-checked', String(on));

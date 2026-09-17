@@ -2546,3 +2546,27 @@ select option { background: var(--input-bg); color: var(--text-primary); }
 .upd-bar.indeterminate > span { width: 38% !important; animation: upd-slide 1.2s ease-in-out infinite; }
 @keyframes upd-slide { 0% { transform: translateX(120%); } 100% { transform: translateX(-320%); } }
 .upd-pct { text-align: center; font-weight: 800; color: var(--gold-soft); font-variant-numeric: tabular-nums; margin: 0; direction: ltr; }
+
+/* ==== مبدل التسجيلات + شريط الإعلانات (الرئيسية) ==== */
+.dia-switch { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 2px; }
+.dia-switch:empty { display: none; }
+.dia-chip {
+    border: 1px solid var(--glass-line); background: var(--surface-2); color: var(--text);
+    border-radius: 999px; padding: 6px 14px; font-size: .82rem; font-weight: 700; cursor: pointer;
+    font-family: inherit; transition: transform .15s ease, background .2s;
+}
+.dia-chip:active { transform: scale(.96); }
+.dia-chip.sel { background: linear-gradient(150deg, var(--gold-soft), var(--gold) 60%, var(--gold-deep)); color: #241A05; border-color: transparent; }
+.dia-year { font-size: .8rem; color: var(--text-dim); font-weight: 600; }
+#dh-banner { display: grid; gap: 10px; margin-top: 12px; }
+#dh-banner:empty { display: none; }
+.dh-bn { display: flex; gap: 12px; align-items: flex-start; background: var(--surface-2); border: 1px solid var(--glass-line); border-radius: 16px; padding: 12px 14px; }
+.dh-bn i { color: var(--gold); font-size: 1.2rem; margin-top: 2px; }
+.dh-bn b { display: block; font-size: .92rem; }
+.dh-bn p { margin: 2px 0 0; font-size: .82rem; color: var(--text-dim); }
+.dh-bn a { color: var(--gold-soft); font-size: .82rem; font-weight: 700; }
+
+/* ==== جرس اشتراك الرحلات (النقل الحي) ==== */
+.lx-tr-sub { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; color: var(--gold-soft); border: 1px solid var(--glass-line); cursor: pointer; transition: transform .15s ease, background .2s; }
+.lx-tr-sub:active { transform: scale(.9); }
+.lx-tr-sub:hover { background: rgba(212, 175, 55, .12); }

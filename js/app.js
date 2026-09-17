@@ -141,8 +141,8 @@ async function loadExams() {
     renderMinistryExams();
 }
 
-// برنامج الامتحانات من الوزارة (planningSession): دورات + مواد + علامات.
-// يظهر فوق تواريخ الإدارة عند توفر جلسة Progres، وإلا يبقى المخفي.
+// برنامج الامتحانات الرسمي من الوزارة (Examens/offre+niveau).
+// يظهر فوق تواريخ الإدارة عند توفر جلسة Progres، وإلا تبقى تواريخ الإدارة.
 async function renderMinistryExams() {
     const box = document.getElementById('exam-ministry');
     if (!box) return;
@@ -156,34 +156,48 @@ async function renderMinistryExams() {
             cards = await progresFetch('cards');
             if (!Array.isArray(cards)) return;
         }
-        const all = [];
+        const seen = new Set();
+        const groups = [];
         for (const card of cards.slice(0, 4)) {
-            const id = card && (card.id ?? card);
-            if (id === undefined || id === null) continue;
+            const oid = card && card.ouvertureOffreFormationId;
+            const nid = card && card.niveauId;
+            if (!oid || !nid) continue;
+            const key = oid + ':' + nid;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            let list = null;
             try {
-                const list = await progresFetch(`exams/${id}`);
-                if (Array.isArray(list)) {
-                    const label = card.anneeAcademiqueCode || card.anneeAcademique || '';
-                    list.forEach(g => all.push({ g, label }));
-                }
-            } catch (e) { /* card without published notes */ }
+                const res = await fetch(`${API_BASE}/api/academic/examplan?uuid=${encodeURIComponent(session.uuid)}&oid=${encodeURIComponent(oid)}&nid=${encodeURIComponent(nid)}`, {
+                    headers: { 'Authorization': session.token },
+                });
+                if (res.ok) list = await res.json().catch(() => null);
+            } catch (e) { /* next card */ }
+            const items = Array.isArray(list) ? list : [];
+            groups.push({ label: card.anneeAcademiqueCode || card.anneeAcademique || '', items });
         }
-        if (!all.length) return;
-        const bySession = {};
-        all.forEach(({ g, label }) => {
-            const s = g.planningSessionIntitule || g.sessionLibelle || label || 'دورة الامتحانات';
-            (bySession[s] = bySession[s] || []).push(g);
-        });
+        const total = groups.reduce((n, g) => n + g.items.length, 0);
+        if (!total) return;
         const H3 = 'color: #D4AF37; margin: 20px 10px 10px 10px; font-size: 16px; border-bottom: 1px solid #D4AF37; padding-bottom: 8px; text-align: right;';
-        box.innerHTML = Object.entries(bySession).map(([sess, items]) => `
-            <h3 style="${H3}"><i class="fas fa-building-columns"></i> ${escHtml(sess)}</h3>
-            <div class="semester-items">${items.map(({ g }) => badgeRow(
-                g.matiereLibelleAr || g.mcLibelleAr || g.mcLibelleFr || 'مادة',
-                gradeBadge(g.noteExamen, g.noteExamen == null || g.noteExamen >= 10),
-                `${g.dateExamen ? `<span class="pbadge pb-dim">${escHtml(g.dateExamen)}</span>` : ''}` +
-                `${g.heureExamen ? `<span class="pbadge pb-dim">${escHtml(g.heureExamen)}</span>` : ''}` +
-                `${g.salleExamen ? `<span class="pbadge pb-info">${escHtml(g.salleExamen)}</span>` : ''}`
-            )).join('')}</div>`).join('');
+        const pick = (o, keys) => {
+            for (const k of keys) {
+                const v = o[k];
+                if (v !== null && v !== undefined && String(v).trim() !== '') return String(v).trim();
+            }
+            return '';
+        };
+        box.innerHTML = '<p class="ins-note"><i class="fas fa-building-columns"></i> البرنامج الرسمي من الوزارة — أدناه تواريخ معلنة من الإدارة.</p>' + groups.map(g => {
+            if (!g.items.length) return '';
+            const rows = g.items.map(it => {
+                const mod = pick(it, ['mcLibelleAr', 'mcLibelleFr', 'matiereLibelleAr', 'matiere', 'libelleAr', 'libelle']);
+                const date = pick(it, ['dateExamen', 'date', 'jour']);
+                const time = pick(it, ['heureDebut', 'heure', 'time']);
+                const place = pick(it, ['salle', 'salleExamen', 'lieu']);
+                return `<tr><td>${escHtml(mod || 'مادة')}</td><td dir="ltr">${escHtml(date || '--')}</td><td dir="ltr">${escHtml(time || '--')}</td><td>${escHtml(place || '--')}</td></tr>`;
+            }).join('');
+            return `<h3 style="${H3}">${escHtml(g.label || 'البرنامج الرسمي')}</h3>
+                <table class="exam-table"><thead><tr><th>المادة</th><th>التاريخ</th><th>الوقت</th><th>المكان</th></tr></thead>
+                <tbody>${rows}</tbody></table>`;
+        }).join('');
     } catch (e) { /* ministry unreachable: admin dates remain */ }
 }
 
@@ -1687,6 +1701,76 @@ function progresFirstName() {
     }
     return first;
 }
+// مبدل التسجيلات (dia) في الرئيسية — يقود كل الأقسام عبر selectedCard.
+async function renderDiaSwitch() {
+    const box = document.getElementById('dia-switch');
+    if (!box) return;
+    box.innerHTML = '';
+    let session = null;
+    try { session = (typeof getProgresSession === 'function') ? getProgresSession() : null; } catch (e) {}
+    if (!session || !session.uuid) return;
+    try {
+        let cards = Array.isArray(session.cards) ? session.cards : null;
+        if (!cards && typeof progresFetch === 'function') {
+            cards = await progresFetch('cards');
+            if (Array.isArray(cards)) { session.cards = cards; setProgresSession(session); }
+        }
+        if (!Array.isArray(cards) || cards.length < 2) return;
+        const cur = String(session.selectedCard || session.idCardYear || cards[0].id);
+        box.innerHTML = cards.map(c => {
+            const lbl = escHtml(c.anneeAcademiqueCode || c.anneeAcademique || ('تسجيل ' + c.id));
+            const sel = String(c.id) === cur ? ' sel' : '';
+            return `<button type="button" class="dia-chip${sel}" data-dia="${escHtml(c.id)}">${lbl}</button>`;
+        }).join('') + `<span class="dia-year" id="dia-year"></span>`;
+        box.querySelectorAll('[data-dia]').forEach(b => b.addEventListener('click', () => {
+            onProgresCardChange(b.dataset.dia);
+            setTimeout(renderDiaSwitch, 600);
+        }));
+        loadCurrentYear();
+    } catch (e) { /* silent: switcher is a bonus */ }
+}
+
+let _anneeCache = null;
+async function loadCurrentYear() {
+    const el = document.getElementById('dia-year');
+    if (!el) return;
+    try {
+        if (_anneeCache) { el.textContent = 'السنة الجارية: ' + _anneeCache; return; }
+        const s = getProgresSession();
+        if (!s || !s.uuid) return;
+        const res = await fetch(`${API_BASE}/api/academic/annee?uuid=${encodeURIComponent(s.uuid)}`, {
+            headers: { 'Authorization': s.token },
+        });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        const code = data && (data.code || (Array.isArray(data) && data[0] && data[0].code));
+        if (code) { _anneeCache = String(code); el.textContent = 'السنة الجارية: ' + _anneeCache; }
+    } catch (e) { /* silent */ }
+}
+
+// شريط إعلانات الوزارة في الرئيسية (bannerInformations — كان يُجلب ولا يُعرض).
+async function loadHomeBanner() {
+    const box = document.getElementById('dh-banner');
+    if (!box) return;
+    try {
+        const s = (typeof getProgresSession === 'function') ? getProgresSession() : null;
+        if (!s || !s.uuid) { box.innerHTML = ''; return; }
+        const res = await fetch(`${API_BASE}/api/academic/banner?uuid=${encodeURIComponent(s.uuid)}`, {
+            headers: { 'Authorization': s.token },
+        });
+        if (!res.ok) return;
+        let data = await res.json().catch(() => null);
+        const list = Array.isArray(data) ? data.slice(0, 2) : [];
+        if (!list.length) { box.innerHTML = ''; return; }
+        box.innerHTML = list.map(b => `
+            <div class="dh-bn"><i class="fas fa-bullhorn"></i><div>
+                <b>${escHtml(b.titleAr || b.titleFr || b.titleEn || 'إعلان')}</b>
+                ${b.descriptionAr || b.descriptionFr ? `<p>${escHtml(b.descriptionAr || b.descriptionFr || '')}</p>` : ''}
+                ${b.url ? `<a href="${escHtml(b.url)}" target="_blank" rel="noopener">التفاصيل</a>` : ''}
+            </div></div>`).join('');
+    } catch (e) { /* silent */ }
+}
+
 function renderDhIdentity() {
     const who = document.getElementById('dh-who');
     if (!who) return;
@@ -1695,6 +1779,8 @@ function renderDhIdentity() {
 }
 function renderHomeDashboard() {
     renderDhIdentity();
+    renderDiaSwitch();
+    loadHomeBanner();
     const nextEl = document.getElementById('dh-next');
     const todayEl = document.getElementById('dh-today');
     const cntEl = document.getElementById('dh-cnt');
@@ -2533,6 +2619,73 @@ function badgeRow(name, gradeHtml, extraBadges = '') {
     </div>`;
 }
 
+// منتقي السداسي + مشاركة كشف النقاط (periodes من الوزارة).
+async function renderSemesterPicker(c) {
+    const box = document.getElementById('transcript-picker');
+    if (!box || !c) return;
+    let periods = [];
+    try {
+        const cards = c.cards || [];
+        const sel = cards.find(x => String(x.id) === String(c.cardId)) || cards[0] || {};
+        const nid = sel.niveauId;
+        const s = getProgresSession();
+        if (nid && s && s.uuid) {
+            const res = await fetch(`${API_BASE}/api/academic/periodes?uuid=${encodeURIComponent(s.uuid)}&nid=${encodeURIComponent(nid)}`, {
+                headers: { 'Authorization': s.token },
+            });
+            if (res.ok) {
+                const data = await res.json().catch(() => null);
+                if (Array.isArray(data)) periods = data;
+            }
+        }
+    } catch (e) { /* picker hidden */ }
+    const bilans = (c.data && c.data.transcripts.status === 'fulfilled' && Array.isArray(c.data.transcripts.value)) ? c.data.transcripts.value : [];
+    const matchPer = (it, p) => {
+        if (!p || p.id === 'all') return true;
+        if (it.periodeId != null && String(it.periodeId) === String(p.id)) return true;
+        const lbl = ((it.periodeLibelleAr || '') + ' ' + (it.periodeLibelleFr || '')).trim();
+        return !!lbl && !!p.label && (lbl === p.label || lbl.indexOf(p.label) !== -1 || p.label.indexOf(lbl) !== -1);
+    };
+    const applyFilter = (pid) => {
+        const list = document.getElementById('transcript-list');
+        if (!list) return;
+        const p = pid === 'all' ? null : periods.find(x => String(x.periodeId ?? x.id) === String(pid));
+        const items = pid === 'all' ? bilans : bilans.filter(it => matchPer(it, p ? { id: String(p.periodeId ?? p.id), label: p.periodeLibelleAr || p.periodeLibelleFr || '' } : null));
+        list.innerHTML = renderTranscripts(items) || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط لهذا السداسي</p></div>';
+        box.querySelectorAll('[data-per]').forEach(b => b.classList.toggle('sel', b.dataset.per === String(pid)));
+    };
+    window.switchSemester = (pid) => applyFilter(pid);
+    const chips = [`<button type="button" class="dia-chip sel" data-per="all" onclick="switchSemester('all')">الكل</button>`]
+        .concat(periods.map(p => {
+            const pid = String(p.periodeId ?? p.id ?? '');
+            const lbl = p.periodeLibelleAr || p.periodeLibelleFr || p.periodeLibelleLongLt || ('سداسي ' + pid);
+            return `<button type="button" class="dia-chip" data-per="${escHtml(pid)}" onclick="switchSemester('${escHtml(pid)}')">${escHtml(lbl)}</button>`;
+        })).join('');
+    box.innerHTML = `
+        <div class="dia-switch" style="margin:6px 0 4px">${periods.length ? chips : ''}<button type="button" class="dia-chip" onclick="shareTranscript()"><i class="fas fa-share-nodes"></i> مشاركة الكشف</button></div>`;
+}
+
+// مشاركة كشف النقاط كنص (Web Share API أو الحافظة).
+async function shareTranscript() {
+    try {
+        const c = (typeof progresCache !== 'undefined') ? progresCache : null;
+        const bilans = (c && c.data && c.data.transcripts.status === 'fulfilled' && Array.isArray(c.data.transcripts.value)) ? c.data.transcripts.value : [];
+        if (!bilans.length) { showToast('لا توجد نقاط لمشاركتها', 'info'); return; }
+        const lines = bilans.map(t => {
+            const per = t.periodeLibelleAr || t.periodeLibelleFr || '';
+            const avg = t.moyenne != null ? Number(t.moyenne).toFixed(2) : '--';
+            return `${per}: ${avg}`;
+        });
+        const s = getProgresSession();
+        const text = `كشف النقاط — ${s && s.name ? s.name : ''}\n${lines.join('\n')}`;
+        if (navigator.share) { await navigator.share({ title: 'كشف النقاط', text }); return; }
+        await navigator.clipboard.writeText(text);
+        showToast('نُسخ الكشف إلى الحافظة', 'success');
+    } catch (e) {
+        if (e && e.name !== 'AbortError') showToast('تعذرت المشاركة', 'error');
+    }
+}
+
 function gradeBadge(val, isPass, suffix = '') {
     if (val == null) return '<span class="pbadge pb-dim">--</span>';
     return `<span class="pbadge ${isPass ? 'pb-pass' : 'pb-fail'}">${escHtml(val)}${suffix}</span>`;
@@ -2992,7 +3145,8 @@ async function openProgresView(view) {
                                 dettes);
                         })())
                         : (() => {
-                        const body = c.notice + renderAnnual(c.data.annual, c.cardLabel) + renderTranscripts(c.data.transcripts.status === 'fulfilled' ? c.data.transcripts.value : []);
+                        const body = c.notice + renderAnnual(c.data.annual, c.cardLabel) + `<div id="transcript-picker"></div><div id="transcript-list">` + renderTranscripts(c.data.transcripts.status === 'fulfilled' ? c.data.transcripts.value : []) + `</div>`;
+                        setTimeout(() => renderSemesterPicker(c), 0);
                         return body.trim() ? body : '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط منشورة بعد</p></div>';
                     })());
             setGradesCardView(false);

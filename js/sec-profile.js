@@ -28,11 +28,20 @@
         var s = null;
         try { s = (typeof getProgresSession === 'function') ? getProgresSession() : null; } catch (e) { s = null; }
         if (!s || !s.uuid) return null;
-        var dia = s.dia || '';
+        // نفس حل sec-loader/sec-study: البطاقة المختارة أولاً ثم أول dias في التوكن
+        var dia = s.selectedCard || s.idCardYear || s.dia || '';
         if (!dia && Array.isArray(s.cards)) {
             var want = String(s.selectedCard || s.idCardYear || '');
             var sel = s.cards.filter(function (c) { return String(c.id) === want; })[0];
             if (sel) dia = sel.anneeAcademiqueCode || sel.anneeCode || '';
+        }
+        if (!dia && s.token && s.token.indexOf('.') !== -1) {
+            try {
+                var part = s.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                var pad = part + '='.repeat((4 - (part.length % 4)) % 4);
+                var claims = JSON.parse(decodeURIComponent(escape(atob(pad))));
+                dia = String(claims.dias || '').split(',')[0].trim();
+            } catch (e) {}
         }
         return { uuid: s.uuid, dia: dia };
     }
@@ -228,9 +237,11 @@
     function loadQuitus(s) {
         return apiGet('quitus', { uuid: s.uuid }).then(function (raw) {
             var d = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+            var comp = (d.completion && typeof d.completion === 'object') ? d.completion : null;
             var pct = null;
-            if (d.percent != null) {
-                var n = Number(d.percent);
+            var pv = comp ? comp.percent : d.percent;
+            if (pv != null) {
+                var n = Number(pv);
                 if (!isNaN(n)) pct = Math.max(0, Math.min(100, n));
             }
             var cards = QUITUS_ITEMS.map(function (it, i) {
@@ -238,10 +249,18 @@
                 var m = STATUS_META[st];
                 var label = (st === 'none' && String(d[it[0]] == null ? '' : d[it[0]]).trim())
                     ? esc(String(d[it[0]]).trim()) : m.l;
+                var motif = '';
+                try {
+                    var node = d[it[0]];
+                    if (node && typeof node === 'object') {
+                        var mj = node.motif_rejet || node.motifRejet || node.motif || node.commentaire || node.comment || '';
+                        if (String(mj).trim()) motif = '<small class="qc-motif">' + esc(String(mj).trim()) + '</small>';
+                    }
+                } catch (e) {}
                 return '<div class="lx-p-qcard ' + st + ' lx-p-in" style="--d:' + Math.min(i * 70, 420) + 'ms">' +
                     '<div class="qc-ico">' + ico(it[2]) + '</div>' +
                     '<span class="qc-name">' + it[1] + '</span>' +
-                    '<span class="lx-p-chip st-' + st + '">' + ico(m.i) + label + '</span></div>';
+                    '<span class="lx-p-chip st-' + st + '">' + ico(m.i) + label + '</span>' + motif + '</div>';
             }).join('');
             return '<div class="lx-p-hero lx-p-card lx-p-in">' +
                 '<div class="lx-p-ring">' +
@@ -557,8 +576,8 @@
             var setramHtml = sectTitle('fa-bus', 'بطاقة النقل (SETRAM)');
             if (r[0].status === 'fulfilled' && r[0].value) {
                 var sd = r[0].value;
-                var exp = fmtVal(pickAny(sd, ['dateExpiration', 'date_expiration', 'expiration', 'expireLe', 'validite', 'dateValidite']));
-                var qr = String(pickAny(sd, ['qr', 'qrCode', 'codeQr', 'codeQR', 'qrValue', 'valeurQR', 'numeroCarte', 'code'])).trim();
+                var exp = fmtVal(pickAny(sd, ['dateExpirationCardSetram', 'dateExpiration', 'date_expiration', 'expiration', 'expireLe', 'validite', 'dateValidite']));
+                var qr = String(pickAny(sd, ['qrCodeCardSetram', 'qr', 'qrCode', 'codeQr', 'codeQR', 'qrValue', 'valeurQR', 'numeroCarte', 'code'])).trim();
                 setramHtml += '<div class="lx-p-setram lx-p-in" style="--d:40ms">' +
                     '<div class="sr-head"><span>' + ico('fa-bus-simple') + ' SETRAM · بطاقة النقل</span>' + ico('fa-signal') + '</div>' +
                     (exp ? '<div class="sr-exp">' + ico('fa-calendar-check') + 'صالحة إلى: <b>' + exp + '</b></div>' : '') +
@@ -581,6 +600,12 @@
                         mnRow('النوع', tType || '—') +
                         (tDate ? mnRow('تاريخ الطلب', '<span dir="ltr">' + tDate + '</span>') : '') +
                         mnRow('الحالة', statusChip(pickAny(td, ['statut', 'status', 'etat'])));
+                    var payed = pickAny(td, ['transportPayed', 'transportPaye', 'payed', 'paye']);
+                    if (String(payed).trim() !== '' && payed !== null && payed !== undefined) {
+                        var okPay = payed === true || payed === 1 || String(payed).toLowerCase() === 'true';
+                        transHtml += mnRow('الدفع', '<span class="lx-p-chip st-' + (okPay ? 'ok' : 'bad') + '">' + (okPay ? 'مدفوع' : 'غير مدفوع') + '</span>');
+                    }
+                    transHtml += '<button type="button" class="lx-p-cta" onclick="switchSection(\'transport\')">' + ico('fa-bus') + 'النقل الحي المباشر</button>';
                 } else {
                     transHtml += mnRow('الحالة', statusChip(td));
                 }

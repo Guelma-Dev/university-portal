@@ -18,7 +18,7 @@ window.PortalNotify = (function () {
     var MEAL_NAMES = { 1: 'فطور الصباح', 2: 'الغداء', 3: 'العشاء' };
 
     function defaults() {
-        return { enabled: false, mealAuto: false, classRemind: false, examRemind: false, examSig: '', clsSig: '', hour: 18, minute: 0, meals: [2], depotId: 0, depotName: '' };
+        return { enabled: false, mealAuto: false, classRemind: false, examRemind: false, examSig: '', nightlySig: '', clsSig: '', hour: 18, minute: 0, meals: [2], depotId: 0, depotName: '' };
     }
 
     function load() {
@@ -251,15 +251,54 @@ window.PortalNotify = (function () {
                 await pl.scheduleReminder({ id: r.id, tag: 'cls', triggerAt: r.at, title: 'تذكير بالمحاضرة', body: body, channel: 'general' });
             } catch (e) {}
         }
+        await rebuildNightlyReminders();
         return { ok: true, count: list.length };
     }
 
     async function cancelClassReminders() {
         var p = load();
         p.clsSig = '';
+        p.nightlySig = '';
         save(p);
         var pl = plugin();
-        if (pl) { try { await pl.cancelReminders({ tag: 'cls' }); } catch (e) {} }
+        if (pl) { try { await pl.cancelReminders({ tag: 'cls' }); } catch (e) {} if (pl) { try { await pl.cancelReminders({ tag: 'nightly' }); } catch (e2) {} } }
+    }
+
+    // تذكير ليلي 20:00: مواد حصص الغد (أول 3) — مثل الرسمي حرفياً.
+    // يُعاد حسابه مع كل rebuild للحصص (visibilitychange يغطي التجديد اليومي).
+    async function rebuildNightlyReminders() {
+        var p = load();
+        var pl = plugin();
+        if (!p.enabled || !p.classRemind || !isNative() || !pl) {
+            if ((p.nightlySig || '') !== '') {
+                p.nightlySig = '';
+                save(p);
+                if (pl) { try { await pl.cancelReminders({ tag: 'nightly' }); } catch (e) {} }
+            }
+            return { ok: false };
+        }
+        var list = [];
+        try { list = computeClassReminders() || []; } catch (e) { list = []; }
+        var tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        var key = tomorrow.getFullYear() + '-' + pad2(tomorrow.getMonth() + 1) + '-' + pad2(tomorrow.getDate());
+        var names = [];
+        for (var i = 0; i < list.length && names.length < 3; i++) {
+            if (String(list[i].id || '').indexOf('cls-' + key) === 0 && list[i].subject) names.push(list[i].subject);
+        }
+        var sig = key + '#' + names.join('|');
+        if (sig === (p.nightlySig || '')) return { ok: true, unchanged: true };
+        p.nightlySig = sig;
+        save(p);
+        try { await pl.cancelReminders({ tag: 'nightly' }); } catch (e) {}
+        if (!names.length) return { ok: true, cancelled: true };
+        var at = new Date();
+        at.setHours(20, 0, 0, 0);
+        if (at.getTime() <= Date.now() + 60000) return { ok: true, cancelled: true };
+        try {
+            await pl.scheduleReminder({ id: 'nightly-' + key, tag: 'nightly', triggerAt: at.getTime(), title: 'تذكير بالجدول', body: 'لديك حصص غداً: ' + names.join('، ') + '. لا تنسى مراجعة جدولك!', channel: 'general' });
+        } catch (e) {}
+        return { ok: true, count: names.length };
     }
 
     // Exam reminders: source = admin exam dates (/api/exams, guest fallback).
@@ -355,6 +394,7 @@ window.PortalNotify = (function () {
         computeClassReminders: computeClassReminders,
         rebuildClassReminders: rebuildClassReminders,
         cancelClassReminders: cancelClassReminders,
+        rebuildNightlyReminders: rebuildNightlyReminders,
         rebuildExamReminders: rebuildExamReminders,
         cancelExamReminders: cancelExamReminders,
     };
