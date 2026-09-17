@@ -91,10 +91,13 @@ a { color: inherit; }
 .hero {
     position: relative; overflow: hidden;
     background: linear-gradient(135deg, var(--g100), var(--g50) 55%, #fff);
-    padding: 72px 0 56px;
+    padding: 56px 0 48px;
+    min-height: calc(100svh - 64px);
+    display: flex; flex-direction: column; justify-content: center;
 }
 .hero-grid {
     display: grid; grid-template-columns: 1fr 1.1fr; gap: 56px; align-items: center;
+    flex: 1; width: min(1280px, 94%); margin-inline: auto;
 }
 .pill {
     display: inline-flex; align-items: center; gap: 7px;
