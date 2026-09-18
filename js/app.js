@@ -192,7 +192,8 @@ async function renderMinistryExams() {
                 const date = pick(it, ['dateExamen', 'date', 'jour']);
                 const time = pick(it, ['heureDebut', 'heure', 'time']);
                 const place = pick(it, ['salle', 'salleExamen', 'lieu']);
-                return `<tr><td>${escHtml(mod || 'مادة')}</td><td dir="ltr">${escHtml(date || '--')}</td><td dir="ltr">${escHtml(time || '--')}</td><td>${escHtml(place || '--')}</td></tr>`;
+                const extra = pick(it, ['heureFin', 'duree', 'libellePeriodeAr', 'libellePeriode', 'typeSessionAr', 'typeSession']);
+                return `<tr><td>${escHtml(mod || 'مادة')}${extra ? `<br><small style="opacity:.7">${escHtml(extra)}</small>` : ''}</td><td dir="ltr">${escHtml(date || '--')}</td><td dir="ltr">${escHtml(time || '--')}</td><td>${escHtml(place || '--')}</td></tr>`;
             }).join('');
             return `<h3 style="${H3}">${escHtml(g.label || 'البرنامج الرسمي')}</h3>
                 <table class="exam-table"><thead><tr><th>المادة</th><th>التاريخ</th><th>الوقت</th><th>المكان</th></tr></thead>
@@ -1729,36 +1730,6 @@ async function renderDiaSwitch() {
     } catch (e) { /* silent: switcher is a bonus */ }
 }
 
-// شريط إعلانات الوزارة في الرئيسية (bannerInformations — كان يُجلب ولا يُعرض).
-async function loadHomeBanner() {
-    const box = document.getElementById('dh-banner');
-    if (!box) return;
-    try {
-        const s = (typeof getProgresSession === 'function') ? getProgresSession() : null;
-        if (!s || !s.uuid) { box.innerHTML = ''; return; }
-        const res = await fetch(`${API_BASE}/api/academic/banner?uuid=${encodeURIComponent(s.uuid)}`, {
-            headers: { 'Authorization': s.token },
-        });
-        if (!res.ok) return;
-        let data = await res.json().catch(() => null);
-        const list = Array.isArray(data) ? data.slice(0, 3) : [];
-        if (!list.length) { box.innerHTML = ''; return; }
-        const cards = list.map(b => {
-            const img = b.image || b.imageUrl || b.photo || '';
-            const t = escHtml(b.titleAr || b.titleFr || b.titleEn || '');
-            const d = escHtml(b.descriptionAr || b.descriptionFr || '');
-            const inner = img
-                ? `<img src="${escHtml(img)}" alt="${t || 'إعلان الوزارة'}" loading="lazy" onerror="this.closest('.dh-bnimg').remove()">`
-                : `<div class="dh-bntxt">${t || 'إعلان الوزارة'}${d ? ' — ' + d : ''}</div>`;
-            return b.url
-                ? `<a class="dh-bnimg" href="${escHtml(b.url)}" target="_blank" rel="noopener">${inner}</a>`
-                : `<div class="dh-bnimg">${inner}</div>`;
-        }).join('');
-        if (!cards.replace(/<[^>]*>/g, '').trim() && cards.indexOf('<img') === -1) { box.innerHTML = ''; return; }
-        box.innerHTML = cards;
-    } catch (e) { /* silent */ }
-}
-
 function renderDhIdentity() {
     const who = document.getElementById('dh-who');
     if (!who) return;
@@ -1768,7 +1739,6 @@ function renderDhIdentity() {
 function renderHomeDashboard() {
     renderDhIdentity();
     renderDiaSwitch();
-    loadHomeBanner();
     const nextEl = document.getElementById('dh-next');
     const todayEl = document.getElementById('dh-today');
     const cntEl = document.getElementById('dh-cnt');
