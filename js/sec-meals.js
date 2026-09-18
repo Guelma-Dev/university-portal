@@ -737,7 +737,7 @@
             </div>
             <div class="lx-m-info">
                 <i class="fas fa-circle-info"></i>
-                <p>يعمل تلقائياً كل يوم لحجز أقصى نافذة مسموحة (3 أيام) ما دامت جلسة موقعك نشطة</p>
+                <p>طريقة الاستعمال: فعّل الميزة واختار المطعم وحدد التوقيت، وسيعمل الحاجز الآلي تلقائياً</p>
             </div>
             <div style="margin-top:14px">
                 <button type="button" class="lx-m-cta full" data-action="pref-save"><i class="fas fa-floppy-disk"></i> حفظ الإعدادات</button>

@@ -226,7 +226,7 @@
             <div class="grades-container">
                 <div class="calculator-header"><i class="fas fa-clipboard-list"></i><h3>تسجيلاتي</h3></div>
                 <div class="ins-body">
-                    <p class="ins-note"><i class="fas fa-circle-info"></i> تعكس هذه المعلومات مسارك الأكاديمي الرسمي من المنصة الوطنية.</p>
+                    <p class="ins-note"><i class="fas fa-circle-info"></i> المسار الأكاديمي وتسجيلاتك الجامعية.</p>
                     <div class="ins-current-wrap">${currentHtml}</div>
                     ${prevHtml}
                 </div>

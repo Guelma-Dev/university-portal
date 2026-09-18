@@ -1721,31 +1721,12 @@ async function renderDiaSwitch() {
             const lbl = escHtml(c.anneeAcademiqueCode || c.anneeAcademique || ('تسجيل ' + c.id));
             const sel = String(c.id) === cur ? ' sel' : '';
             return `<button type="button" class="dia-chip${sel}" data-dia="${escHtml(c.id)}">${lbl}</button>`;
-        }).join('') + `<span class="dia-year" id="dia-year"></span>`;
+        }).join('');
         box.querySelectorAll('[data-dia]').forEach(b => b.addEventListener('click', () => {
             onProgresCardChange(b.dataset.dia);
             setTimeout(renderDiaSwitch, 600);
         }));
-        loadCurrentYear();
     } catch (e) { /* silent: switcher is a bonus */ }
-}
-
-let _anneeCache = null;
-async function loadCurrentYear() {
-    const el = document.getElementById('dia-year');
-    if (!el) return;
-    try {
-        if (_anneeCache) { el.textContent = 'السنة الجارية: ' + _anneeCache; return; }
-        const s = getProgresSession();
-        if (!s || !s.uuid) return;
-        const res = await fetch(`${API_BASE}/api/academic/annee?uuid=${encodeURIComponent(s.uuid)}`, {
-            headers: { 'Authorization': s.token },
-        });
-        if (!res.ok) return;
-        const data = await res.json().catch(() => null);
-        const code = data && (data.code || (Array.isArray(data) && data[0] && data[0].code));
-        if (code) { _anneeCache = String(code); el.textContent = 'السنة الجارية: ' + _anneeCache; }
-    } catch (e) { /* silent */ }
 }
 
 // شريط إعلانات الوزارة في الرئيسية (bannerInformations — كان يُجلب ولا يُعرض).
@@ -1760,14 +1741,17 @@ async function loadHomeBanner() {
         });
         if (!res.ok) return;
         let data = await res.json().catch(() => null);
-        const list = Array.isArray(data) ? data.slice(0, 2) : [];
+        const list = Array.isArray(data) ? data.slice(0, 3) : [];
         if (!list.length) { box.innerHTML = ''; return; }
-        box.innerHTML = list.map(b => `
-            <div class="dh-bn"><i class="fas fa-bullhorn"></i><div>
-                <b>${escHtml(b.titleAr || b.titleFr || b.titleEn || 'إعلان')}</b>
-                ${b.descriptionAr || b.descriptionFr ? `<p>${escHtml(b.descriptionAr || b.descriptionFr || '')}</p>` : ''}
-                ${b.url ? `<a href="${escHtml(b.url)}" target="_blank" rel="noopener">التفاصيل</a>` : ''}
-            </div></div>`).join('');
+        const items = list.map(b => {
+            const t = escHtml(b.titleAr || b.titleFr || b.titleEn || 'إعلان');
+            const d = escHtml(b.descriptionAr || b.descriptionFr || '');
+            const txt = d ? (t + ' — ' + d) : t;
+            return b.url
+                ? `<a href="${escHtml(b.url)}" target="_blank" rel="noopener">${txt}</a>`
+                : `<span>${txt}</span>`;
+        }).join('<span class="dh-bn-sep">•</span>');
+        box.innerHTML = `<div class="dh-bn-strip" role="marquee" aria-label="إعلانات الوزارة"><div class="dh-bn-track">${items}${items}</div></div>`;
     } catch (e) { /* silent */ }
 }
 
@@ -2619,73 +2603,6 @@ function badgeRow(name, gradeHtml, extraBadges = '') {
     </div>`;
 }
 
-// منتقي السداسي + مشاركة كشف النقاط (periodes من الوزارة).
-async function renderSemesterPicker(c) {
-    const box = document.getElementById('transcript-picker');
-    if (!box || !c) return;
-    let periods = [];
-    try {
-        const cards = c.cards || [];
-        const sel = cards.find(x => String(x.id) === String(c.cardId)) || cards[0] || {};
-        const nid = sel.niveauId;
-        const s = getProgresSession();
-        if (nid && s && s.uuid) {
-            const res = await fetch(`${API_BASE}/api/academic/periodes?uuid=${encodeURIComponent(s.uuid)}&nid=${encodeURIComponent(nid)}`, {
-                headers: { 'Authorization': s.token },
-            });
-            if (res.ok) {
-                const data = await res.json().catch(() => null);
-                if (Array.isArray(data)) periods = data;
-            }
-        }
-    } catch (e) { /* picker hidden */ }
-    const bilans = (c.data && c.data.transcripts.status === 'fulfilled' && Array.isArray(c.data.transcripts.value)) ? c.data.transcripts.value : [];
-    const matchPer = (it, p) => {
-        if (!p || p.id === 'all') return true;
-        if (it.periodeId != null && String(it.periodeId) === String(p.id)) return true;
-        const lbl = ((it.periodeLibelleAr || '') + ' ' + (it.periodeLibelleFr || '')).trim();
-        return !!lbl && !!p.label && (lbl === p.label || lbl.indexOf(p.label) !== -1 || p.label.indexOf(lbl) !== -1);
-    };
-    const applyFilter = (pid) => {
-        const list = document.getElementById('transcript-list');
-        if (!list) return;
-        const p = pid === 'all' ? null : periods.find(x => String(x.periodeId ?? x.id) === String(pid));
-        const items = pid === 'all' ? bilans : bilans.filter(it => matchPer(it, p ? { id: String(p.periodeId ?? p.id), label: p.periodeLibelleAr || p.periodeLibelleFr || '' } : null));
-        list.innerHTML = renderTranscripts(items) || '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط لهذا السداسي</p></div>';
-        box.querySelectorAll('[data-per]').forEach(b => b.classList.toggle('sel', b.dataset.per === String(pid)));
-    };
-    window.switchSemester = (pid) => applyFilter(pid);
-    const chips = [`<button type="button" class="dia-chip sel" data-per="all" onclick="switchSemester('all')">الكل</button>`]
-        .concat(periods.map(p => {
-            const pid = String(p.periodeId ?? p.id ?? '');
-            const lbl = p.periodeLibelleAr || p.periodeLibelleFr || p.periodeLibelleLongLt || ('سداسي ' + pid);
-            return `<button type="button" class="dia-chip" data-per="${escHtml(pid)}" onclick="switchSemester('${escHtml(pid)}')">${escHtml(lbl)}</button>`;
-        })).join('');
-    box.innerHTML = `
-        <div class="dia-switch" style="margin:6px 0 4px">${periods.length ? chips : ''}<button type="button" class="dia-chip" onclick="shareTranscript()"><i class="fas fa-share-nodes"></i> مشاركة الكشف</button></div>`;
-}
-
-// مشاركة كشف النقاط كنص (Web Share API أو الحافظة).
-async function shareTranscript() {
-    try {
-        const c = (typeof progresCache !== 'undefined') ? progresCache : null;
-        const bilans = (c && c.data && c.data.transcripts.status === 'fulfilled' && Array.isArray(c.data.transcripts.value)) ? c.data.transcripts.value : [];
-        if (!bilans.length) { showToast('لا توجد نقاط لمشاركتها', 'info'); return; }
-        const lines = bilans.map(t => {
-            const per = t.periodeLibelleAr || t.periodeLibelleFr || '';
-            const avg = t.moyenne != null ? Number(t.moyenne).toFixed(2) : '--';
-            return `${per}: ${avg}`;
-        });
-        const s = getProgresSession();
-        const text = `كشف النقاط — ${s && s.name ? s.name : ''}\n${lines.join('\n')}`;
-        if (navigator.share) { await navigator.share({ title: 'كشف النقاط', text }); return; }
-        await navigator.clipboard.writeText(text);
-        showToast('نُسخ الكشف إلى الحافظة', 'success');
-    } catch (e) {
-        if (e && e.name !== 'AbortError') showToast('تعذرت المشاركة', 'error');
-    }
-}
-
 function gradeBadge(val, isPass, suffix = '') {
     if (val == null) return '<span class="pbadge pb-dim">--</span>';
     return `<span class="pbadge ${isPass ? 'pb-pass' : 'pb-fail'}">${escHtml(val)}${suffix}</span>`;
@@ -3145,8 +3062,7 @@ async function openProgresView(view) {
                                 dettes);
                         })())
                         : (() => {
-                        const body = c.notice + renderAnnual(c.data.annual, c.cardLabel) + `<div id="transcript-picker"></div><div id="transcript-list">` + renderTranscripts(c.data.transcripts.status === 'fulfilled' ? c.data.transcripts.value : []) + `</div>`;
-                        setTimeout(() => renderSemesterPicker(c), 0);
+                        const body = c.notice + renderAnnual(c.data.annual, c.cardLabel) + renderTranscripts(c.data.transcripts.status === 'fulfilled' ? c.data.transcripts.value : []);
                         return body.trim() ? body : '<div class="mobile-empty"><i class="fas fa-hourglass-half"></i><p>لا توجد نقاط منشورة بعد</p></div>';
                     })());
             setGradesCardView(false);
@@ -3850,7 +3766,7 @@ window.LibraryView = (function () {
     }
     function renderDsResults(repo, items, res) {
         if (!items.length) { res.innerHTML = dsEmptyHint(); return; }
-        const head = `<div class="ds-note"><i class="fas fa-info-circle"></i>${items.length} وثيقة من ${escapeHtml(repo.name)} — الملفات رسمية (مطبوعات الأساتذة) وتُحمَّل مباشرة بدون تسجيل</div>`;
+        const head = `<div class="ds-note"><i class="fas fa-info-circle"></i>${items.length} وثيقة من ${escapeHtml(repo.name)} — الملفات رسمية (مطبوعات الأساتذة)</div>`;
         res.innerHTML = head + items.map(function (d, i) {
             return `<div class="ds-result">
                 <span class="ds-ico"><i class="fas fa-file-pdf"></i></span>
