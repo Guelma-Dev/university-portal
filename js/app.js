@@ -1743,15 +1743,19 @@ async function loadHomeBanner() {
         let data = await res.json().catch(() => null);
         const list = Array.isArray(data) ? data.slice(0, 3) : [];
         if (!list.length) { box.innerHTML = ''; return; }
-        const items = list.map(b => {
-            const t = escHtml(b.titleAr || b.titleFr || b.titleEn || 'إعلان');
+        const cards = list.map(b => {
+            const img = b.image || b.imageUrl || b.photo || '';
+            const t = escHtml(b.titleAr || b.titleFr || b.titleEn || '');
             const d = escHtml(b.descriptionAr || b.descriptionFr || '');
-            const txt = d ? (t + ' — ' + d) : t;
+            const inner = img
+                ? `<img src="${escHtml(img)}" alt="${t || 'إعلان الوزارة'}" loading="lazy" onerror="this.closest('.dh-bnimg').remove()">`
+                : `<div class="dh-bntxt">${t || 'إعلان الوزارة'}${d ? ' — ' + d : ''}</div>`;
             return b.url
-                ? `<a href="${escHtml(b.url)}" target="_blank" rel="noopener">${txt}</a>`
-                : `<span>${txt}</span>`;
-        }).join('<span class="dh-bn-sep">•</span>');
-        box.innerHTML = `<div class="dh-bn-strip" role="marquee" aria-label="إعلانات الوزارة"><div class="dh-bn-track">${items}${items}</div></div>`;
+                ? `<a class="dh-bnimg" href="${escHtml(b.url)}" target="_blank" rel="noopener">${inner}</a>`
+                : `<div class="dh-bnimg">${inner}</div>`;
+        }).join('');
+        if (!cards.replace(/<[^>]*>/g, '').trim() && cards.indexOf('<img') === -1) { box.innerHTML = ''; return; }
+        box.innerHTML = cards;
     } catch (e) { /* silent */ }
 }
 

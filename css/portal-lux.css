@@ -2559,14 +2559,11 @@ select option { background: var(--input-bg); color: var(--text-primary); }
 .dia-chip.sel { background: linear-gradient(150deg, var(--gold-soft), var(--gold) 60%, var(--gold-deep)); color: #241A05; border-color: transparent; }
 #dh-banner { display: grid; gap: 10px; margin-top: 12px; }
 #dh-banner:empty { display: none; }
-/* شريط إعلانات متحرك (marquee) — حجم وسط */
-.dh-bn-strip { overflow: hidden; background: var(--surface-2); border: 1px solid var(--glass-line); border-radius: 14px; padding: 10px 0; }
-.dh-bn-track { display: inline-flex; align-items: center; gap: 28px; white-space: nowrap; padding-inline-start: 12px; font-size: .9rem; font-weight: 600; animation: dh-bn-slide 28s linear infinite; will-change: transform; }
-.dh-bn-track a { color: var(--gold-soft); text-decoration: none; }
-.dh-bn-track a:active { transform: scale(.97); }
-.dh-bn-sep { color: var(--gold); }
-@keyframes dh-bn-slide { from { transform: translateX(0); } to { transform: translateX(50%); } }
-@media (prefers-reduced-motion: reduce) { .dh-bn-track { animation: none; } }
+/* شريط إعلانات الوزارة (صور، حجم وسط) */
+.dh-bnimg { display: block; border-radius: 14px; overflow: hidden; border: 1px solid var(--glass-line); background: var(--surface-2); }
+.dh-bnimg:active { transform: scale(.98); }
+.dh-bnimg img { width: 100%; height: 110px; object-fit: cover; display: block; }
+.dh-bntxt { padding: 10px 14px; font-size: .9rem; font-weight: 600; }
 
 /* ==== جرس اشتراك الرحلات (النقل الحي) ==== */
 .lx-tr-sub { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; color: var(--gold-soft); border: 1px solid var(--glass-line); cursor: pointer; transition: transform .15s ease, background .2s; }
