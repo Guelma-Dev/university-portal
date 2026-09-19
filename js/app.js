@@ -924,6 +924,7 @@ function navigateToSection(section) {
         transport: 'النقل الحي',
         meals: 'الوجبات',
         profile360: 'ملفي الشامل',
+        research: 'البحوث الأكاديمية',
         groupe: 'المجموعة والفوج',
         coeffs: 'النسب المئوية للمقاييس',
         congesx: 'العطلة الأكاديمية',

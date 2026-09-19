@@ -9,15 +9,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="المنصة الجامعية">
-    <link rel="manifest" href="manifest.json?v=1.4.21">
+    <link rel="manifest" href="manifest.json?v=1.4.23">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css?v=1.4.21">
-    <link rel="stylesheet" href="css/luxury.css?v=1.4.21">
-    <link rel="stylesheet" href="css/auth.css?v=1.4.21">
-    <link rel="stylesheet" href="css/native.css?v=1.4.21">
+    <link rel="stylesheet" href="css/styles.css?v=1.4.23">
+    <link rel="stylesheet" href="css/luxury.css?v=1.4.23">
+    <link rel="stylesheet" href="css/auth.css?v=1.4.23">
+    <link rel="stylesheet" href="css/native.css?v=1.4.23">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -216,7 +216,6 @@
                         </div>
                         <div id="dh-next" class="dh-hero-card"></div>
                         <div class="dh-tlwrap" id="dh-tlwrap"><div id="dh-today"></div></div>
-                        <div id="dh-banner"></div>
                     </section>
                     <section aria-label="وصول سريع">
                         <h2 class="dh-minihead">وصول سريع</h2>
@@ -346,6 +345,7 @@
                 <!-- ===== E-LEARNING DIGITAL LIBRARY (Moodle) ===== -->
                 <div id="library-view" class="library-view">
                     <div class="lib-mode-tabs" id="lib-mode-tabs" role="tablist" aria-label="مصدر المكتبة"></div>
+                    <button type="button" class="dh-sv-row pressable" onclick="switchSection('research')" aria-label="البحوث الأكاديمية" style="margin-bottom:12px"><span class="dh-sv-ico sx-blue"><i class="fas fa-flask"></i></span><span class="dh-sv-name">البحوث الأكاديمية</span><i class="fas fa-chevron-left dh-go"></i></button>
                     <!-- Step 1: Specialty -->
                     <div class="lib-step active" id="lib-step-1">
                         <div class="lib-header">
@@ -873,18 +873,19 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/native.js?v=1.4.21"></script>
-    <script src="js/app.js?v=1.4.21"></script>
-    <script src="js/sec-loader.js?v=1.4.21"></script>
-    <script src="js/sec-transport.js?v=1.4.21"></script>
-    <script src="js/sec-meals.js?v=1.4.21"></script>
-    <script src="js/sec-profile.js?v=1.4.21"></script>
-    <script src="js/portal-notify.js?v=1.4.21"></script>
-    <script src="js/portal-update.js?v=1.4.21"></script>
-    <script src="js/sec-inscription.js?v=1.4.21"></script>
-    <script src="js/sec-study.js?v=1.4.21"></script>
-    <script src="js/native-shell.js?v=1.4.21" defer></script>
-    <script src="js/auth-ui.js?v=1.4.21" defer></script>
+    <script src="js/native.js?v=1.4.23"></script>
+    <script src="js/app.js?v=1.4.23"></script>
+    <script src="js/sec-loader.js?v=1.4.23"></script>
+    <script src="js/sec-transport.js?v=1.4.23"></script>
+    <script src="js/sec-meals.js?v=1.4.23"></script>
+    <script src="js/sec-profile.js?v=1.4.23"></script>
+    <script src="js/portal-notify.js?v=1.4.23"></script>
+    <script src="js/portal-update.js?v=1.4.23"></script>
+    <script src="js/sec-inscription.js?v=1.4.23"></script>
+    <script src="js/sec-study.js?v=1.4.23"></script>
+    <script src="js/sec-research.js?v=1.4.23"></script>
+    <script src="js/native-shell.js?v=1.4.23" defer></script>
+    <script src="js/auth-ui.js?v=1.4.23" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});
