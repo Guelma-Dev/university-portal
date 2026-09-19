@@ -2565,9 +2565,9 @@ select option { background: var(--input-bg); color: var(--text-primary); }
 /* ==== البحوث الأكاديمية: بطاقة دخول + نتائج ==== */
 .rs-bigbtn { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; margin-bottom: 14px; font-size: 1.05rem; }
 .rs-bigbtn span { display: inline-flex; align-items: center; gap: 10px; }
-.rs-search { display: flex; gap: 8px; margin-bottom: 12px; }
-.rs-search input { flex: 1; min-width: 0; min-height: 46px; border-radius: 12px; border: 1px solid var(--glass-line); background: var(--surface-2); color: inherit; padding: 0 14px; font-family: inherit; font-size: .95rem; }
-.rs-search button { min-height: 46px; padding: 0 20px; flex-shrink: 0; }
+.rs-search { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.rs-search input { width: 100%; min-height: 52px; border-radius: 14px; border: 1px solid var(--glass-line); background: var(--surface-2); color: inherit; padding: 0 16px; font-family: inherit; font-size: 1rem; }
+.rs-search button { width: 100%; }
 .rs-card { background: var(--surface-2); border: 1px solid var(--glass-line); border-radius: 16px; padding: 16px; margin-bottom: 12px; overflow: hidden; }
 .rs-title { font-weight: 800; font-size: 1rem; line-height: 1.7; margin: 0 0 6px; }
 .rs-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 6px; font-size: .8rem; color: var(--text-3); }

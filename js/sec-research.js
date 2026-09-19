@@ -29,16 +29,25 @@
 
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-    async function fetchS2(url) {
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        if (res.status === 429) {
-            const e = new Error('busy');
-            e.busy = true;
-            throw e;
+    async function fetchJSON(url, timeoutMs) {
+        const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        const timer = ctrl ? setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, timeoutMs || 25000) : null;
+        try {
+            const res = await fetch(url, {
+                headers: { 'Accept': 'application/json' },
+                signal: ctrl ? ctrl.signal : undefined,
+            });
+            if (res.status === 429) {
+                const e = new Error('busy');
+                e.busy = true;
+                throw e;
+            }
+            if (!res.ok) throw new Error('http-' + res.status);
+            const data = await res.json().catch(() => null);
+            return (data && Array.isArray(data.data)) ? data.data : [];
+        } finally {
+            if (timer) clearTimeout(timer);
         }
-        if (!res.ok) throw new Error('http-' + res.status);
-        const data = await res.json().catch(() => null);
-        return (data && Array.isArray(data.data)) ? data.data : [];
     }
 
     async function runSearch(q) {
@@ -48,14 +57,14 @@
         const proxy = apiBase() + '/api/lib/s2?q=' + encodeURIComponent(q);
         try {
             try {
-                state.items = await fetchS2(direct);
+                state.items = await fetchJSON(direct);
             } catch (e1) {
                 if (e1 && e1.busy) {
-                    await sleep(2500); // محاولة مباشرة أخيرة قبل البروكسي
-                    try { state.items = await fetchS2(direct); }
-                    catch (e2) { state.items = await fetchS2(proxy); }
+                    await sleep(4000); // مهلة أخيرة للمباشر قبل البروكسي
+                    try { state.items = await fetchJSON(direct); }
+                    catch (e2) { state.items = await fetchJSON(proxy); }
                 } else {
-                    state.items = await fetchS2(proxy);
+                    state.items = await fetchJSON(proxy);
                 }
             }
             state.loading = false;
@@ -113,7 +122,7 @@
                 <div class="ins-body">
                     <div class="rs-search">
                         <input id="rs-q" type="search" inputmode="search" placeholder="ابحث عن بحث أو مذكرة..." value="${esc(state.q)}">
-                        <button type="button" class="lx-m-btn-xs yes" data-action="go"><i class="fas fa-magnifying-glass"></i> بحث</button>
+                        <button type="button" class="btn-primary pressable" data-action="go"><i class="fas fa-magnifying-glass"></i> بحث</button>
                     </div>
                     ${body}
                 </div>
@@ -145,43 +154,47 @@
         } catch (e) {}
     }
 
-    // عارض PDF داخل التطبيق، وعند تعذر التنزيل يُفتح في المتصفح بدل الخطأ.
+    // عارض PDF المدمج في التطبيق (نفس نافذة المكتبة)، وبديل المتصفح عند التعذر.
+    let pdfObjUrl = '';
     async function openPdf(i) {
         const p = state.items[Number(i)];
         const url = p && p.openAccessPdf && p.openAccessPdf.url;
         if (!url) return;
         toast('جاري فتح الملف...', 'info');
         try {
-            const res = await fetch(url);
+            const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            const timer = ctrl ? setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 45000) : null;
+            let res;
+            try {
+                res = await fetch(url, { signal: ctrl ? ctrl.signal : undefined });
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
             if (!res.ok) throw new Error('http-' + res.status);
             const buf = await res.arrayBuffer();
             if (!buf || !buf.byteLength) throw new Error('empty');
-            const bytes = new Uint8Array(buf);
             const name = cleanName(p.title) + '.pdf';
+            const bytes = new Uint8Array(buf);
             const pn = window.PortalNative;
             if (pn && pn.viewLibraryFile) {
                 try { await pn.viewLibraryFile(name, 'application/pdf', b64encode(bytes)); return; }
                 catch (e) { /* fallback below */ }
             }
             const blob = new Blob([bytes], { type: 'application/pdf' });
-            const obj = URL.createObjectURL(blob);
-            const modal = document.createElement('div');
-            modal.className = 'lx-m-modal';
-            modal.innerHTML = `
-                <div class="lx-m-modal-bg" data-x></div>
-                <div class="lx-m-ticket" role="dialog" aria-modal="true" style="max-width:900px;width:94%;height:86vh;display:flex;flex-direction:column">
-                    <div class="lx-m-tkhead">
-                        <button type="button" class="lx-m-tkclose" data-x title="إغلاق"><i class="fas fa-xmark"></i></button>
-                        <div class="lx-m-tktitle" style="font-size:.9rem">${esc(p.title || name)}</div>
-                    </div>
-                    <iframe src="${obj}" style="flex:1;border:0;border-radius:0 0 12px 12px" title="PDF"></iframe>
-                </div>`;
-            const close = () => { try { URL.revokeObjectURL(obj); } catch (e) {} modal.remove(); };
-            modal.querySelectorAll('[data-x]').forEach(el => el.addEventListener('click', close));
-            document.addEventListener('keydown', function esc2(e) {
-                if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc2); }
-            });
-            document.body.appendChild(modal);
+            if (pdfObjUrl) { try { URL.revokeObjectURL(pdfObjUrl); } catch (e) {} }
+            pdfObjUrl = URL.createObjectURL(blob);
+            const modal = document.getElementById('pdf-viewer-modal');
+            if (!modal) throw new Error('no-viewer');
+            const titleEl = document.getElementById('pdf-viewer-title');
+            if (titleEl) titleEl.textContent = p.title || name;
+            const infoEl = document.getElementById('pdf-page-info');
+            if (infoEl) infoEl.textContent = '';
+            const dlLink = document.getElementById('pdf-download-link');
+            if (dlLink) { dlLink.href = pdfObjUrl; dlLink.download = name; dlLink.style.display = ''; }
+            const body = modal.querySelector('.pdf-viewer-body');
+            if (body) body.innerHTML = `<iframe src="${pdfObjUrl}" title="file-viewer" style="width:100%;height:100%;border:none;background:#fff;border-radius:10px;"></iframe>`;
+            modal.classList.remove('hidden');
+            try { document.body.style.overflow = 'hidden'; } catch (e) {}
         } catch (e) {
             toast('تعذر التنزيل المباشر — فتح في المتصفح', 'info');
             openExternal(url);

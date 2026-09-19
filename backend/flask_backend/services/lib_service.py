@@ -79,13 +79,17 @@ def _s2_fetch(query):
         'query': query, 'limit': 20,
         'fields': S2_FIELDS,
     })
+    headers = {'Accept': 'application/json',
+               'User-Agent': 'university-portal-library/1.0 (contact: t.me/vmw23)'}
+    api_key = os.environ.get('S2_API_KEY', '').strip()
+    if api_key:
+        headers['x-api-key'] = api_key
     last = None
     for attempt in range(3):
         try:
             req = urllib.request.Request(
                 S2_URL + '?' + params,
-                headers={'Accept': 'application/json',
-                         'User-Agent': 'university-portal-library/1.0 (contact: t.me/vmw23)'},
+                headers=headers,
             )
             with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
                 if resp.status == 429:
