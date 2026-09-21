@@ -924,7 +924,6 @@ function navigateToSection(section) {
         transport: 'النقل الحي',
         meals: 'الوجبات',
         profile360: 'ملفي الشامل',
-        research: 'البحوث الأكاديمية',
         groupe: 'المجموعة والفوج',
         coeffs: 'النسب المئوية للمقاييس',
         congesx: 'العطلة الأكاديمية',
@@ -1531,11 +1530,14 @@ function isScheduleEmpty() {
 function renderSchedule() {
     const tbody = document.getElementById('schedule-body');
 
-    if (isScheduleEmpty() && !ptsAny()) {
-        const msg = '<div class="schedule-not-available"><i class="fas fa-calendar-xmark"></i><p>الرزنامة غير متوفرة حالياً</p><small>سيتم إضافة الرزنامة مع بداية الدخول الجامعي</small></div>';
-        tbody.innerHTML = '<tr><td colspan="6" style="border:none;padding:0;">' + msg + '</td></tr>';
-    } else {
-        tbody.innerHTML = TIME_SLOTS.map((time, i) => {
+    // الجدول يظهر دائماً (حتى الفارغ) ليتسنى التعديل اليدوي؛
+    // تنبيه رزنامة الجامعة يظهر كإشعار أعلى الشبكة لا بدلاً منها.
+    let html = '';
+    if (isScheduleEmpty()) {
+        html += '<tr><td colspan="6" style="border:none;padding:0;"><div class="schedule-not-available"><i class="fas fa-pen-to-square"></i><p>رزنامة الجامعة غير منشورة</p><small>أضف موادك يدوياً: اضغط «تعديل الجدول» ثم المس أي خانة</small></div></td></tr>';
+    }
+    {
+        tbody.innerHTML = html + TIME_SLOTS.map((time, i) => {
             return '<tr><td class="time-col">' + time + '</td>' +
                 DAYS.map(day => {
                     const cell = schedule[day + '_' + i] || {};
@@ -1602,11 +1604,10 @@ function renderMobileSchedule() {
     }
     const day = DAYS[selectedScheduleDay];
     const label = DAY_LABELS[selectedScheduleDay];
-    if (isScheduleEmpty() && !ptsAny()) {
-        container.innerHTML = '<div class="schedule-not-available"><i class="fas fa-calendar-xmark"></i><p>الرزنامة غير متوفرة حالياً</p><small>سيتم إضافة الرزنامة مع بداية الدخول الجامعي</small></div>';
-        return;
-    }
     let html = '<div class="mobile-day-title"><i class="fas fa-calendar-check"></i> جدول ' + label + '</div>';
+    if (isScheduleEmpty()) {
+        html += '<div class="schedule-not-available"><i class="fas fa-pen-to-square"></i><p>رزنامة الجامعة غير منشورة</p><small>فعّل «تعديل الجدول» والمس أي خانة للإضافة</small></div>';
+    }
     TIME_SLOTS.forEach((time, i) => {
         const cell = (!isScheduleEmpty() && schedule[day + '_' + i]) || {};
         const ov = ptsOverlay(day, i);
