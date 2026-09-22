@@ -1,207 +1,172 @@
-/* ==== جامعتي — نظام تصميم فاخر (زجاج داكن + ذهبي/أخضر) ==== */
-:root {
-    --cx-bg: #0f172a;
-    --cx-card: rgba(27, 35, 54, 0.72);
-    --cx-card-solid: #1b2336;
-    --cx-ink: #f8fafc;
-    --cx-muted: #94a3b8;
-    --cx-line: rgba(255, 255, 255, 0.09);
-    --cx-gold: #d4af37;
-    --cx-gold-soft: rgba(212, 175, 55, 0.14);
-    --cx-green: #22c55e;
-    --cx-green-soft: rgba(34, 197, 94, 0.13);
-    --cx-red: #ef4444;
-    --cx-red-soft: rgba(239, 68, 68, 0.12);
-    --cx-blue: #38bdf8;
-    --cx-blue-soft: rgba(56, 189, 248, 0.12);
-    --cx-r: 20px;
-}
-
+/* ==== جامعتي — بلغة تصميم بوابة الطالب (ذهبي/زجاجي، نهاري+ليلي تلقائي) ==== */
 #section-campus {
-    background:
-        radial-gradient(600px 300px at 85% -5%, rgba(212, 175, 55, 0.12), transparent 60%),
-        radial-gradient(700px 340px at 10% 0%, rgba(34, 197, 94, 0.1), transparent 60%),
-        var(--cx-bg);
-    border-radius: 24px;
-    padding-bottom: 24px;
+    background: transparent;
+    padding-bottom: 28px;
 }
 
-/* بطاقة زجاجية */
+/* بطاقة */
 .cx-card {
-    background: var(--cx-card);
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
-    backdrop-filter: blur(18px) saturate(160%);
-    border: 1px solid var(--cx-line);
-    border-radius: var(--cx-r);
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid var(--glass-line);
+    border-radius: var(--radius-lg);
     padding: 16px;
     margin: 12px 14px;
-    color: var(--cx-ink);
-    box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.55);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-md);
 }
-.cx-card h3, .cx-card h4 { margin: 0 0 10px; letter-spacing: -0.01em; }
-.cx-card p { margin: 6px 0; line-height: 1.7; color: var(--cx-ink); }
-.cx-muted { color: var(--cx-muted); font-size: 0.86rem; }
+.cx-card h3, .cx-card h4 { margin: 0 0 10px; letter-spacing: 0; color: var(--text-primary); }
+.cx-card p { margin: 6px 0; line-height: 1.7; }
+.cx-muted { color: var(--text-tertiary); font-size: 0.86rem; }
 
-/* بطل الترحيب */
+/* بطل */
 .cx-hero {
     margin: 14px 14px 4px;
     padding: 22px 18px;
-    border-radius: 24px;
-    background:
-        linear-gradient(135deg, rgba(212, 175, 55, 0.22), rgba(34, 197, 94, 0.14)),
-        var(--cx-card-solid);
-    border: 1px solid rgba(212, 175, 55, 0.35);
-    color: var(--cx-ink);
-    box-shadow: 0 16px 40px -14px rgba(212, 175, 55, 0.25);
+    border-radius: var(--radius-xl);
+    background: linear-gradient(150deg, var(--gold-soft), var(--gold) 55%, var(--gold-deep));
+    color: #1a1405;
+    box-shadow: var(--shadow-gold);
 }
-.cx-hero .cx-name { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
-.cx-hero .cx-sub { color: var(--cx-muted); margin: 4px 0 0; font-size: 0.9rem; }
+.cx-hero .cx-name { font-size: 1.35rem; font-weight: 800; margin: 0; }
+.cx-hero .cx-sub { margin: 4px 0 0; font-size: 0.9rem; opacity: 0.85; }
 
 /* إحصائيات */
 .cx-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 14px; }
 .cx-stat {
-    background: var(--cx-card);
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
-    backdrop-filter: blur(18px) saturate(160%);
-    border: 1px solid var(--cx-line);
-    border-radius: 18px;
+    background: var(--glass);
+    border: 1px solid var(--glass-line);
+    border-radius: var(--radius-md);
     padding: 14px 8px;
     text-align: center;
-    color: var(--cx-ink);
+    box-shadow: var(--shadow-sm);
 }
-.cx-stat b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-.cx-stat.gold b { color: var(--cx-gold); }
-.cx-stat.green b { color: var(--cx-green); }
-.cx-stat.blue b { color: var(--cx-blue); }
-.cx-stat span { font-size: 0.75rem; color: var(--cx-muted); }
+.cx-stat b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.cx-stat.gold b { color: var(--gold-deep); }
+.cx-stat.green b { color: var(--success); }
+.cx-stat.blue b { color: var(--info); }
+.cx-stat span { font-size: 0.75rem; color: var(--text-tertiary); }
 
-/* شريط تبويبات زجاجي لاصق */
-.cx-tabs {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding: 12px 14px;
-    background: rgba(15, 23, 42, 0.72);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid var(--cx-line);
-    scrollbar-width: none;
-}
-.cx-tabs::-webkit-scrollbar { display: none; }
-.cx-tab {
-    flex: 0 0 auto;
-    min-height: 44px;
-    padding: 0 16px;
-    border-radius: 999px;
-    border: 1px solid var(--cx-line);
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--cx-muted);
-    font-size: 0.85rem;
-    font-weight: 700;
+/* قائمة أقسام عمودية (بلغة الرئيسية) */
+.cx-menu { margin: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.cx-row {
+    display: flex; align-items: center; gap: 12px;
+    min-height: 60px; padding: 8px 14px;
+    background: var(--glass);
+    border: 1px solid var(--glass-line);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-weight: 700; font-size: 0.95rem;
     cursor: pointer;
-    transition: transform 150ms ease-out, background 200ms, color 200ms, border-color 200ms;
+    transition: transform 100ms ease-out, background 200ms, border-color 200ms;
+    box-shadow: var(--shadow-sm);
+    width: 100%; text-align: right; font-family: inherit;
 }
-.cx-tab:active { transform: scale(0.96); }
-.cx-tab.on {
-    background: linear-gradient(135deg, var(--cx-gold), #b8912a);
-    border-color: transparent;
-    color: #0f172a;
+.cx-row:active { transform: scale(0.98); }
+.cx-ico {
+    width: 44px; height: 44px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 14px; font-size: 1.1rem;
+    background: linear-gradient(150deg, var(--gold-soft), var(--gold) 55%, var(--gold-deep));
+    color: #1a1405;
 }
-.cx-tab .cx-badge {
-    display: inline-block;
-    min-width: 20px;
-    padding: 1px 6px;
-    margin-inline-start: 6px;
-    border-radius: 999px;
-    background: var(--cx-red);
-    color: #fff;
-    font-size: 0.72rem;
+.cx-ico.green { background: linear-gradient(150deg, #8fe8c0, var(--success) 60%, #1f9d63); color: #06281a; }
+.cx-ico.blue { background: linear-gradient(150deg, #a9c8ff, var(--info) 60%, #2f5fd0); color: #0a1740; }
+.cx-ico.red { background: linear-gradient(150deg, #ffb3bd, var(--danger) 60%, #c73e52); color: #3d0712; }
+.cx-row .cx-name { flex: 1; }
+.cx-row .cx-sub { display: block; font-size: 0.75rem; color: var(--text-tertiary); font-weight: 400; }
+.cx-row .cx-go { color: var(--text-tertiary); }
+.cx-row .cx-badge {
+    min-width: 22px; padding: 2px 7px; border-radius: 999px;
+    background: var(--danger); color: #fff; font-size: 0.75rem; font-weight: 800;
 }
+
+/* رأس القسم الداخلي + رجوع */
+.cx-back {
+    display: inline-flex; align-items: center; gap: 8px;
+    min-height: 44px; padding: 0 16px; margin: 12px 14px 0;
+    border-radius: 999px; border: 1px solid var(--gold-line);
+    background: var(--gold-wash); color: var(--gold-deep);
+    font-weight: 800; font-size: 0.88rem; cursor: pointer; font-family: inherit;
+    transition: transform 100ms ease-out;
+}
+.cx-back:active { transform: scale(0.97); }
+[data-theme="dark"] .cx-back, :root:not([data-theme]) .cx-back { color: var(--gold-soft); }
 
 /* أزرار */
 .cx-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 44px;
-    padding: 0 18px;
-    border-radius: 999px;
-    border: 1px solid var(--cx-line);
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--cx-ink);
-    font-weight: 700;
-    font-size: 0.88rem;
-    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    min-height: 44px; padding: 0 18px;
+    border-radius: 999px; border: 1px solid var(--glass-line);
+    background: var(--glass-strong); color: var(--text-primary);
+    font-weight: 700; font-size: 0.88rem; cursor: pointer; font-family: inherit;
     transition: transform 100ms ease-out, background 200ms;
 }
 .cx-btn:active { transform: scale(0.97); }
-.cx-btn.gold { background: linear-gradient(135deg, var(--cx-gold), #b8912a); border-color: transparent; color: #0f172a; }
-.cx-btn.green { background: var(--cx-green-soft); border-color: rgba(34, 197, 94, 0.4); color: var(--cx-green); }
+.cx-btn.gold { background: linear-gradient(150deg, var(--gold-soft), var(--gold) 55%, var(--gold-deep)); border-color: transparent; color: #1a1405; }
+.cx-btn.green { background: var(--tdtp-bg); border: 1px solid var(--tdtp-border); color: var(--tdtp-text); }
+.cx-btn.active { background: linear-gradient(150deg, var(--gold-soft), var(--gold) 55%, var(--gold-deep)); color: #1a1405; border-color: transparent; }
 .cx-btn:disabled { opacity: 0.55; }
 
-/* شارة حالة */
-.cx-pill {
-    display: inline-block;
-    padding: 3px 12px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 800;
-}
-.cx-pill.ok { background: var(--cx-green-soft); color: var(--cx-green); }
-.cx-pill.warn { background: var(--cx-gold-soft); color: var(--cx-gold); }
-.cx-pill.bad { background: var(--cx-red-soft); color: var(--cx-red); }
-.cx-pill.info { background: var(--cx-blue-soft); color: var(--cx-blue); }
+/* شارات */
+.cx-pill { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 800; }
+.cx-pill.ok { background: var(--tdtp-bg); color: var(--tdtp-text); border: 1px solid var(--tdtp-border); }
+.cx-pill.warn { background: var(--gold-wash); color: var(--gold-deep); border: 1px solid var(--gold-line); }
+.cx-pill.bad { background: rgba(255,122,138,.1); color: var(--danger); border: 1px solid var(--danger); }
+.cx-pill.info { background: rgba(111,168,255,.1); color: var(--info); border: 1px solid var(--info); }
 
-/* جدول الرزنامة */
-.cx-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 0.86rem; }
-.cx-table th { color: var(--cx-muted); font-weight: 700; text-align: right; padding: 4px 10px; font-size: 0.78rem; }
-.cx-table td {
-    background: rgba(255, 255, 255, 0.035);
-    border-top: 1px solid var(--cx-line);
-    border-bottom: 1px solid var(--cx-line);
-    padding: 10px;
-    vertical-align: top;
-}
-.cx-table td:first-child { border-inline-start: 1px solid var(--cx-line); border-start-start-radius: 12px; border-end-start-radius: 12px; }
-.cx-table td:last-child { border-inline-end: 1px solid var(--cx-line); border-start-end-radius: 12px; border-end-end-radius: 12px; }
-.cx-time { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--cx-gold); white-space: nowrap; }
-.cx-day { font-weight: 800; font-size: 0.95rem; color: var(--cx-ink); padding: 14px 4px 2px; }
+/* جدول أسبوعي (نفس شبكة التطبيق) */
+.cx-grid-wrap { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
+table.cx-grid { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 560px; }
+table.cx-grid th, table.cx-grid td { border: 1px solid var(--border); padding: 8px 6px; text-align: center; vertical-align: top; }
+table.cx-grid th { background: var(--surface-2); color: var(--text-secondary); font-size: 0.78rem; }
+table.cx-grid td.time-col { background: var(--surface-2); color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 0.72rem; }
+table.cx-grid td.slot-tap { cursor: pointer; }
+table.cx-grid td .cx-cell-sub { display: block; font-weight: 800; color: var(--text-primary); }
+table.cx-grid td .cx-cell-meta { display: block; font-size: 0.7rem; color: var(--text-tertiary); }
+.cx-unmatched { margin-top: 10px; }
 
-/* مقياس الخطر */
-.cx-meter { height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; margin-top: 8px; }
-.cx-meter i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--cx-green), var(--cx-gold), var(--cx-red)); transition: width 400ms ease-out; }
+/* جدول الموديولات */
+table.cx-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 0.86rem; }
+table.cx-table th { color: var(--text-tertiary); font-weight: 700; text-align: right; padding: 4px 10px; font-size: 0.78rem; }
+table.cx-table td { background: var(--glass); border-top: 1px solid var(--glass-line); border-bottom: 1px solid var(--glass-line); padding: 10px; vertical-align: top; }
+table.cx-table td:first-child { border-inline-start: 1px solid var(--glass-line); border-start-start-radius: 12px; border-end-start-radius: 12px; }
+table.cx-table td:last-child { border-inline-end: 1px solid var(--glass-line); border-start-end-radius: 12px; border-end-end-radius: 12px; }
+.cx-time { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--gold-deep); white-space: nowrap; }
 
-/* عناصر القاعات */
-.cx-room { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--cx-line); }
+/* مقياس */
+.cx-meter { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 8px; }
+.cx-meter i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--success), var(--warning), var(--danger)); transition: width 400ms ease-out; }
+
+/* صفوف */
+.cx-room { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--border); }
 .cx-room:last-child { border-bottom: 0; }
 .cx-dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; }
-.cx-dot.free { background: var(--cx-green); box-shadow: 0 0 10px var(--cx-green); }
-.cx-dot.busy { background: var(--cx-red); box-shadow: 0 0 10px var(--cx-red); }
+.cx-dot.free { background: var(--success); box-shadow: 0 0 10px var(--success); }
+.cx-dot.busy { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
 .cx-room .cx-map { margin-inline-start: auto; }
 
-/* خط زمني للأخبار */
-.cx-news img { max-width: 100%; border-radius: 14px; margin-top: 8px; }
-.cx-news hr { border: 0; border-top: 1px solid var(--cx-line); margin: 12px 0; }
+/* أخبار */
+.cx-news img { max-width: 100%; border-radius: var(--radius-md); margin-top: 8px; }
+.cx-news hr { border: 0; border-top: 1px solid var(--border); margin: 12px 0; }
 
-/* هيكل التحميل */
-.cx-sk { border-radius: 12px; background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.05) 75%); background-size: 200% 100%; animation: cx-sh 1.2s infinite; min-height: 64px; margin: 8px 0; }
+/* تحميل */
+.cx-sk { border-radius: 12px; background: linear-gradient(90deg, var(--glass) 25%, var(--glass-strong) 50%, var(--glass) 75%); background-size: 200% 100%; animation: cx-sh 1.2s infinite; min-height: 64px; margin: 8px 0; }
 @keyframes cx-sh { to { background-position: -200% 0; } }
 
-/* تفاصيل قابلة للطي */
-.cx-card details { border-top: 1px solid var(--cx-line); padding-top: 10px; margin-top: 10px; }
+/* تفاصيل */
+.cx-card details { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
 .cx-card summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
 
-/* قفل المسئول */
-.cx-lock { text-align: center; padding: 48px 20px; color: var(--cx-muted); }
-.cx-lock i { font-size: 3rem; color: var(--cx-gold); }
+/* قفل */
+.cx-lock { text-align: center; padding: 48px 20px; color: var(--text-tertiary); }
+.cx-lock i { font-size: 3rem; color: var(--gold); }
 
 @media (prefers-reduced-motion: reduce) {
-    .cx-card, .cx-tab, .cx-btn, .cx-meter i { transition: none !important; }
+    .cx-row, .cx-btn, .cx-back, .cx-meter i { transition: none !important; }
     .cx-sk { animation: none !important; }
 }
 @media (prefers-reduced-transparency: reduce) {
-    .cx-card, .cx-stat, .cx-tabs { background: var(--cx-card-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .cx-card, .cx-stat, .cx-row { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface); }
 }
