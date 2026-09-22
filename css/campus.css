@@ -1,88 +1,25 @@
-/* ==== جامعتي — بلغة تصميم بوابة الطالب (ذهبي/زجاجي، نهاري+ليلي تلقائي) ==== */
+/* ==== جامعتي — نفس مكونات بوابة الطالب (وصول سريع + خدمات + رزنامة الهاتف) ==== */
 #section-campus {
     background: transparent;
     padding-bottom: 28px;
 }
+#section-campus .dh-minihead { margin: 22px 4px 12px; }
 
-/* بطاقة */
+/* بطاقة عامة */
 .cx-card {
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(16px) saturate(160%);
-    backdrop-filter: blur(16px) saturate(160%);
-    border: 1px solid var(--glass-line);
-    border-radius: var(--radius-lg);
+    background: var(--s-card, var(--surface));
+    border: 1px solid var(--s-edge, var(--border));
+    border-radius: var(--s-radius-sm, var(--radius-md));
+    box-shadow: var(--s-shadow, var(--shadow-md));
     padding: 16px;
     margin: 12px 14px;
     color: var(--text-primary);
-    box-shadow: var(--shadow-md);
 }
-.cx-card h3, .cx-card h4 { margin: 0 0 10px; letter-spacing: 0; color: var(--text-primary); }
+.cx-card h3, .cx-card h4 { margin: 0 0 10px; color: var(--text-primary); }
 .cx-card p { margin: 6px 0; line-height: 1.7; }
 .cx-muted { color: var(--text-tertiary); font-size: 0.86rem; }
 
-/* بطل */
-.cx-hero {
-    margin: 14px 14px 4px;
-    padding: 22px 18px;
-    border-radius: var(--radius-xl);
-    background: linear-gradient(150deg, var(--gold-soft), var(--gold) 55%, var(--gold-deep));
-    color: #1a1405;
-    box-shadow: var(--shadow-gold);
-}
-.cx-hero .cx-name { font-size: 1.35rem; font-weight: 800; margin: 0; }
-.cx-hero .cx-sub { margin: 4px 0 0; font-size: 0.9rem; opacity: 0.85; }
-
-/* إحصائيات */
-.cx-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 14px; }
-.cx-stat {
-    background: var(--glass);
-    border: 1px solid var(--glass-line);
-    border-radius: var(--radius-md);
-    padding: 14px 8px;
-    text-align: center;
-    box-shadow: var(--shadow-sm);
-}
-.cx-stat b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums; color: var(--text-primary); }
-.cx-stat.gold b { color: var(--gold-deep); }
-.cx-stat.green b { color: var(--success); }
-.cx-stat.blue b { color: var(--info); }
-.cx-stat span { font-size: 0.75rem; color: var(--text-tertiary); }
-
-/* قائمة أقسام عمودية (بلغة الرئيسية) */
-.cx-menu { margin: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
-.cx-row {
-    display: flex; align-items: center; gap: 12px;
-    min-height: 60px; padding: 8px 14px;
-    background: var(--glass);
-    border: 1px solid var(--glass-line);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
-    font-weight: 700; font-size: 0.95rem;
-    cursor: pointer;
-    transition: transform 100ms ease-out, background 200ms, border-color 200ms;
-    box-shadow: var(--shadow-sm);
-    width: 100%; text-align: right; font-family: inherit;
-}
-.cx-row:active { transform: scale(0.98); }
-.cx-ico {
-    width: 44px; height: 44px; flex: 0 0 auto;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 14px; font-size: 1.1rem;
-    background: linear-gradient(150deg, var(--gold-soft), var(--gold) 55%, var(--gold-deep));
-    color: #1a1405;
-}
-.cx-ico.green { background: linear-gradient(150deg, #8fe8c0, var(--success) 60%, #1f9d63); color: #06281a; }
-.cx-ico.blue { background: linear-gradient(150deg, #a9c8ff, var(--info) 60%, #2f5fd0); color: #0a1740; }
-.cx-ico.red { background: linear-gradient(150deg, #ffb3bd, var(--danger) 60%, #c73e52); color: #3d0712; }
-.cx-row .cx-name { flex: 1; }
-.cx-row .cx-sub { display: block; font-size: 0.75rem; color: var(--text-tertiary); font-weight: 400; }
-.cx-row .cx-go { color: var(--text-tertiary); }
-.cx-row .cx-badge {
-    min-width: 22px; padding: 2px 7px; border-radius: 999px;
-    background: var(--danger); color: #fff; font-size: 0.75rem; font-weight: 800;
-}
-
-/* رأس القسم الداخلي + رجوع */
+/* زر الرجوع */
 .cx-back {
     display: inline-flex; align-items: center; gap: 8px;
     min-height: 44px; padding: 0 16px; margin: 12px 14px 0;
@@ -92,22 +29,19 @@
     transition: transform 100ms ease-out;
 }
 .cx-back:active { transform: scale(0.97); }
-[data-theme="dark"] .cx-back, :root:not([data-theme]) .cx-back { color: var(--gold-soft); }
 
 /* أزرار */
 .cx-btn {
     display: inline-flex; align-items: center; gap: 8px;
     min-height: 44px; padding: 0 18px;
-    border-radius: 999px; border: 1px solid var(--glass-line);
-    background: var(--glass-strong); color: var(--text-primary);
+    border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text-primary);
     font-weight: 700; font-size: 0.88rem; cursor: pointer; font-family: inherit;
-    transition: transform 100ms ease-out, background 200ms;
+    transition: transform 100ms ease-out;
 }
 .cx-btn:active { transform: scale(0.97); }
-.cx-btn.gold { background: linear-gradient(150deg, var(--gold-soft), var(--gold) 55%, var(--gold-deep)); border-color: transparent; color: #1a1405; }
-.cx-btn.green { background: var(--tdtp-bg); border: 1px solid var(--tdtp-border); color: var(--tdtp-text); }
-.cx-btn.active { background: linear-gradient(150deg, var(--gold-soft), var(--gold) 55%, var(--gold-deep)); color: #1a1405; border-color: transparent; }
-.cx-btn:disabled { opacity: 0.55; }
+.cx-btn.gold { background: linear-gradient(150deg, var(--gold-soft), var(--gold) 55%, var(--gold-deep)); border-color: transparent; color: #241a05; }
+.cx-btn.active { background: var(--accent); color: #241a05; border-color: transparent; }
 
 /* شارات */
 .cx-pill { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 800; }
@@ -116,16 +50,79 @@
 .cx-pill.bad { background: rgba(255,122,138,.1); color: var(--danger); border: 1px solid var(--danger); }
 .cx-pill.info { background: rgba(111,168,255,.1); color: var(--info); border: 1px solid var(--info); }
 
-/* جدول أسبوعي (نفس شبكة التطبيق) */
-.cx-grid-wrap { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
-table.cx-grid { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 560px; }
-table.cx-grid th, table.cx-grid td { border: 1px solid var(--border); padding: 8px 6px; text-align: center; vertical-align: top; }
-table.cx-grid th { background: var(--surface-2); color: var(--text-secondary); font-size: 0.78rem; }
-table.cx-grid td.time-col { background: var(--surface-2); color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 0.72rem; }
-table.cx-grid td.slot-tap { cursor: pointer; }
-table.cx-grid td .cx-cell-sub { display: block; font-weight: 800; color: var(--text-primary); }
-table.cx-grid td .cx-cell-meta { display: block; font-size: 0.7rem; color: var(--text-tertiary); }
-.cx-unmatched { margin-top: 10px; }
+/* منتقي اليوم + حصص الهاتف (مطابق للتطبيق، يعمل على كل الشاشات) */
+#section-campus .schedule-day-picker { display: block; margin-bottom: 16px; padding: 16px 14px 6px; }
+#section-campus .day-picker-title {
+    font-size: 1rem; font-weight: 700; color: var(--text-primary);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+    justify-content: space-between;
+}
+#section-campus .day-picker-title i { color: var(--accent); }
+#section-campus .sched-edit-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: .75rem; font-weight: 800; font-family: inherit;
+    color: var(--accent); background: transparent;
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 7px 12px; cursor: pointer; white-space: nowrap;
+}
+#section-campus .sched-edit-btn:active { transform: scale(.96); }
+#section-campus .sched-edit-btn.active { color: #241a05; background: var(--accent); border-color: transparent; }
+#section-campus .day-picker-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+#section-campus .day-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 14px 8px; border-radius: var(--radius-lg); border: 2px solid var(--border);
+    background: var(--bg-card); color: var(--text-primary); cursor: pointer;
+    font-size: 0.8rem; font-weight: 600; transition: var(--transition);
+    font-family: inherit; min-height: 44px;
+}
+#section-campus .day-btn i { font-size: 1.1rem; color: var(--text-secondary); transition: var(--transition); }
+#section-campus .day-btn:hover, #section-campus .day-btn.active {
+    border-color: var(--accent); background: var(--accent-light); color: var(--accent);
+}
+#section-campus .day-btn.active i { color: var(--accent); }
+#section-campus .day-btn.has-classes { position: relative; }
+#section-campus .day-btn.has-classes::after {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); position: absolute; top: 6px; right: 6px;
+}
+#section-campus .schedule-mobile-view { display: block; padding: 0 14px; }
+#section-campus .mobile-day-title {
+    font-size: 1.05rem; font-weight: 800; color: var(--text-primary);
+    padding: 14px 4px 10px; border-bottom: 2px solid var(--accent);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+#section-campus .mobile-day-title i { color: var(--accent); }
+#section-campus .mobile-slot {
+    background: var(--bg-card); border-radius: var(--radius-lg); padding: 14px 16px;
+    border: 1px solid var(--border); margin-bottom: 10px;
+    box-shadow: var(--shadow-sm);
+}
+#section-campus .mobile-slot-time {
+    font-size: 0.78rem; font-weight: 800; color: var(--accent);
+    margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+}
+#section-campus .mobile-slot-time i { font-size: 0.7rem; }
+#section-campus .mobile-slot-content {
+    font-size: 0.88rem; font-weight: 500; color: var(--text-primary);
+    line-height: 1.6; min-height: 20px;
+}
+#section-campus .mobile-slot-content.empty { color: var(--text-tertiary); font-style: italic; font-weight: 400; }
+#section-campus .mobile-slot-content.schedule-cell-lecture {
+    border-right: 3px solid var(--lecture-border); background: var(--lecture-bg);
+    padding: 8px 10px; border-radius: var(--radius-sm);
+}
+#section-campus .mobile-slot-content.schedule-cell-tdtp {
+    border-right: 3px solid var(--tdtp-border); background: var(--tdtp-bg);
+    padding: 8px 10px; border-radius: var(--radius-sm);
+}
+#section-campus .mobile-slot-content.schedule-cell-tp {
+    border-right: 3px solid var(--tp-border); background: var(--tp-bg);
+    padding: 8px 10px; border-radius: var(--radius-sm);
+}
+#section-campus .mobile-slot .slot-tap { cursor: pointer; }
+#section-campus .pts-pen { font-size: .7rem; opacity: .6; }
+#section-campus .mobile-empty, #section-campus .schedule-not-available { text-align: center; padding: 40px 20px; color: var(--text-tertiary); }
+#section-campus .mobile-empty i, #section-campus .schedule-not-available i { font-size: 2rem; display: block; margin-bottom: 10px; }
 
 /* جدول الموديولات */
 table.cx-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 0.86rem; }
@@ -147,6 +144,9 @@ table.cx-table td:last-child { border-inline-end: 1px solid var(--glass-line); b
 .cx-dot.busy { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
 .cx-room .cx-map { margin-inline-start: auto; }
 
+/* شارة عدد داخل صفوف الخدمات */
+#section-campus .dh-sv-name .cx-pill { margin-inline-start: 6px; }
+
 /* أخبار */
 .cx-news img { max-width: 100%; border-radius: var(--radius-md); margin-top: 8px; }
 .cx-news hr { border: 0; border-top: 1px solid var(--border); margin: 12px 0; }
@@ -164,9 +164,6 @@ table.cx-table td:last-child { border-inline-end: 1px solid var(--glass-line); b
 .cx-lock i { font-size: 3rem; color: var(--gold); }
 
 @media (prefers-reduced-motion: reduce) {
-    .cx-row, .cx-btn, .cx-back, .cx-meter i { transition: none !important; }
-    .cx-sk { animation: none !important; }
-}
-@media (prefers-reduced-transparency: reduce) {
-    .cx-card, .cx-stat, .cx-row { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface); }
+    #section-campus .cx-btn, #section-campus .cx-back, #section-campus .day-btn, #section-campus .cx-meter i { transition: none !important; }
+    #section-campus .cx-sk { animation: none !important; }
 }

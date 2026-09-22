@@ -1,6 +1,6 @@
-// ==== جامعتي — بلغة بوابة الطالب (مسئول فقط، جلسة دائمة) ====
-// قائمة عمودية ← تفاصيل (نفس ملاحة التطبيق). الرزنامة شبكية بشبكة التطبيق
-// مع طبقة تعديل محلية lx_pms_sched_v1 تعيد استعمال محرر الحصص الأصلي.
+// ==== جامعتي — نفس مكونات بوابة الطالب (مسئول فقط، جلسة دائمة) ====
+// القائمة: وصول سريع + خدمات (مطابق للرئيسية). الرزنامة: منتقي أيام + حصص
+// (مطابق لرزنامة التطبيق) مع تعديل محلي يعيد استعمال محرر الحصص الأصلي.
 (() => {
     'use strict';
 
@@ -17,10 +17,11 @@
         email: 'bbm82186@gmail.com', Tel: '0558163003',
     };
 
-    const DAYS = (typeof window.DAYS !== 'undefined' && window.DAYS) || ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
-    const DAY_AR = { sunday: 'الأحد', monday: 'الاثنين', tuesday: 'الثلاثاء', wednesday: 'الأربعاء', thursday: 'الخميس', friday: 'الجمعة', saturday: 'السبت' };
+    const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
+    const DAY_AR = { sunday: 'الأحد', monday: 'الاثنين', tuesday: 'الثلاثاء', wednesday: 'الأربعاء', thursday: 'الخميس' };
+    const DAY_ICON = ['fa-sun', 'fa-cloud-sun', 'fa-cloud', 'fa-cloud-rain', 'fa-moon'];
     const FR_DAY = { dimanche: 'sunday', lundi: 'monday', mardi: 'tuesday', mercredi: 'wednesday', jeudi: 'thursday', vendredi: 'friday', samedi: 'saturday' };
-    const SLOTS = (typeof window.TIME_SLOTS !== 'undefined' && window.TIME_SLOTS) || ['08:00 - 09:30', '09:30 - 11:00', '11:00 - 12:30', '14:00 - 15:30', '15:30 - 17:00'];
+    const SLOTS = ['08:00 - 09:30', '09:30 - 11:00', '11:00 - 12:30', '14:00 - 15:30', '15:30 - 17:00'];
     const PMS_TYPE = { cours: 'lecture', lecture: 'lecture', td: 'td', tp: 'tp' };
     const CELL_CLASS = { lecture: 'schedule-cell-lecture', td: 'schedule-cell-tdtp', tp: 'schedule-cell-tp' };
     const TYPE_AR = { lecture: 'محاضرة', td: 'أعمال موجهة', tp: 'أعمال تطبيقية' };
@@ -33,23 +34,8 @@
     const isAdmin = () => { try { return localStorage.getItem('user_role') === 'admin'; } catch (e) { return false; } };
     const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
 
-    const S = { root: null, view: 'menu', sess: null, cache: {}, loading: false, html: '', dash: null, unread: 0, cxEdit: false };
+    const S = { root: null, view: 'menu', sess: null, cache: {}, loading: false, html: '', dash: null, unread: 0, cxEdit: false, cxDay: -1 };
 
-    const SECTIONS = [
-        ['schedule', 'fa-calendar-days', 'رزنامتي', 'الشبكة الأسبوعية + تعديلي', ''],
-        ['exams', 'fa-file-pen', 'امتحاناتي', 'عادية / استدراك / ديون', 'blue'],
-        ['absences', 'fa-user-xmark', 'غياباتي', 'مبررة وغير مبررة + عتبة الإقصاء', 'red'],
-        ['modules', 'fa-book', 'موديولاتي', 'حسب السداسي + الأرصدة والمعاملات', ''],
-        ['rooms', 'fa-door-open', 'القاعات', 'إشغال حي + خرائط GPS', 'green'],
-        ['tutor', 'fa-user-tie', 'المشرف', 'مشرفي وسجله', ''],
-        ['stage', 'fa-briefcase', 'التربص', 'الترشح والحالة', 'blue'],
-        ['defense', 'fa-graduation-cap', 'المناقشة', 'اللجنة والقاعة', ''],
-        ['news', 'fa-newspaper', 'الأخبار', 'أخبار الجامعة + إعلانات الإدارة', 'green'],
-        ['notifs', 'fa-bell', 'تنبيهاتي', 'إشعارات الجامعة', 'red'],
-        ['profile', 'fa-id-card', 'ملفي', 'بطاقتي الجامعية الكاملة', ''],
-    ];
-
-    // ---------- الجلسة الدائمة ----------
     function loadSess() {
         try {
             const raw = localStorage.getItem(LS_KEY);
@@ -60,14 +46,12 @@
         return s;
     }
 
-    // ---------- طبقة الرزنامة المحلية ----------
     function cxDb() {
         try { const d = JSON.parse(localStorage.getItem(SCHED_KEY) || '{}'); if (d && typeof d === 'object') return d; } catch (e) {}
         return {};
     }
     function cxSave(db) { try { localStorage.setItem(SCHED_KEY, JSON.stringify(db)); } catch (e) {} }
 
-    // ---------- الشبكة ----------
     async function api(path, body) {
         const res = await fetch(API + path, {
             method: 'POST',
@@ -90,7 +74,6 @@
         return d;
     }
 
-    // ---------- العرض ----------
     function syncTile() {
         try {
             const t = document.getElementById('campus-tile');
@@ -106,24 +89,63 @@
         </div></div>`;
     }
 
-    function heroHTML() {
-        const p = (S.sess && S.sess.profile) || {};
-        const d = S.dash || {};
-        return `<div class="cx-hero">
-            <p class="cx-name">👋 ${esc(p.NomAr || p.Nom || '')}</p>
-            <p class="cx-sub">${esc(d.specialtyNameAr || d.specialtyNameFr || 'جامعة قالمة')} — ${esc(d.lvlYearStr || '')} — فوج ${esc(d.group || p.Groupe || '')}</p>
-        </div>`;
+    // ---------- القائمة (وصول سريع + خدمات) ----------
+    function featBtn(tab, icon, tone, name, sub) {
+        return `<button class="dh-qa-feat pressable" data-action="pms-open" data-tab="${tab}">
+            <span class="dh-sv-ico ${tone}"><i class="fas ${icon}"></i></span>
+            <span class="dh-qa-m"><span class="dh-qa-fname">${name}</span><small>${sub}</small></span>
+            <i class="fas fa-chevron-left dh-qa-go"></i></button>`;
+    }
+    function cellBtn(tab, icon, tone, name) {
+        return `<button class="dh-qa-cell pressable" data-action="pms-open" data-tab="${tab}">
+            <span class="dh-sv-ico ${tone}"><i class="fas ${icon}"></i></span>
+            <span class="dh-qa-m"><span>${name}</span></span></button>`;
+    }
+    function wideBtn(tab, icon, tone, name, sub) {
+        return `<button class="dh-qa-wide pressable" data-action="pms-open" data-tab="${tab}">
+            <span class="dh-sv-ico ${tone}"><i class="fas ${icon}"></i></span>
+            <span class="dh-qa-m"><span class="dh-qa-fname">${name}</span><small>${sub}</small></span>
+            <i class="fas fa-chevron-left dh-qa-go"></i></button>`;
+    }
+    function svRow(tab, icon, tone, name, badge) {
+        return `<button class="dh-sv-row pressable" data-action="pms-open" data-tab="${tab}">
+            <span class="dh-sv-ico ${tone}"><i class="fas ${icon}"></i></span>
+            <span class="dh-sv-name">${name}${badge ? ` <span class="cx-pill bad">${badge}</span>` : ''}</span>
+            <i class="fas fa-chevron-left dh-go"></i></button>`;
     }
 
     function menuHTML() {
-        return heroHTML() + `<div class="cx-menu">` + SECTIONS.map(([id, ic, t, sub, tone]) => {
-            const badge = (id === 'notifs' && S.unread > 0) ? `<span class="cx-badge">${S.unread}</span>` : '';
-            return `<button type="button" class="cx-row pressable" data-action="pms-open" data-tab="${id}">
-                <span class="cx-ico ${tone}"><i class="fas ${ic}"></i></span>
-                <span class="cx-name">${t}<span class="cx-sub">${sub}</span></span>
-                ${badge}<i class="fas fa-chevron-left cx-go"></i>
-            </button>`;
-        }).join('') + `</div>`;
+        const p = (S.sess && S.sess.profile) || {};
+        const d = S.dash || {};
+        return `
+        <div class="cx-card" style="margin-top:14px">
+            <h3><i class="fas fa-building-columns" style="color:var(--accent)"></i> جامعتي <span class="cx-muted">— ${esc(d.specialtyNameAr || d.specialtyNameFr || 'جامعة قالمة')}</span></h3>
+            <p><strong>${esc(p.NomAr || p.Nom || '')}</strong> <span class="cx-muted">— فوج ${esc(d.group || p.Groupe || '')} / قسم ${esc(d.section || p.section || '')}</span></p>
+        </div>
+        <h2 class="dh-minihead" style="margin-inline:14px">وصول سريع</h2>
+        <div class="dh-qa" style="padding:0 14px">
+            ${featBtn('schedule', 'fa-calendar-week', 'sx-blue', 'رزنامتي', 'الشبكة الأسبوعية')}
+            <div class="dh-qa-grid">
+                ${cellBtn('modules', 'fa-book', 'sx-gold', 'موديولاتي')}
+                ${cellBtn('exams', 'fa-file-pen', 'sx-blue', 'امتحاناتي')}
+            </div>
+            ${wideBtn('news', 'fa-newspaper', 'sx-green', 'الأخبار', 'أخبار الجامعة والإدارة')}
+        </div>
+        <section class="dh-sv-sec" style="padding:0 14px">
+            <h2 class="dh-minihead">الخدمات</h2>
+            <p class="dh-sv-head">النتائج الدراسية</p>
+            <div class="dh-sv">${svRow('absences', 'fa-user-xmark', 'sx-amber', 'غياباتي')}</div>
+            <p class="dh-sv-head">الحياة الجامعية</p>
+            <div class="dh-sv">${svRow('rooms', 'fa-door-open', 'sx-green', 'القاعات')}</div>
+            <p class="dh-sv-head">الملف الجامعي</p>
+            <div class="dh-sv">
+                ${svRow('tutor', 'fa-user-tie', 'sx-blue', 'المشرف')}
+                ${svRow('stage', 'fa-briefcase', 'sx-gold', 'التربص')}
+                ${svRow('defense', 'fa-graduation-cap', 'sx-amber', 'المناقشة')}
+                ${svRow('notifs', 'fa-bell', 'sx-amber', 'تنبيهاتي', S.unread > 0 ? S.unread : '')}
+                ${svRow('profile', 'fa-id-card', 'sx-neutral', 'ملفي')}
+            </div>
+        </section>`;
     }
 
     function render() {
@@ -158,7 +180,7 @@
         S.loading = false; render();
     }
 
-    // ---------- الرزنامة الشبكية ----------
+    // ---------- الرزنامة (منتقي أيام + حصص) ----------
     function normTime(t) { return String(t || '').replace(/\s+/g, ''); }
 
     function pmsBaseGrid() {
@@ -191,34 +213,70 @@
         return base[key] || null;
     }
 
+    function dayHasClasses(grid, day) {
+        const db = cxDb();
+        return SLOTS.some((_, i) => {
+            const key = day + '_' + i;
+            const ov = db[key];
+            if (ov && ov.deleted) return false;
+            if (ov && ov.subject) return true;
+            return !!grid[key];
+        });
+    }
+
+    function defaultDay() {
+        const js = new Date().getDay();
+        return (js >= 0 && js <= 4) ? js : 0;
+    }
+
+    function slotInner(c) {
+        if (!c) return '';
+        const meta = [];
+        if (c.room) meta.push('<i class="fas fa-door-open"></i> ' + esc(c.room));
+        if (c.teacher) meta.push('<i class="fas fa-user"></i> ' + esc(c.teacher));
+        return '<strong>' + esc(c.subject) + '</strong>'
+            + ' <span>' + esc(TYPE_AR[c.type] || '') + '</span>'
+            + (meta.length ? '<br>' + meta.join(' · ') : '');
+    }
+
     async function vSchedule() {
         if (!S.cache['sched_raw']) S.cache['sched_raw'] = await pms('get_group_schedule');
+        if (S.cxDay < 0) S.cxDay = defaultDay();
         const { grid, extra } = pmsBaseGrid();
-        const head = `<tr><th>الحصة</th>` + DAYS.map(d => `<th>${DAY_AR[d] || d}</th>`).join('') + `</tr>`;
-        const body = SLOTS.map((time, i) => {
-            const tds = DAYS.map(day => {
-                const key = day + '_' + i;
-                const c = finalCell(grid, key);
-                const cls = c ? (CELL_CLASS[c.type] || '') : '';
-                const tap = S.cxEdit ? ` slot-tap" data-action="pms-slot" data-key="${key}` : '';
-                const inner = c
-                    ? `<span class="cx-cell-sub">${esc(c.subject)}</span><span class="cx-cell-meta">${esc(TYPE_AR[c.type] || '')}${c.room ? ' • ' + esc(c.room) : ''}${c.teacher ? ' • ' + esc(c.teacher) : ''}</span>`
-                    : (S.cxEdit ? '<span class="cx-muted">+ إضافة</span>' : '');
-                return `<td class="${cls}${tap}">${inner}</td>`;
-            }).join('');
-            return `<tr><td class="time-col">${esc(time)}</td>${tds}</tr>`;
+        const day = DAYS[S.cxDay];
+        const picker = `<div class="schedule-day-picker"><div class="day-picker-title">
+                <span><i class="fas fa-calendar-day"></i> اختر اليوم</span>
+                <button type="button" class="sched-edit-btn ${S.cxEdit ? 'active' : ''}" data-action="pms-editmode">
+                    <i class="fas ${S.cxEdit ? 'fa-check' : 'fa-pen'}"></i> ${S.cxEdit ? 'تم' : 'تعديل الجدول'}</button>
+            </div><div class="day-picker-grid">` +
+            DAYS.map((dd, i) =>
+                `<button class="day-btn ${i === S.cxDay ? 'active' : ''} ${dayHasClasses(grid, dd) ? 'has-classes' : ''}" data-action="pms-day" data-day="${i}"><i class="fas ${DAY_ICON[i]}"></i> ${DAY_AR[dd]}</button>`
+            ).join('') + `</div></div>`;
+        let slots = `<div class="mobile-day-title"><i class="fas fa-calendar-check"></i> جدول ${DAY_AR[day]}</div>`;
+        const uniEmpty = !Object.keys(grid).length;
+        if (uniEmpty && !S.cxEdit) {
+            slots += `<div class="schedule-not-available"><i class="fas fa-pen-to-square"></i><p>رزنامة الجامعة غير منشورة</p><small>فعّل «تعديل الجدول» والمس أي خانة للإضافة</small></div>`;
+        }
+        slots += SLOTS.map((time, i) => {
+            const key = day + '_' + i;
+            const c = finalCell(grid, key);
+            const cls = c ? (CELL_CLASS[c.type] || '') : '';
+            let inner, clickable = '';
+            if (S.cxEdit) {
+                inner = (c ? slotInner(c) : '<span class="empty">فارغ</span>') + ' <i class="fas fa-pen pts-pen"></i>';
+                clickable = ` slot-tap" data-action="pms-slot" data-key="${key}`;
+            } else if (!c) {
+                inner = '<span class="empty">فارغ</span>';
+            } else {
+                inner = slotInner(c);
+            }
+            return `<div class="mobile-slot"><div class="mobile-slot-time"><i class="fas fa-clock"></i> ${esc(time)}</div><div class="mobile-slot-content ${cls}${clickable}">${inner}</div></div>`;
         }).join('');
         const extraHtml = extra.length
-            ? `<div class="cx-card cx-unmatched"><h4>🕐 خارج الشبكة</h4>` + extra.map(c =>
-                `<p><b>${esc(c.subject)}</b> — ${esc(c._day || '')} ${esc(c._heure || '')}${c.room ? ' — قاعة ' + esc(c.room) : ''}</p>`).join('') + `</div>`
+            ? `<div class="cx-card"><h4><i class="fas fa-clock" style="color:var(--accent)"></i> خارج الدوام</h4>` + extra.map(c =>
+                `<p><strong>${esc(c.subject)}</strong> — ${esc(c._day || '')} ${esc(c._heure || '')}${c.room ? ' — قاعة ' + esc(c.room) : ''}</p>`).join('') + `</div>`
             : '';
-        return `<div class="cx-card">
-            <h4>📅 رزنامتي الأسبوعية</h4>
-            <p><button type="button" class="cx-btn ${S.cxEdit ? 'active' : ''}" data-action="pms-editmode">
-                <i class="fas ${S.cxEdit ? 'fa-check' : 'fa-pen'}"></i> ${S.cxEdit ? 'تم' : 'تعديل الجدول'}</button></p>
-            ${S.cxEdit ? '<p class="cx-muted">المس أي خانة للتعديل — إضافاتك محفوظة على جهازك.</p>' : ''}
-            <div class="cx-grid-wrap"><table class="cx-grid">${head}${body}</table></div>
-        </div>${extraHtml}`;
+        return picker + `<div class="schedule-mobile-view">${slots}</div>` + extraHtml;
     }
 
     function openCampusSlot(key) {
@@ -310,45 +368,32 @@
             const totC = arr.reduce((a, m) => a + num(m.credit ?? m.TotalCredit), 0);
             const totK = arr.reduce((a, m) => a + num(m.coef ?? m.TotalCoefficient), 0);
             const label = s > 0 ? `السداسي ${s}` : 'سداسي غير محدد';
-            return `<div class="cx-card"><h4>📚 ${label} <span class="cx-pill info">${arr.length} مواد</span></h4>
-                <div class="cx-stats" style="margin:0 0 8px">
-                    <div class="cx-stat gold"><b>${totC}</b><span>مجموع الأرصدة</span></div>
-                    <div class="cx-stat blue"><b>${totK}</b><span>مجموع المعاملات</span></div>
-                    <div class="cx-stat green"><b>${arr.length}</b><span>مادة</span></div>
-                </div>
+            return `<div class="cx-card"><h4><i class="fas fa-book" style="color:var(--accent)"></i> ${label} <span class="cx-pill info">${arr.length} مواد</span></h4>
+                <p class="cx-muted">مجموع الأرصدة <strong>${totC}</strong> — مجموع المعاملات <strong>${totK}</strong></p>
                 <table class="cx-table"><tr><th>المادة</th><th>المعامل</th><th>الرصيد</th><th></th></tr>` +
                 arr.map(m => {
                     const mid = m.id ?? m.module_id;
-                    return `<tr><td><b>${esc(m.nameAr || m.name || '')}</b><br><span class="cx-muted">${esc(m.name || '')}</span>
+                    return `<tr><td><strong>${esc(m.nameAr || m.name || '')}</strong><br><span class="cx-muted">${esc(m.name && m.nameAr ? m.name : '')}</span>
                             <div id="pms-syl-${esc(mid)}"></div></td>
                         <td class="cx-time">${esc(m.coef ?? m.TotalCoefficient ?? '—')}</td>
                         <td class="cx-time">${esc(m.credit ?? m.TotalCredit ?? '—')}</td>
-                        <td><button type="button" class="cx-btn green" data-action="pms-syllabus" data-mid="${esc(mid)}">📜</button></td></tr>`;
+                        <td><button type="button" class="cx-btn" data-action="pms-syllabus" data-mid="${esc(mid)}" aria-label="المنهاج"><i class="fas fa-scroll"></i></button></td></tr>`;
                 }).join('') + `</table></div>`;
         }).join('');
     }
 
     // ---------- باقي الشاشات ----------
-    async function vHome() {
-        const d = await pms('get_dashboard_data');
-        S.dash = d;
-        return `<div class="cx-card"><h4>📌 لوحتي</h4>
-            <p><b>${esc(d.specialtyNameAr || '')}</b> — ${esc(d.lvlYearStr || '')}</p>
-            <p>🚫 الغيابات: <b>${esc(d.totalAbsences ?? 0)}</b>${d.tutorName ? ` — 👨‍🏫 المشرف: <b>${esc(d.tutorNameAr || d.tutorName)}</b>` : ''}</p>
-            <p class="cx-muted">السداسي الحالي: ${esc(d.currentSemester ?? '—')}</p></div>`;
-    }
-
     async function vExams() {
         const d = await pms('get_student_exams');
-        const sec = (t, arr, cls) => {
+        const sec = (t, icon, arr, cls) => {
             arr = arr || [];
             if (!arr.length) return '';
-            return `<div class="cx-card"><h4>${t} <span class="cx-pill ${cls}">${arr.length}</span></h4>` + arr.map(x =>
-                `<div class="cx-room"><span>📝</span><span><b>${esc(x.module_name || x.mod_name || x.name || '')}</b><br>
+            return `<div class="cx-card"><h4><i class="fas ${icon}" style="color:var(--accent)"></i> ${t} <span class="cx-pill ${cls}">${arr.length}</span></h4>` + arr.map(x =>
+                `<div class="cx-room"><span><i class="fas fa-file-pen"></i></span><span><strong>${esc(x.module_name || x.mod_name || x.name || '')}</strong><br>
                 <span class="cx-muted">${esc(x.exam_date || x.date || x.scheduled_date || '')} ${esc(x.heure || x.time || '')} — قاعة ${esc(x.salle || x.nom_salle || '')}</span></span></div>`
             ).join('') + `</div>`;
         };
-        const h = sec('📝 الدورة العادية', d.regular, 'ok') + sec('🔁 الاستدراك', d.replacements, 'warn') + sec('📦 الديون', d.debts, 'bad');
+        const h = sec('الدورة العادية', 'fa-file-lines', d.regular, 'ok') + sec('الاستدراك', 'fa-rotate-right', d.replacements, 'warn') + sec('الديون', 'fa-box-archive', d.debts, 'bad');
         return h || `<div class="cx-card"><p class="cx-muted">لا امتحانات مبرمجة حالياً.</p></div>`;
     }
 
@@ -357,18 +402,13 @@
         const tot = Number(d.total_all || 0), unjust = Number(d.total_unjustified || 0);
         const mods = (d.modules || []).map(m => {
             const a = Number(m.total_abs ?? m.abs ?? 0);
-            return `<div class="cx-room"><span>📚</span><span style="flex:1"><b>${esc(m.module_name || m.name || '')}</b>
-                <div class="cx-meter"><i style="width:${Math.min(100, a * 20)}%"></i></div></span><b>${a}</b></div>`;
+            return `<div class="cx-room"><span><i class="fas fa-book"></i></span><span style="flex:1"><strong>${esc(m.module_name || m.name || '')}</strong>
+                <div class="cx-meter"><i style="width:${Math.min(100, a * 20)}%"></i></div></span><strong>${a}</strong></div>`;
         }).join('');
-        return `<div class="cx-card"><h4>🚫 الغيابات</h4>
-            <div class="cx-stats" style="margin:0 0 8px">
-                <div class="cx-stat blue"><b>${tot}</b><span>المجموع</span></div>
-                <div class="cx-stat green"><b>${esc(d.total_justified ?? 0)}</b><span>مبررة</span></div>
-                <div class="cx-stat"><b>${unjust}</b><span>غير مبررة</span></div>
-            </div>
-            <p class="cx-muted">عتبة الإقصاء: 5 غير مبررة</p>
+        return `<div class="cx-card"><h4><i class="fas fa-user-xmark" style="color:var(--accent)"></i> الغيابات</h4>
+            <p class="cx-muted">المجموع <strong>${tot}</strong> — مبررة <strong>${esc(d.total_justified ?? 0)}</strong> — غير مبررة <strong>${unjust}</strong> (عتبة الإقصاء: 5)</p>
             <div class="cx-meter"><i style="width:${Math.min(100, unjust * 20)}%"></i></div></div>
-        <div class="cx-card"><h4>📚 حسب المقياس</h4>${mods || '<p class="cx-muted">✅ سجل نظيف.</p>'}</div>`;
+        <div class="cx-card"><h4>حسب المقياس</h4>${mods || '<p class="cx-muted">سجل نظيف.</p>'}</div>`;
     }
 
     async function vRooms() {
@@ -376,14 +416,14 @@
         const rooms = d.rooms || [];
         const busy = new Set((d.horaires || []).map(h => String(h.salle_id)));
         const free = rooms.filter(r => !busy.has(String(r.id))).length;
-        return `<div class="cx-card"><h4>🏫 القاعات <span class="cx-pill ok">🟢 ${free} حرة</span> <span class="cx-pill bad">🔴 ${rooms.length - free} مشغولة</span></h4>
+        return `<div class="cx-card"><h4><i class="fas fa-door-open" style="color:var(--accent)"></i> القاعات <span class="cx-pill ok">${free} حرة</span> <span class="cx-pill bad">${rooms.length - free} مشغولة</span></h4>
             <p class="cx-muted">${esc((d.debug_info || {}).day_queried || '')} — ${esc((d.debug_info || {}).semester_type || '')}</p>` +
             rooms.map(r => {
                 const parts = String(r.coordonnes || '').split(',');
                 const lat = parseFloat(parts[0]), lng = parseFloat(parts[1]);
                 const map = (isFinite(lat) && isFinite(lng))
-                    ? ` <a class="cx-btn" style="min-height:36px;padding:0 12px" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}">🗺️</a>` : '';
-                return `<div class="cx-room"><span class="cx-dot ${busy.has(String(r.id)) ? 'busy' : 'free'}"></span><span><b>${esc(r.nom_salle)}</b></span><span class="cx-map">${map}</span></div>`;
+                    ? ` <a class="cx-btn" style="min-height:36px;padding:0 12px" target="_blank" rel="noopener" aria-label="خريطة" href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}"><i class="fas fa-map-location-dot"></i></a>` : '';
+                return `<div class="cx-room"><span class="cx-dot ${busy.has(String(r.id)) ? 'busy' : 'free'}"></span><span><strong>${esc(r.nom_salle)}</strong></span><span class="cx-map">${map}</span></div>`;
             }).join('') + `</div>`;
     }
 
@@ -391,10 +431,10 @@
         const t = await pms('get_tutoring');
         const tu = t.tutor || {};
         const hist = (t.history || []).map(h => `<p>• ${esc(h.title || h.subject || '')}</p>`).join('');
-        return `<div class="cx-card"><h4>👨‍🏫 مشرفي</h4>` + (t.tutor
+        return `<div class="cx-card"><h4><i class="fas fa-user-tie" style="color:var(--accent)"></i> مشرفي</h4>` + (t.tutor
             ? `<p style="font-size:1.15rem;font-weight:800">${esc(tu.tutorNameAr || tu.tutorName || '')}</p><p class="cx-muted">${esc(tu.tutorName || '')}</p>`
             : `<p class="cx-muted">لا مشرف مسند حالياً.</p>`) + `</div>
-        <div class="cx-card"><h4>📜 السجل</h4>${hist || '<p class="cx-muted">لا عناصر.</p>'}</div>`;
+        <div class="cx-card"><h4>السجل</h4>${hist || '<p class="cx-muted">لا عناصر.</p>'}</div>`;
     }
 
     async function vStage() {
@@ -404,20 +444,20 @@
         const data = s.data;
         const arr = Array.isArray(data) ? data : (data && typeof data === 'object' ? [data] : []);
         if (arr.length && !(arr.length === 1 && !Object.keys(arr[0]).length)) {
-            items = arr.map(x => `<div class="cx-room"><span>💼</span><span><b>${esc(x.company_name || x.theme || x.subject || '')}</b><br>
+            items = arr.map(x => `<div class="cx-room"><span><i class="fas fa-briefcase"></i></span><span><strong>${esc(x.company_name || x.theme || x.subject || '')}</strong><br>
                 <span class="cx-muted">${esc(x.status || '')} ${esc(x.start_date || '')}</span></span></div>`).join('');
         }
-        return `<div class="cx-card"><h4>💼 التربص</h4><p>${pill}</p>${items}</div>`;
+        return `<div class="cx-card"><h4><i class="fas fa-briefcase" style="color:var(--accent)"></i> التربص</h4><p>${pill}</p>${items}</div>`;
     }
 
     async function vDefense() {
         const d = await pms('get_student_defense');
-        if (!d.has_defense) return `<div class="cx-card"><h4>🎓 المناقشة</h4><p class="cx-muted">لا مناقشة مبرمجة — ستظهر هنا اللجنة والقاعة فور برمجتها.</p></div>`;
+        if (!d.has_defense) return `<div class="cx-card"><h4><i class="fas fa-graduation-cap" style="color:var(--accent)"></i> المناقشة</h4><p class="cx-muted">لا مناقشة مبرمجة — ستظهر هنا اللجنة والقاعة فور برمجتها.</p></div>`;
         const roles = [['president', 'الرئيس'], ['supervisor', 'المشرف'], ['co_supervisor', 'المشرف المساعد'], ['examiners', 'الممتحنون'], ['ext_examiners', 'أعضاء خارجيون']];
         const fmt = (v) => Array.isArray(v) ? v.map(x => typeof x === 'string' ? x : (x.name || '')).filter(Boolean).join('، ') : (typeof v === 'string' ? v : (v && v.name) || '');
-        const jury = roles.map(([k, label]) => d[k] && fmt(d[k]) ? `<div class="cx-room"><span>⚖️</span><span><b>${label}:</b> ${esc(fmt(d[k]))}</span></div>` : '').join('');
-        return `<div class="cx-card"><h4>🎓 المناقشة</h4>
-            <p>📅 ${esc(d.scheduled_date || d.meeting_date || '')} — 📍 ${esc(d.lieu || d.salle || '')}</p>
+        const jury = roles.map(([k, label]) => d[k] && fmt(d[k]) ? `<div class="cx-room"><span><i class="fas fa-scale-balanced"></i></span><span><strong>${label}:</strong> ${esc(fmt(d[k]))}</span></div>` : '').join('');
+        return `<div class="cx-card"><h4><i class="fas fa-graduation-cap" style="color:var(--accent)"></i> المناقشة</h4>
+            <p>${esc(d.scheduled_date || d.meeting_date || '')} — ${esc(d.lieu || d.salle || '')}</p>
             <h4>اللجنة</h4>${jury || '<p class="cx-muted">—</p>'}</div>`;
     }
 
@@ -430,12 +470,12 @@
             `<div class="cx-card"><span class="cx-pill warn">عاجل</span><p>${esc(String(t.subject || '').slice(0, 300))}</p></div>`).join('');
         const item = (t) => {
             const img = t.image ? `<br><img src="https://ent.univ-guelma.dz/board/uploads/${esc(t.image)}" loading="lazy" style="max-width:100%;border-radius:12px;margin-top:8px" />` : '';
-            return `<p>📢 <b>${esc(t.title || t.sDate || '')}</b><br>${esc(t.subject || t.content || '')}${img}</p><hr>`;
+            return `<p><strong>${esc(t.title || t.sDate || '')}</strong><br>${esc(t.subject || t.content || '')}${img}</p><hr>`;
         };
         const notices = (n.notices || []).slice(0, 15).map(item).join('');
         const admin = [].concat(a.notices || [], a.dept_notices || []).slice(0, 10).map(item).join('');
-        return tick + `<div class="cx-card cx-news"><h4>📰 أخبار الجامعة</h4>${notices || '<p class="cx-muted">لا أخبار.</p>'}</div>
-        <div class="cx-card cx-news"><h4>📣 إعلانات الإدارة</h4>${admin || '<p class="cx-muted">لا إعلانات.</p>'}</div>`;
+        return tick + `<div class="cx-card cx-news"><h4><i class="fas fa-newspaper" style="color:var(--accent)"></i> أخبار الجامعة</h4>${notices || '<p class="cx-muted">لا أخبار.</p>'}</div>
+        <div class="cx-card cx-news"><h4><i class="fas fa-bullhorn" style="color:var(--accent)"></i> إعلانات الإدارة</h4>${admin || '<p class="cx-muted">لا إعلانات.</p>'}</div>`;
     }
 
     async function vNotifs() {
@@ -443,10 +483,11 @@
         const list = n.notifications || [];
         S.unread = Number(n.total ?? list.filter(x => x.is_unread).length ?? 0);
         const items = list.map(x =>
-            `<div class="cx-room"><span>${x.is_unread ? '🔵' : '⚪'}</span><span><b>${esc(x.titleAr || x.title || '')}</b><br>
+            `<div class="cx-room"><span><i class="fas ${x.is_unread ? 'fa-circle' : 'fa-circle-notch'}" style="color:${x.is_unread ? 'var(--info)' : 'var(--text-tertiary)'};font-size:.6rem"></i></span>
+            <span><strong>${esc(x.titleAr || x.title || '')}</strong><br>
             <span class="cx-muted">${esc(x.senderAr || x.sender || '')} — ${esc(x.created_at || '')}</span><br>${esc(String(x.contenu_json || x.content || '')).slice(0, 200)}</span></div>`
         ).join('');
-        return `<div class="cx-card"><h4>🔔 تنبيهاتي <span class="cx-pill info">${esc(n.total ?? list.length)}</span></h4>${items || '<p class="cx-muted">لا تنبيهات.</p>'}</div>`;
+        return `<div class="cx-card"><h4><i class="fas fa-bell" style="color:var(--accent)"></i> تنبيهاتي <span class="cx-pill info">${esc(n.total ?? list.length)}</span></h4>${items || '<p class="cx-muted">لا تنبيهات.</p>'}</div>`;
     }
 
     async function vProfile() {
@@ -454,24 +495,25 @@
         try { live = (await pms('api_student_profile')).data || null; } catch (e) {}
         if (live) { S.sess.profile = Object.assign({}, S.sess.profile, live); try { localStorage.setItem(LS_KEY, JSON.stringify(S.sess)); } catch (e) {} }
         const p = S.sess.profile || {};
-        const row = (k, v) => v ? `<div class="cx-room"><span class="cx-muted" style="min-width:110px">${k}</span><b>${esc(v)}</b></div>` : '';
-        return `<div class="cx-card"><h4>🪪 ملفي الجامعي</h4>
+        const row = (k, v) => v ? `<div class="cx-room"><span class="cx-muted" style="min-width:110px">${k}</span><strong>${esc(v)}</strong></div>` : '';
+        return `<div class="cx-card"><h4><i class="fas fa-id-card" style="color:var(--accent)"></i> ملفي الجامعي</h4>
             ${row('الاسم', p.NomAr || p.Nom)}${row('Matricule', p.Matricule)}${row('التسجيل', p.Inscription)}
             ${row('البكالوريا', p.Bac)}${row('الميلاد', p.date_naiss)}${row('الهاتف', p.Tel || p.phone)}
             ${row('البريد', p.email)}${row('القسم/الفوج', (p.section || '') + ' / ' + (p.Groupe || ''))}
-            <p style="margin-top:12px"><button type="button" class="cx-btn gold" data-action="pms-refresh">🔄 تحديث الملف</button></p>
-            <p class="cx-muted">🔒 قانون 18-07: بياناتك لا تغادر جهازك وسيرفر الجامعة.</p></div>`;
+            <p style="margin-top:12px"><button type="button" class="cx-btn gold" data-action="pms-refresh"><i class="fas fa-rotate-right"></i> تحديث الملف</button></p>
+            <p class="cx-muted">قانون 18-07: بياناتك لا تغادر جهازك وسيرفر الجامعة.</p></div>`;
     }
 
-    async function onAction(btn) {
-        const a = btn.dataset.action;
+    async function onAction(el) {
+        const a = el.dataset.action;
         if (a === 'pms-menu') { S.view = 'menu'; render(); return; }
-        if (a === 'pms-open') { openSection(btn.dataset.tab); return; }
+        if (a === 'pms-open') { openSection(el.dataset.tab); return; }
         if (a === 'pms-refresh') { S.cache = {}; openSection('profile'); return; }
         if (a === 'pms-editmode') { S.cxEdit = !S.cxEdit; openSection('schedule'); return; }
-        if (a === 'pms-slot') { openCampusSlot(btn.dataset.key); return; }
+        if (a === 'pms-day') { S.cxDay = parseInt(el.dataset.day, 10) || 0; openSection('schedule'); return; }
+        if (a === 'pms-slot') { openCampusSlot(el.dataset.key); return; }
         if (a === 'pms-syllabus') {
-            const mid = btn.dataset.mid;
+            const mid = el.dataset.mid;
             const box = document.getElementById('pms-syl-' + mid);
             if (!box) return;
             if (box.dataset.done) { box.innerHTML = ''; delete box.dataset.done; return; }
@@ -495,13 +537,11 @@
         root.addEventListener('click', (e) => {
             const el = e.target.closest('[data-action]');
             if (!el || !S.root.contains(el)) return;
-            // تجاهل أزرار التبويبات الداخلية للتطبيق إن وجدت
             onAction(el);
         });
         S.sess = loadSess();
         S.view = 'menu';
         render();
-        // prefetch لوحة + غير المقروء لتغذية القائمة
         pms('get_dashboard_data').then(d => { S.dash = d; if (S.view === 'menu') render(); }).catch(() => {});
         pms('get_all_notifications').then(n => {
             S.unread = Number(n.total || 0);
@@ -510,7 +550,7 @@
     }
 
     window.PortalSections = window.PortalSections || [];
-    window.PortalSections.push({ id: 'campus', title: '🎓 جامعتي', icon: 'fa-building-columns', mount });
+    window.PortalSections.push({ id: 'campus', title: 'جامعتي', icon: 'fa-building-columns', mount });
 
     if (window.navigateToSection && !window.navigateToSection.__cxPatched) {
         const orig = window.navigateToSection;
