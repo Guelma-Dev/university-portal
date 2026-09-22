@@ -573,7 +573,70 @@
         if (p === '/api/bus/search' && method === 'GET') return _routeBusSearch(url);
         if ((m = /^\/api\/bus\/starts\/(\d+)$/.exec(p)) && method === 'GET') return _routeBusStarts(m[1], url);
 
+        // PMS Guelma — DIRECT from the student's phone (form-urlencoded).
+        // Same read-only whitelist as the /api/pms backend proxy.
+        if (p === '/api/pms/login' && method === 'POST') return _routePmsLogin(body);
+        if (p === '/api/pms/fetch' && method === 'POST') return _routePmsFetch(body);
+
         return null;
+    }
+
+    const PMS_BASE = 'https://vp.univ-guelma.dz/pms/endpoints';
+    const PMS_READ = {
+        get_dashboard_data: 1, api_student_profile: 1, get_student_modules: 1,
+        get_group_schedule: 1, get_student_absences: 1, get_student_exams: 1,
+        get_tutoring: 1, get_student_stage: 1, get_student_defense: 1,
+        get_occupancy_data: 1, get_syllabus: 1, get_news: 1,
+        get_announcements: 1, get_all_notifications: 1,
+    };
+
+    function _pmsForm(obj) {
+        return Object.keys(obj).map(function (k) {
+            return encodeURIComponent(k) + '=' + encodeURIComponent(obj[k]);
+        }).join('&');
+    }
+
+    async function _routePmsLogin(body) {
+        const username = body && typeof body.username === 'string' ? body.username.trim() : '';
+        const password = body ? body.password : '';
+        if (!username || typeof password !== 'string' || !password || username.length > 50 || String(password).length > 100) {
+            return _errResp(400, 'أدخل رقم التسجيل وكلمة المرور');
+        }
+        try {
+            const r = await _http('POST', PMS_BASE + '/auth_router.php', {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': GENERIC_UA,
+                Accept: 'application/json',
+            }, _pmsForm({ username: username, password: password }));
+            if (!r) return _errResp(502, 'سيرفر الجامعة غير متاح حالياً، حاول لاحقاً');
+            return _resp(r.status, r.text, 'application/json; charset=utf-8', r.bytes);
+        } catch (e) {
+            return _errResp(502, 'سيرفر الجامعة غير متاح حالياً، حاول لاحقاً');
+        }
+    }
+
+    async function _routePmsFetch(body) {
+        const endpoint = body ? String(body.endpoint || '') : '';
+        const sid = body ? parseInt(body.student_id, 10) : 0;
+        if (!PMS_READ[endpoint]) return _errResp(403, 'نقطة غير مسموحة');
+        if (!sid || sid <= 0) return _errResp(400, 'student_id مطلوب');
+        const form = { student_id: String(sid) };
+        if (endpoint === 'get_syllabus') {
+            const mid = body ? parseInt(body.module_id, 10) : 0;
+            if (!mid || mid <= 0) return _errResp(400, 'module_id مطلوب');
+            form.module_id = String(mid);
+        }
+        try {
+            const r = await _http('POST', PMS_BASE + '/' + endpoint + '.php', {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': GENERIC_UA,
+                Accept: 'application/json',
+            }, _pmsForm(form));
+            if (!r) return _errResp(502, 'سيرفر الجامعة غير متاح حالياً، حاول لاحقاً');
+            return _resp(r.status, r.text, 'application/json; charset=utf-8', r.bytes);
+        } catch (e) {
+            return _errResp(502, 'سيرفر الجامعة غير متاح حالياً، حاول لاحقاً');
+        }
     }
 
     async function _routeLogin(body, bodyText) {
