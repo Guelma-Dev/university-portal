@@ -337,15 +337,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     const role = localStorage.getItem('user_role');
 
     if (token) {
+        // تحقق بمهلة — الفشل الشبكي (سيرفر نائم) لا يمسح الجلسة أبداً،
+        // المسح فقط على 401/403 الصريح (توكن مرفوض فعلاً).
+        let meData = null, rejected = false;
         try {
-            const res = await fetch(`${API_BASE}/api/auth/me`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                APP_STATE.role = data.role || role || 'student';
-                localStorage.setItem('user_role', APP_STATE.role);
-                localStorage.setItem('user_name', data.username || localStorage.getItem('user_name') || '');
+            const res = await Promise.race([
+                fetch(`${API_BASE}/api/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000)),
+            ]);
+            if (res.ok) { try { meData = await res.json(); } catch (e) { meData = {}; } }
+            else if (res.status === 401 || res.status === 403) rejected = true;
+        } catch (e) { /* network/cold-start: keep session */ }
+        if (rejected) {
+            localStorage.removeItem('admin_token');
+            localStorage.removeItem('user_role');
+            localStorage.removeItem('user_name');
+        } else if (meData || role === 'admin' || role === 'student') {
+            APP_STATE.role = (meData && meData.role) || role || 'student';
+            localStorage.setItem('user_role', APP_STATE.role);
+            localStorage.setItem('user_name', (meData && meData.username) || localStorage.getItem('user_name') || '');
                 document.getElementById('landing-page').classList.add('hidden');
                 document.getElementById('main-app').classList.remove('hidden');
                 showEl('logout-btn-account'); showEl('logout-btn');
@@ -361,10 +373,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updatePomoVisibility();
                 return;
             }
-        } catch (e) { /* token invalid */ }
-        localStorage.removeItem('admin_token');
-        localStorage.removeItem('user_role');
-        localStorage.removeItem('user_name');
     }
 
     // Student auto-login — restore persistent Progres session
@@ -379,6 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         hideEl('admin-menu-item'); hideEl('admin-tile');
         showEl('logout-btn-account'); showEl('logout-btn');
         setNameEverywhere((String(`<i class="fas fa-user-graduate"></i><span>${uname}</span>`).match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
+        try { if (window.CampusAccess) window.CampusAccess.restoreBoot(); } catch (e) {}
         applyInitialRoute();
         updatePomoVisibility();
         try { if (window.PortalNotify) window.PortalNotify.restore(); } catch (e) {}
@@ -534,25 +543,45 @@ async function handleAdminLogin(e) {
     e.preventDefault();
     const username = document.getElementById('admin-username').value;
     const password = document.getElementById('admin-password').value;
-    try {
-        const res = await fetch(`${API_BASE}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password }),
-        });
-        if (!res.ok) throw new Error('invalid_credentials');
-        const data = await res.json();
-        if (!data.token) throw new Error('invalid_credentials');
-        localStorage.setItem('admin_token', data.token);
-        closeAdminModal();
-        enterAdminSession(false);
-    } catch (err) {
-        showToast(
-            err.message === 'invalid_credentials'
-                ? 'اسم المستخدم أو كلمة المرور غير صحيحة'
-                : 'تعذر الاتصال بالخادم، حاول مجدداً',
-            'error'
-        );
+    const btn = e.target ? e.target.querySelector('button[type="submit"]') : null;
+    const originalBtn = btn ? btn.innerHTML : '';
+    if (btn) btn.disabled = true;
+    // السيرفر المجاني ينام — مهلة 22ث × 3 محاولات مثل دخول Progres.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        if (btn) btn.innerHTML = attempt === 1
+            ? '<i class="fas fa-spinner fa-spin"></i> جاري تسجيل الدخول...'
+            : `<i class="fas fa-spinner fa-spin"></i> السيرفر يستيقظ... محاولة ${attempt}/3`;
+        try {
+            const res = await Promise.race([
+                fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 22000)),
+            ]);
+            if (!res.ok) {
+                if (res.status === 401 || res.status === 403) throw new Error('invalid_credentials');
+                if (attempt < 3) { await new Promise(r => setTimeout(r, 8000)); continue; }
+                throw new Error('server');
+            }
+            const data = await res.json();
+            if (!data.token) throw new Error('invalid_credentials');
+            localStorage.setItem('admin_token', data.token);
+            if (btn) { btn.disabled = false; btn.innerHTML = originalBtn; }
+            closeAdminModal();
+            enterAdminSession(false);
+            return;
+        } catch (err) {
+            if (err.message === 'invalid_credentials') {
+                if (btn) { btn.disabled = false; btn.innerHTML = originalBtn; }
+                showToast('اسم المستخدم أو كلمة المرور غير صحيحة', 'error');
+                return;
+            }
+            if (attempt < 3) { await new Promise(r => setTimeout(r, 8000)); continue; }
+            if (btn) { btn.disabled = false; btn.innerHTML = originalBtn; }
+            showToast('تعذر الاتصال بالخادم، حاول مجدداً', 'error');
+        }
     }
 }
 
@@ -1643,6 +1672,13 @@ function dhToMin(t) {
 }
 // Today's timetable items (overlay wins over university cell); null on Fri/Sat
 function dhTodayItems() {
+    // مسئول/مفوض: حصص اليوم من رزنامة جامعتي (تُجلب مسبقاً في الخلفية)
+    try {
+        if (window.CampusAccess && window.CampusAccess.level() && typeof window.__campusTodaySync === 'function') {
+            const c = window.__campusTodaySync();
+            if (c) return c;
+        }
+    } catch (e) {}
     const jsDay = new Date().getDay(); // 0 = Sunday
     if (jsDay < 0 || jsDay > 4) return null;
     const day = DAYS[jsDay];
@@ -2317,6 +2353,7 @@ function switchProgresAccount(uuid) {
     const acc = getProgresAccounts().find(a => String(a.uuid) === String(uuid));
     if (!acc) return;
     setProgresSession({ token: acc.token, uuid: acc.uuid, etab: acc.etab, name: acc.name });
+    try { if (window.CampusAccess) window.CampusAccess.elevate(acc.name); } catch (e) {}
     clearProgresCache();
     renderGradesSection();
     if (typeof greetStudent === 'function') { try { greetStudent(); } catch (e) {} }
@@ -2395,6 +2432,7 @@ function setProgresSession(session) {
 }
 
 function progresLogout() {
+    try { if (window.CampusAccess) window.CampusAccess.unlink(); } catch (e) {}
     try {
         const s = getProgresSession();
         if (s && s.uuid) localStorage.removeItem('progres_photo_' + s.uuid);
@@ -2473,6 +2511,7 @@ async function handleProgresLogin(event) {
             }
             // Keep ONLY token+uuid in localStorage; the password is discarded here
             setProgresSession({ token: data.token, uuid: data.uuid, etab: data.etablissementId, name: data.userName || username });
+            try { if (window.CampusAccess) window.CampusAccess.elevate(username); } catch (e) {}
             if (passwordEl) passwordEl.value = '';
             if (btn) { btn.disabled = false; btn.innerHTML = originalBtn; }
             if (fromLanding) {

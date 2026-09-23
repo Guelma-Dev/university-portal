@@ -134,8 +134,12 @@ def pms_fetch():
         if mid <= 0:
             return jsonify({'error': 'module_id مطلوب'}), 400
         form['module_id'] = str(mid)
+    if endpoint == 'get_occupancy_data':
+        day = str(data.get('day') or '').strip().lower()[:12]
+        if day:
+            form['day'] = day
     if endpoint in _CACHEABLE:
-        key = f'{endpoint}:{sid}:{form.get("module_id", "")}'
+        key = f'{endpoint}:{sid}:{form.get("module_id", "")}:{form.get("day", "")}'
         hit = _cache.get(key)
         if hit and time.time() - hit[0] < _CACHE_TTL:
             return jsonify(hit[1]), 200

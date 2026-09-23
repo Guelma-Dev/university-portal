@@ -626,6 +626,9 @@
             if (!mid || mid <= 0) return _errResp(400, 'module_id مطلوب');
             form.module_id = String(mid);
         }
+        if (endpoint === 'get_occupancy_data' && body && body.day) {
+            form.day = String(body.day).trim().toLowerCase().slice(0, 12);
+        }
         try {
             const r = await _http('POST', PMS_BASE + '/' + endpoint + '.php', {
                 'Content-Type': 'application/x-www-form-urlencoded',

@@ -21,7 +21,7 @@
     const DAY_AR = { sunday: 'الأحد', monday: 'الاثنين', tuesday: 'الثلاثاء', wednesday: 'الأربعاء', thursday: 'الخميس' };
     const DAY_ICON = ['fa-sun', 'fa-cloud-sun', 'fa-cloud', 'fa-cloud-rain', 'fa-moon'];
     const FR_DAY = { dimanche: 'sunday', lundi: 'monday', mardi: 'tuesday', mercredi: 'wednesday', jeudi: 'thursday', vendredi: 'friday', samedi: 'saturday' };
-    const SLOTS = ['08:00 - 09:30', '09:30 - 11:00', '11:00 - 12:30', '14:00 - 15:30', '15:30 - 17:00'];
+    const SLOTS = ['08:00 - 09:30', '09:30 - 11:00', '11:00 - 12:30', '12:30 - 14:00', '14:00 - 15:30', '15:30 - 17:00'];
     const PMS_TYPE = { cours: 'lecture', lecture: 'lecture', td: 'td', tp: 'tp' };
     const CELL_CLASS = { lecture: 'schedule-cell-lecture', td: 'schedule-cell-tdtp', tp: 'schedule-cell-tp' };
     const TYPE_AR = { lecture: 'محاضرة', td: 'أعمال موجهة', tp: 'أعمال تطبيقية' };
@@ -33,6 +33,102 @@
     const toast = (m, t) => { if (typeof window.showToast === 'function') window.showToast(m, t); };
     const isAdmin = () => { try { return localStorage.getItem('user_role') === 'admin'; } catch (e) { return false; } };
     const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+
+    // ---------- تفويض جامعتي ----------
+    const OWNER_MAT = '202536255705';
+    const DEL_KEY = 'lx_admin_delegates';
+    const LINK_KEY = 'lx_progres_user';
+
+    function getDelegates() {
+        try {
+            const a = JSON.parse(localStorage.getItem(DEL_KEY) || '[]');
+            if (Array.isArray(a)) return a.map(x => String(x)).filter(x => /^\d{8,20}$/.test(x));
+        } catch (e) {}
+        return [];
+    }
+    function saveDelegates(a) { try { localStorage.setItem(DEL_KEY, JSON.stringify(a)); } catch (e) {} }
+
+    window.CampusAccess = {
+        owner: OWNER_MAT,
+        delegates: getDelegates,
+        level() {
+            let u = '';
+            try { u = String(localStorage.getItem(LINK_KEY) || ''); } catch (e) {}
+            if (u === OWNER_MAT) return 'full';
+            if (u && getDelegates().indexOf(u) !== -1) return 'campus';
+            return null;
+        },
+        link(u) { try { if (u) localStorage.setItem(LINK_KEY, String(u)); } catch (e) {} },
+        unlink() { try { localStorage.removeItem(LINK_KEY); } catch (e) {} },
+        elevate(username) {
+            this.link(username);
+            const lv = this.level();
+            if (lv === 'full') {
+                try {
+                    APP_STATE.role = 'admin';
+                    localStorage.setItem('user_role', 'admin');
+                    if (typeof showEl === 'function') { showEl('admin-menu-item'); showEl('admin-tile'); }
+                    if (typeof setNameEverywhere === 'function') setNameEverywhere('مسؤول');
+                } catch (e) {}
+                toast('تم تفعيل وضع المسئول', 'success');
+            } else if (lv === 'campus') {
+                toast('تم تفعيل قسم جامعتي', 'success');
+            }
+            syncTile();
+            renderDelegates();
+            try { if (window.CampusAccess.level()) prefetchCampus(); } catch (e) {}
+        },
+        restoreBoot() {
+            if (this.level() !== 'full') return;
+            try {
+                APP_STATE.role = 'admin';
+                localStorage.setItem('user_role', 'admin');
+                if (typeof showEl === 'function') { showEl('admin-menu-item'); showEl('admin-tile'); }
+                if (typeof setNameEverywhere === 'function') setNameEverywhere('مسؤول');
+            } catch (e) {}
+            try { prefetchCampus(); } catch (e) {}
+        },
+    };
+
+    const campusAllowed = () => isAdmin() || (window.CampusAccess && !!window.CampusAccess.level());
+
+    function renderDelegates() {
+        const box = document.getElementById('campus-delegates');
+        if (!box) return;
+        if (!isAdmin()) { box.innerHTML = ''; return; }
+        const list = getDelegates();
+        box.innerHTML = `<p class="set-head">حسابات جامعتي المفوضة</p>
+            <div class="set-row">
+                <input id="cx-del-input" inputmode="numeric" placeholder="رقم التسجيل" style="flex:1;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text-primary);font-family:inherit" />
+                <button type="button" class="btn btn-ghost btn-sm" data-delaction="add">إضافة</button>
+            </div>
+            ${list.map(m => `<div class="set-row">
+                <span class="set-lbl"><i class="fas fa-user-check"></i><bdi>${esc(m)}</bdi></span>
+                <button type="button" class="btn btn-ghost btn-sm" data-delaction="del" data-m="${esc(m)}"><i class="fas fa-trash"></i></button>
+            </div>`).join('')}
+            <p class="set-note">المطابق يُفعَّل له قسم «جامعتي» فقط عند دخوله Progres — بلا لوحة تحكم.</p>`;
+    }
+
+    if (!window.__cxDelListener) {
+        document.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-delaction]');
+            if (!b) return;
+            if (!isAdmin()) return;
+            if (b.dataset.delaction === 'add') {
+                const inp = document.getElementById('cx-del-input');
+                const m = String((inp && inp.value) || '').trim();
+                if (!/^\d{8,20}$/.test(m)) { toast('أدخل رقم تسجيل صحيح', 'error'); return; }
+                const list = getDelegates();
+                if (list.indexOf(m) === -1) { list.push(m); saveDelegates(list); }
+                renderDelegates();
+                toast('تمت الإضافة', 'success');
+            } else if (b.dataset.delaction === 'del') {
+                saveDelegates(getDelegates().filter(x => x !== String(b.dataset.m)));
+                renderDelegates();
+            }
+        });
+        window.__cxDelListener = true;
+    }
 
     const S = { root: null, view: 'menu', sess: null, cache: {}, loading: false, html: '', dash: null, unread: 0, cxEdit: false, cxDay: -1 };
 
@@ -77,7 +173,7 @@
     function syncTile() {
         try {
             const t = document.getElementById('campus-tile');
-            if (t) t.style.display = isAdmin() ? '' : 'none';
+            if (t) t.style.display = campusAllowed() ? '' : 'none';
         } catch (e) {}
     }
 
@@ -89,7 +185,38 @@
         </div></div>`;
     }
 
-    // ---------- القائمة (وصول سريع + خدمات) ----------
+    // ---------- القائمة (لوحة قيادة PMS + وصول سريع) ----------
+    function dashHeadHTML() {
+        const p = (S.sess && S.sess.profile) || {};
+        const d = S.dash || {};
+        const tutor = d.tutorNameAr || d.tutorName || 'غير معين';
+        const lvl = String(d.lvlYearStr || '').replace(/[^0-9]/g, '') || '—';
+        return `
+        <div class="pm-card" style="margin-top:14px"><h3>مرحباً بعودتك، ${esc(p.Nom || '')}</h3></div>
+        <div class="pm-blue">
+            <div style="display:flex;align-items:center;gap:12px">
+                <span style="font-size:2rem;opacity:.9"><i class="fas fa-graduation-cap"></i></span>
+                <span><span class="pm-muted" style="color:#cdd6ff">تخصصك</span><h2 style="margin:2px 0 0">${esc(d.specialtyNameAr || d.specialtyNameFr || 'جامعة قالمة')}</h2></span>
+            </div>
+        </div>
+        <div class="pm-stat4">
+            <div class="pm-stat"><i class="fas fa-users" style="color:#16a34a"></i><b>دفعة ${esc(d.section || p.section || '—')} / فوج ${esc(d.group || p.Groupe || '—')}</b><span>الدفعة / الفوج</span></div>
+            <div class="pm-stat"><i class="fas fa-user-xmark" style="color:#dc2626"></i><b>${esc(d.totalAbsences ?? 0)}</b><span>إجمالي الغيابات</span></div>
+            <div class="pm-stat"><i class="fas fa-layer-group" style="color:#2563eb"></i><b>${esc(lvl)}</b><span>المستوى</span></div>
+            <div class="pm-stat"><i class="fas fa-user-tie" style="color:#d97706"></i><b>${esc(tutor)}</b><span>أستاذي الوصي</span></div>
+        </div>`;
+    }
+
+    function todayMiniHTML() {
+        let items = null;
+        try { items = (typeof window.__campusTodaySync === 'function') ? window.__campusTodaySync() : null; } catch (e) {}
+        if (!items) return '';
+        const rows = items.slice(0, 4).map(x =>
+            `<div class="pm-tlrow"><span class="pm-t">${esc(x.start)}</span> <strong>${esc(x.subject)}</strong><br>
+            <span class="pm-muted">${esc(x.meta || '')}</span></div>`).join('');
+        return `<div class="pm-card"><h4><i class="fas fa-chart-line" style="color:#16a34a"></i> جدول اليوم</h4>
+            <div class="pm-tl">${rows || '<p class="pm-muted">لا حصص اليوم.</p>'}</div></div>`;
+    }
     function featBtn(tab, icon, tone, name, sub) {
         return `<button class="dh-qa-feat pressable" data-action="pms-open" data-tab="${tab}">
             <span class="dh-sv-ico ${tone}"><i class="fas ${icon}"></i></span>
@@ -115,13 +242,7 @@
     }
 
     function menuHTML() {
-        const p = (S.sess && S.sess.profile) || {};
-        const d = S.dash || {};
-        return `
-        <div class="cx-card" style="margin-top:14px">
-            <h3><i class="fas fa-building-columns" style="color:var(--accent)"></i> جامعتي <span class="cx-muted">— ${esc(d.specialtyNameAr || d.specialtyNameFr || 'جامعة قالمة')}</span></h3>
-            <p><strong>${esc(p.NomAr || p.Nom || '')}</strong> <span class="cx-muted">— فوج ${esc(d.group || p.Groupe || '')} / قسم ${esc(d.section || p.section || '')}</span></p>
-        </div>
+        return dashHeadHTML() + todayMiniHTML() + `
         <h2 class="dh-minihead" style="margin-inline:14px">وصول سريع</h2>
         <div class="dh-qa" style="padding:0 14px">
             ${featBtn('schedule', 'fa-calendar-week', 'sx-blue', 'رزنامتي', 'الشبكة الأسبوعية')}
@@ -150,7 +271,7 @@
 
     function render() {
         if (!S.root) return;
-        if (!isAdmin()) { S.root.innerHTML = lockHTML(); return; }
+        if (!campusAllowed()) { S.root.innerHTML = lockHTML(); return; }
         if (S.view === 'menu') { S.root.innerHTML = menuHTML(); return; }
         const back = `<button type="button" class="cx-back pressable" data-action="pms-menu"><i class="fas fa-chevron-right"></i> الأقسام</button>`;
         const body = S.loading
@@ -167,6 +288,7 @@
                 tab === 'exams' ? await vExams() :
                 tab === 'absences' ? await vAbsences() :
                 tab === 'modules' ? await vModules() :
+                tab === 'moddetail' ? await vModDetail() :
                 tab === 'rooms' ? await vRooms() :
                 tab === 'tutor' ? await vTutor() :
                 tab === 'stage' ? await vStage() :
@@ -198,7 +320,7 @@
                 subject: r.mNameAr || r.mName || '',
                 type: PMS_TYPE[String(r.type || '').toLowerCase()] || 'lecture',
                 room: r.nom_salle || (r.salle_id != null ? String(r.salle_id) : ''),
-                teacher: r.teacherAr || r.teacher || '',
+                teacher: r.eNameAr || r.vNameAr || r.teacherAr || r.teacher || r.eName || r.vName || '',
             };
             if (day && DAYS.includes(day) && si >= 0) grid[day + '_' + si] = cell;
             else extra.push(Object.assign({ _day: r.jours, _heure: r.heure }, cell));
@@ -213,8 +335,36 @@
         return base[key] || null;
     }
 
-    function dayHasClasses(grid, day) {
-        const db = cxDb();
+        // حصص اليوم للرئيسية (تستهلكها dhTodayItems عند التفعيل)
+    window.__campusTodaySync = function () {
+        try {
+            if (!S.cache['sched_raw']) return null;
+            const jsDay = new Date().getDay();
+            if (jsDay < 0 || jsDay > 4) return [];
+            const day = DAYS[jsDay];
+            const { grid } = pmsBaseGrid();
+            const items = [];
+            SLOTS.forEach((rng, i) => {
+                const parts = String(rng).split('-');
+                const c = finalCell(grid, day + '_' + i);
+                if (c && c.subject) items.push({
+                    start: (parts[0] || '').trim(), end: (parts[1] || '').trim(),
+                    subject: c.subject, typeAr: TYPE_AR[c.type] || '',
+                    meta: [c.room, c.teacher].filter(Boolean).join(' • '),
+                });
+            });
+            return items;
+        } catch (e) { return null; }
+    };
+
+    function prefetchCampus() {
+        try { if (!S.sess) S.sess = loadSess(); } catch (e) { return; }
+        if (!S.sess || S.cache['sched_raw']) return;
+        pms('get_group_schedule').catch(() => {});
+        pms('get_dashboard_data').then(d => { S.dash = d; }).catch(() => {});
+    }
+
+    function dayHasClasses(grid, day) {        const db = cxDb();
         return SLOTS.some((_, i) => {
             const key = day + '_' + i;
             const ov = db[key];
@@ -353,33 +503,78 @@
         window.__cxWrapped = true;
     }
 
-    // ---------- الموديولات حسب السداسي ----------
+    // ---------- المقاييس (تبويبات + بطاقات PMS) ----------
+    function modHours(m) {
+        const c = num(m.vhc), t = num(m.vhtd), p = num(m.vhtp);
+        return { c, t, p, tot: c + t + p };
+    }
+    function modHoursLine(m) {
+        const h = modHours(m);
+        return `محاضرة: ${h.c}h • أ.م: ${h.t}h • أ.ت: ${h.p}h`;
+    }
+
     async function vModules() {
         const d = await pms('get_student_modules');
         const mods = d.modules || d.data || [];
-        if (!mods.length) return `<div class="cx-card"><p class="cx-muted">لا موديولات.</p></div>`;
-        const groups = {};
-        mods.forEach(m => {
-            const s = parseInt(m.semestre ?? m.semester ?? 0, 10) || 0;
-            (groups[s] = groups[s] || []).push(m);
-        });
-        return Object.keys(groups).map(Number).sort((a, b) => a - b).map(s => {
-            const arr = groups[s];
-            const totC = arr.reduce((a, m) => a + num(m.credit ?? m.TotalCredit), 0);
-            const totK = arr.reduce((a, m) => a + num(m.coef ?? m.TotalCoefficient), 0);
-            const label = s > 0 ? `السداسي ${s}` : 'سداسي غير محدد';
-            return `<div class="cx-card"><h4><i class="fas fa-book" style="color:var(--accent)"></i> ${label} <span class="cx-pill info">${arr.length} مواد</span></h4>
-                <p class="cx-muted">مجموع الأرصدة <strong>${totC}</strong> — مجموع المعاملات <strong>${totK}</strong></p>
-                <table class="cx-table"><tr><th>المادة</th><th>المعامل</th><th>الرصيد</th><th></th></tr>` +
-                arr.map(m => {
-                    const mid = m.id ?? m.module_id;
-                    return `<tr><td><strong>${esc(m.nameAr || m.name || '')}</strong><br><span class="cx-muted">${esc(m.name && m.nameAr ? m.name : '')}</span>
-                            <div id="pms-syl-${esc(mid)}"></div></td>
-                        <td class="cx-time">${esc(m.coef ?? m.TotalCoefficient ?? '—')}</td>
-                        <td class="cx-time">${esc(m.credit ?? m.TotalCredit ?? '—')}</td>
-                        <td><button type="button" class="cx-btn" data-action="pms-syllabus" data-mid="${esc(mid)}" aria-label="المنهاج"><i class="fas fa-scroll"></i></button></td></tr>`;
-                }).join('') + `</table></div>`;
+        if (!mods.length) return `<div class="pm-card"><p class="pm-muted">لا مقاييس.</p></div>`;
+        const sems = [...new Set(mods.map(m => parseInt(m.semestre ?? m.semester ?? 0, 10) || 0))].sort((a, b) => a - b);
+        if (!S.modTab || !sems.includes(S.modTab)) S.modTab = sems[0];
+        const tabs = `<div class="pm-tabs">` + sems.map(s =>
+            `<button type="button" class="pm-tab ${s === S.modTab ? 'on' : ''}" data-action="pms-modtab" data-sem="${s}">السداسي ${s}</button>`
+        ).join('') + `</div>`;
+        const arr = mods.filter(m => (parseInt(m.semestre ?? m.semester ?? 0, 10) || 0) === S.modTab);
+        const cards = arr.map(m => {
+            const mid = m.id ?? m.module_id;
+            const h = modHours(m);
+            return `<div class="pm-card">
+                <div style="display:flex;align-items:center;gap:10px">
+                    <h3 style="flex:1;margin:0">${esc(m.nameAr || m.name || '')}</h3>
+                    <span style="width:14px;height:14px;border-radius:50%;background:#e2e8f0;flex:0 0 auto"></span>
+                </div>
+                <div class="pm-mstat">
+                    <span><i class="fas fa-star pm-c-blue"></i><b>${esc(m.credit ?? m.TotalCredit ?? '—')}</b><span>الرصيد</span></span>
+                    <span><i class="fas fa-scale-balanced pm-c-orange"></i><b>${esc(m.coef ?? m.TotalCoefficient ?? '—')}</b><span>المعامل</span></span>
+                    <span><i class="fas fa-stopwatch pm-c-purple"></i><b>${h.tot}</b><span>الحجم الساعي</span></span>
+                </div>
+                <hr class="pm-hr" />
+                <p class="pm-muted" style="text-align:center">${modHoursLine(m)}</p>
+                <button type="button" class="pm-more" data-action="pms-modopen" data-mid="${esc(mid)}">عرض المنهاج</button>
+            </div>`;
         }).join('');
+        return tabs + cards;
+    }
+
+    async function vModDetail() {
+        const d = await pms('get_student_modules');
+        const mods = d.modules || d.data || [];
+        const m = mods.find(x => String(x.id ?? x.module_id) === String(S.modMid));
+        if (!m) return `<div class="pm-card"><p class="pm-muted">المقياس غير موجود.</p></div>`;
+        let syl = {};
+        try { syl = (await pms('get_syllabus', { module_id: S.modMid })).data || {}; } catch (e) {}
+        const h = modHours(m);
+        const teacher = syl.eNameAr || syl.eName || '';
+        const goals = syl.contenu_json || syl.plan_json || '';
+        return `
+        <div style="margin:12px 14px"><button type="button" class="pm-goldbtn" data-action="pms-open" data-tab="modules"><i class="fas fa-arrow-right"></i> العودة للمواد</button></div>
+        <div class="pm-blue">
+            <span class="pm-ar">AR</span>
+            <h2 style="margin:10px 0 4px;font-size:1.5rem">${esc(m.nameAr || m.name || '')}</h2>
+            ${teacher ? `<p><i class="fas fa-user"></i> ${esc(teacher)}</p>` : ''}
+            <div class="pm-prog">
+                <div style="display:flex;justify-content:space-between;font-size:.85rem"><span>التدرج الأسبوعي</span><span>0%</span></div>
+                <div class="pm-bar"><i style="width:0%"></i></div>
+            </div>
+        </div>
+        <div class="pm-stat4" style="grid-template-columns:repeat(3,1fr)">
+            <div class="pm-stat"><span>الأرصدة</span><b class="pm-c-blue">${esc(m.credit ?? m.TotalCredit ?? '—')}</b></div>
+            <div class="pm-stat"><span>المعامل</span><b class="pm-c-orange">${esc(m.coef ?? m.TotalCoefficient ?? '—')}</b></div>
+            <div class="pm-stat"><span>الحجم الساعي</span><b class="pm-c-teal">${h.tot}h</b></div>
+        </div>
+        <div class="pm-card" style="border-inline-end:5px solid #2b3a9e">
+            <h4><i class="fas fa-bullseye" style="color:#2563eb"></i> الأهداف</h4>
+            <p class="pm-muted">${goals ? esc(String(goals).slice(0, 600)) : '---'}</p>
+            <p class="pm-muted">محاضرة: ${h.c}h • أعمال موجهة: ${h.t}h • أعمال تطبيقية: ${h.p}h</p>
+        </div>`;
     }
 
     // ---------- باقي الشاشات ----------
@@ -411,20 +606,57 @@
         <div class="cx-card"><h4>حسب المقياس</h4>${mods || '<p class="cx-muted">سجل نظيف.</p>'}</div>`;
     }
 
+    // ---------- شغور القاعات (جدول PMS) ----------
+    const FR_DAYS_L = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi'];
+    const FR_DAY_AR = { dimanche: 'الأحد', lundi: 'الاثنين', mardi: 'الثلاثاء', mercredi: 'الأربعاء', jeudi: 'الخميس' };
+    function occBusySet(d) {
+        const set = new Set();
+        (d.matrix || []).forEach(x => set.add(x.salle_id + '|' + x.horaire_id));
+        return set;
+    }
+
     async function vRooms() {
-        const d = await pms('get_occupancy_data');
-        const rooms = d.rooms || [];
-        const busy = new Set((d.horaires || []).map(h => String(h.salle_id)));
-        const free = rooms.filter(r => !busy.has(String(r.id))).length;
-        return `<div class="cx-card"><h4><i class="fas fa-door-open" style="color:var(--accent)"></i> القاعات <span class="cx-pill ok">${free} حرة</span> <span class="cx-pill bad">${rooms.length - free} مشغولة</span></h4>
-            <p class="cx-muted">${esc((d.debug_info || {}).day_queried || '')} — ${esc((d.debug_info || {}).semester_type || '')}</p>` +
-            rooms.map(r => {
-                const parts = String(r.coordonnes || '').split(',');
-                const lat = parseFloat(parts[0]), lng = parseFloat(parts[1]);
-                const map = (isFinite(lat) && isFinite(lng))
-                    ? ` <a class="cx-btn" style="min-height:36px;padding:0 12px" target="_blank" rel="noopener" aria-label="خريطة" href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}"><i class="fas fa-map-location-dot"></i></a>` : '';
-                return `<div class="cx-room"><span class="cx-dot ${busy.has(String(r.id)) ? 'busy' : 'free'}"></span><span><strong>${esc(r.nom_salle)}</strong></span><span class="cx-map">${map}</span></div>`;
-            }).join('') + `</div>`;
+        if (!S.roomDay) {
+            const js = new Date().getDay();
+            S.roomDay = FR_DAYS_L[(js >= 0 && js <= 4) ? js : 0];
+        }
+        const d = await pms('get_occupancy_data', { day: S.roomDay });
+        const slots = (d.horaires || []).slice().sort((a, b) => (a.id || 0) - (b.id || 0));
+        const busy = occBusySet(d);
+        const q = (S.roomQ || '').trim().toLowerCase();
+        let rooms = d.rooms || [];
+        if (q) rooms = rooms.filter(r => String(r.nom_salle || '').toLowerCase().includes(q));
+        const per = 10;
+        const pages = Math.max(1, Math.ceil(rooms.length / per));
+        if (!S.roomPage || S.roomPage > pages) S.roomPage = 1;
+        const page = rooms.slice((S.roomPage - 1) * per, S.roomPage * per);
+        const occName = (rid, hid) => {
+            const x = (d.matrix || []).find(y => String(y.salle_id) === String(rid) && String(y.horaire_id) === String(hid));
+            return x ? ((x.mod_name_ar || x.mod_name || '') + ' — ' + (x.teach_name_ar || x.teach_name || '')) : '';
+        };
+        const rows = page.map(r => `<tr><td>${esc(r.nom_salle)}${r.coordonnes ? ` <a href="https://www.openstreetmap.org/?mlat=${esc(String(r.coordonnes).split(',')[0].trim())}&mlon=${esc(String(r.coordonnes).split(',')[1].trim())}#map=18/${esc(String(r.coordonnes).split(',')[0].trim())}/${esc(String(r.coordonnes).split(',')[1].trim())}" target="_blank" rel="noopener" style="color:#1d4ed8"><i class="fas fa-map-location-dot"></i></a>` : ''}</td>` +
+            slots.map(h => {
+                const isBusy = busy.has(r.id + '|' + h.id);
+                const title = isBusy ? occName(r.id, h.id) : 'حرة';
+                return `<td><span class="${isBusy ? 'pm-cellbusy' : 'pm-cellok'}" title="${esc(title)}"><i class="fas ${isBusy ? 'fa-user-group' : 'fa-check'}"></i></span></td>`;
+            }).join('') + `</tr>`).join('');
+        return `
+        <div class="pm-roomhead">
+            <h3>شغور القاعات</h3>
+            <select class="pm-day" id="pms-roomday" aria-label="اليوم">
+                ${FR_DAYS_L.map(fd => `<option value="${fd}" ${fd === S.roomDay ? 'selected' : ''}>${FR_DAY_AR[fd]}</option>`).join('')}
+            </select>
+        </div>
+        <div class="pm-search"><input id="pms-roomq" placeholder="ابحث عن اسم القاعة..." value="${esc(S.roomQ || '')}" /><i class="fas fa-magnifying-glass"></i></div>
+        <div class="pm-twrap"><table class="pm-rooms">
+            <thead><tr><th>القاعة</th>${slots.map(h => `<th>${esc(h.heure || '')}</th>`).join('')}</tr></thead>
+            <tbody>${rows || '<tr><td>لا نتائج.</td></tr>'}</tbody>
+        </table></div>
+        <div class="pm-pager">
+            <button type="button" data-action="pms-roompage" data-d="-1" ${S.roomPage <= 1 ? 'disabled' : ''} aria-label="السابق"><i class="fas fa-chevron-right"></i></button>
+            <span>Page ${S.roomPage} / ${pages}</span>
+            <button type="button" data-action="pms-roompage" data-d="1" ${S.roomPage >= pages ? 'disabled' : ''} aria-label="التالي"><i class="fas fa-chevron-left"></i></button>
+        </div>`;
     }
 
     async function vTutor() {
@@ -461,21 +693,62 @@
             <h4>اللجنة</h4>${jury || '<p class="cx-muted">—</p>'}</div>`;
     }
 
+    // ---------- أخبار الجامعة (شريط + بحث + بطاقات PMS) ----------
+    function newsPill(t) {
+        const s = String(t.sender || t.type || t.category || t.src || '');
+        if (/رئاس/.test(s)) return `<span class="pm-tag pink">رئاسة الجامعة</span>`;
+        if (/قسم|مصلحة|كلية|معهد/.test(s)) return `<span class="pm-tag teal">القسم</span>`;
+        return s ? `<span class="pm-tag gray">${esc(s)}</span>` : '';
+    }
+    function newsText(t) { return String(t.subject || t.content || t.description || t.body || ''); }
+    function newsTitle(t) { return String(t.title || t.sujet || newsText(t).slice(0, 80) || 'خبر'); }
+
+    function renderNewsCard(box, full) {
+        const t = (S.newsItems || [])[Number(box.dataset.idx)] || {};
+        const img = t.image ? `<br><img src="https://ent.univ-guelma.dz/board/uploads/${esc(t.image)}" loading="lazy" />` : '';
+        const txt = newsText(t);
+        box.innerHTML = `
+            <div class="pm-top"><span class="pm-date">${esc(t.sDate || t.date || t.created_at || '')}</span>${newsPill(t)}</div>
+            <h3>${esc(newsTitle(t))}</h3>
+            <p class="pm-x">${esc(full ? txt : txt.slice(0, 140))}</p>
+            ${full ? img : ''}
+            <button type="button" class="pm-more" data-action="pms-newsopen" data-nid="${esc(box.id.replace('pms-news-', ''))}">${full ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}</button>`;
+    }
+
     async function vNews() {
         const [n, a] = await Promise.all([
             pms('get_news').catch(() => ({})),
             pms('get_announcements').catch(() => ({})),
         ]);
-        const tick = (n.ticker || []).slice(0, 5).map(t =>
-            `<div class="cx-card"><span class="cx-pill warn">عاجل</span><p>${esc(String(t.subject || '').slice(0, 300))}</p></div>`).join('');
-        const item = (t) => {
-            const img = t.image ? `<br><img src="https://ent.univ-guelma.dz/board/uploads/${esc(t.image)}" loading="lazy" style="max-width:100%;border-radius:12px;margin-top:8px" />` : '';
-            return `<p><strong>${esc(t.title || t.sDate || '')}</strong><br>${esc(t.subject || t.content || '')}${img}</p><hr>`;
-        };
-        const notices = (n.notices || []).slice(0, 15).map(item).join('');
-        const admin = [].concat(a.notices || [], a.dept_notices || []).slice(0, 10).map(item).join('');
-        return tick + `<div class="cx-card cx-news"><h4><i class="fas fa-newspaper" style="color:var(--accent)"></i> أخبار الجامعة</h4>${notices || '<p class="cx-muted">لا أخبار.</p>'}</div>
-        <div class="cx-card cx-news"><h4><i class="fas fa-bullhorn" style="color:var(--accent)"></i> إعلانات الإدارة</h4>${admin || '<p class="cx-muted">لا إعلانات.</p>'}</div>`;
+        const tick = (n.ticker || []).slice(0, 5).map(t => esc(String(t.subject || '').slice(0, 120))).join(' • ');
+        S.newsItems = (n.notices || []).concat(a.notices || [], a.dept_notices || []);
+        const q = (S.newsQ || '').trim();
+        let items = S.newsItems;
+        if (q) items = items.filter(t => (newsTitle(t) + ' ' + newsText(t)).includes(q));
+        const per = 5;
+        const pages = Math.max(1, Math.ceil(items.length / per));
+        if (!S.newsPage || S.newsPage > pages) S.newsPage = 1;
+        const slice = items.slice((S.newsPage - 1) * per, S.newsPage * per);
+        const cards = slice.map(t => {
+            const gi = S.newsItems.indexOf(t);
+            return `<div class="pm-card pm-news" id="pms-news-n${gi}" data-idx="${gi}"></div>`;
+        }).join('');
+        setTimeout(() => {
+            (slice).forEach(t => {
+                const gi = S.newsItems.indexOf(t);
+                const box = document.getElementById('pms-news-n' + gi);
+                if (box && !box.dataset.done) renderNewsCard(box, false);
+            });
+        }, 30);
+        return `
+        ${tick ? `<div class="pm-ticker"><span class="pm-bolt"><i class="fas fa-bolt"></i></span><div class="pm-track"><span>${tick}</span></div></div>` : ''}
+        <div class="pm-search"><input id="pms-newsq" placeholder="البحث في الأخبار..." value="${esc(S.newsQ || '')}" /><i class="fas fa-magnifying-glass"></i></div>
+        ${cards || '<div class="pm-card"><p class="pm-muted">لا أخبار.</p></div>'}
+        <div class="pm-pager">
+            <button type="button" data-action="pms-newspage" data-d="-1" ${S.newsPage <= 1 ? 'disabled' : ''} aria-label="السابق"><i class="fas fa-chevron-right"></i></button>
+            <span>Page ${S.newsPage} / ${pages}</span>
+            <button type="button" data-action="pms-newspage" data-d="1" ${S.newsPage >= pages ? 'disabled' : ''} aria-label="التالي"><i class="fas fa-chevron-left"></i></button>
+        </div>`;
     }
 
     async function vNotifs() {
@@ -512,18 +785,16 @@
         if (a === 'pms-editmode') { S.cxEdit = !S.cxEdit; openSection('schedule'); return; }
         if (a === 'pms-day') { S.cxDay = parseInt(el.dataset.day, 10) || 0; openSection('schedule'); return; }
         if (a === 'pms-slot') { openCampusSlot(el.dataset.key); return; }
-        if (a === 'pms-syllabus') {
-            const mid = el.dataset.mid;
-            const box = document.getElementById('pms-syl-' + mid);
+        if (a === 'pms-modtab') { S.modTab = parseInt(el.dataset.sem, 10) || 0; openSection('modules'); return; }
+        if (a === 'pms-modopen') { S.modMid = el.dataset.mid; openSection('moddetail'); return; }
+        if (a === 'pms-roompage') { S.roomPage = Math.max(1, (S.roomPage || 1) + (parseInt(el.dataset.d, 10) || 0)); openSection('rooms'); return; }
+        if (a === 'pms-newspage') { S.newsPage = Math.max(1, (S.newsPage || 1) + (parseInt(el.dataset.d, 10) || 0)); openSection('news'); return; }
+        if (a === 'pms-newsopen') {
+            const box = document.getElementById('pms-news-' + el.dataset.nid);
             if (!box) return;
-            if (box.dataset.done) { box.innerHTML = ''; delete box.dataset.done; return; }
-            box.innerHTML = '<div class="cx-sk"></div>';
-            try {
-                const s = await pms('get_syllabus', { module_id: mid });
-                const d = s.data || {};
-                box.innerHTML = `<p class="cx-muted">ساعات: cours ${esc(d.vhc ?? '—')} / TD ${esc(d.vhtd ?? '—')} / TP ${esc(d.vhtp ?? '—')} — ${esc(d.eNameAr || d.eName || '')}</p>`;
-                box.dataset.done = '1';
-            } catch (e) { box.innerHTML = `<p>${esc(e.message)}</p>`; }
+            if (box.dataset.done) { renderNewsCard(box, false); delete box.dataset.done; }
+            else { renderNewsCard(box, true); box.dataset.done = '1'; }
+            return;
         }
     }
 
@@ -531,7 +802,7 @@
         S.root = root;
         syncTile();
         wrapSlotPersistence();
-        if (!isAdmin()) { S.root.innerHTML = lockHTML(); return; }
+        if (!campusAllowed()) { S.root.innerHTML = lockHTML(); return; }
         if (root.dataset.mountedInitDone) { render(); return; }
         root.dataset.mountedInitDone = '1';
         root.addEventListener('click', (e) => {
@@ -539,9 +810,34 @@
             if (!el || !S.root.contains(el)) return;
             onAction(el);
         });
+        let debT = null;
+        const refocus = (id) => {
+            try {
+                const i = document.getElementById(id);
+                if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+            } catch (e) {}
+        };
+        root.addEventListener('input', (e) => {
+            if (e.target && e.target.id === 'pms-roomq') {
+                clearTimeout(debT);
+                const v = e.target.value;
+                debT = setTimeout(() => { S.roomQ = v; S.roomPage = 1; openSection('rooms').then(() => refocus('pms-roomq')); }, 500);
+            }
+            if (e.target && e.target.id === 'pms-newsq') {
+                clearTimeout(debT);
+                const v = e.target.value;
+                debT = setTimeout(() => { S.newsQ = v; S.newsPage = 1; openSection('news').then(() => refocus('pms-newsq')); }, 500);
+            }
+        });
+        root.addEventListener('change', (e) => {
+            if (e.target && e.target.id === 'pms-roomday') {
+                S.roomDay = e.target.value; S.roomPage = 1; openSection('rooms');
+            }
+        });
         S.sess = loadSess();
         S.view = 'menu';
         render();
+        prefetchCampus();
         pms('get_dashboard_data').then(d => { S.dash = d; if (S.view === 'menu') render(); }).catch(() => {});
         pms('get_all_notifications').then(n => {
             S.unread = Number(n.total || 0);
@@ -556,14 +852,15 @@
         const orig = window.navigateToSection;
         window.navigateToSection = function (sec) {
             syncTile();
-            if (sec === 'campus' && !isAdmin()) {
+            if (sec === 'campus' && !campusAllowed()) {
                 toast('خاص بالمسئول فقط', 'error');
                 return orig.call(this, 'home');
             }
+            if (sec === 'account') setTimeout(renderDelegates, 60);
             return orig.apply(this, arguments);
         };
         window.navigateToSection.__cxPatched = true;
     }
-    if (document.readyState !== 'loading') syncTile();
-    else document.addEventListener('DOMContentLoaded', syncTile);
+    if (document.readyState !== 'loading') { syncTile(); renderDelegates(); try { if (window.CampusAccess.level()) prefetchCampus(); } catch (e) {} }
+    else document.addEventListener('DOMContentLoaded', () => { syncTile(); renderDelegates(); try { if (window.CampusAccess.level()) prefetchCampus(); } catch (e) {} });
 })();
