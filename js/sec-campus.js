@@ -794,6 +794,14 @@
     }
 
     async function vNews() {
+        const fac = await fetch(window.location.origin + '/api/pms/faculty').then(r => r.json()).catch(() => ({}));
+        const facItems = (fac.items || []).slice(0, 5).map(t =>
+            `<div class="cx-room"><span><i class="fas fa-landmark" style="color:var(--accent);font-size:.7rem"></i></span>
+            <span><a href="${esc(t.link)}" target="_blank" rel="noopener" style="color:inherit"><strong>${esc(t.title)}</strong></a><br>
+            <span class="cx-muted">${esc((t.date || '').slice(0, 16))}</span></span></div>`
+        ).join('');
+        const facCard = `<div class="cx-card"><h4><i class="fas fa-landmark" style="color:var(--accent)"></i> إعلانات الكلية <span class="cx-pill info">مباشر</span></h4>
+            ${facItems || '<p class="cx-muted">تعذر الجلب حالياً.</p>'}</div>`;
         const [n, a] = await Promise.all([
             pms('get_news').catch(() => ({})),
             pms('get_announcements').catch(() => ({})),
@@ -819,6 +827,7 @@
             });
         }, 30);
         return `
+        ${facCard}
         ${tick ? `<div class="pm-ticker"><span class="pm-bolt"><i class="fas fa-bolt"></i></span><div class="pm-track"><span>${tick}</span></div></div>` : ''}
         <div class="pm-search"><input id="pms-newsq" placeholder="البحث في الأخبار..." value="${esc(S.newsQ || '')}" /><i class="fas fa-magnifying-glass"></i></div>
         ${cards || '<div class="pm-card"><p class="pm-muted">لا أخبار.</p></div>'}

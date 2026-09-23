@@ -21,6 +21,7 @@ https://vp.univ-guelma.dz/pms/endpoints/*.php
 
 import time
 import urllib.parse
+import xml.etree.ElementTree as ET
 
 try:
     from . import _http as requests
@@ -111,6 +112,43 @@ def pms_login():
         return _pms_post('auth_router', {'username': username, 'password': password})
     except Exception:
         return jsonify({'error': 'سيرفر الجامعة غير متاح حالياً، حاول لاحقاً'}), 502
+
+
+# إعلانات الكلية (FSECG Drupal RSS — قراءة عامة، كاش 30 دقيقة).
+FSECG_RSS = {
+    'all': 'https://fsecg.univ-guelma.dz/ar/rss.xml',
+    'fac': 'https://fsecg.univ-guelma.dz/ar/taxonomy/term/15/feed',
+    'com': 'https://fsecg.univ-guelma.dz/ar/taxonomy/term/14/feed',
+}
+_faculty_cache = {}
+
+
+@bp.route('/faculty', methods=['GET'])
+def pms_faculty():
+    feed = request.args.get('feed', 'all')
+    url = FSECG_RSS.get(feed, FSECG_RSS['all'])
+    hit = _faculty_cache.get(url)
+    if hit and time.time() - hit[0] < 1800:
+        return jsonify(hit[1]), 200
+    try:
+        r = _session.get(url, timeout=20, verify=False,
+                         headers={'Accept': 'application/rss+xml'})
+        if r.status_code != 200:
+            return jsonify({'error': 'تعذر جلب إعلانات الكلية'}), 502
+        root = ET.fromstring(r.text)
+        items = []
+        for it in root.findall('.//item')[:15]:
+            items.append({
+                'title': (it.findtext('title') or '').strip(),
+                'link': (it.findtext('link') or '').strip(),
+                'date': (it.findtext('pubDate') or '').strip(),
+                'excerpt': (it.findtext('description') or '').strip()[:300],
+            })
+        payload = {'items': items}
+        _faculty_cache[url] = (time.time(), payload)
+        return jsonify(payload), 200
+    except Exception:
+        return jsonify({'error': 'تعذر جلب إعلانات الكلية'}), 502
 
 
 @bp.route('/fetch', methods=['POST'])

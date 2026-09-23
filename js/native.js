@@ -577,6 +577,7 @@
         // Same read-only whitelist as the /api/pms backend proxy.
         if (p === '/api/pms/login' && method === 'POST') return _routePmsLogin(body);
         if (p === '/api/pms/fetch' && method === 'POST') return _routePmsFetch(body);
+        if (p === '/api/pms/faculty' && method === 'GET') return _routePmsFaculty(url);
 
         return null;
     }
@@ -639,6 +640,35 @@
             return _resp(r.status, r.text, 'application/json; charset=utf-8', r.bytes);
         } catch (e) {
             return _errResp(502, 'سيرفر الجامعة غير متاح حالياً، حاول لاحقاً');
+        }
+    }
+
+    // إعلانات الكلية (RSS عام) — مباشرة من الهاتف.
+    async function _routePmsFaculty(url) {
+        const feeds = {
+            all: 'https://fsecg.univ-guelma.dz/ar/rss.xml',
+            fac: 'https://fsecg.univ-guelma.dz/ar/taxonomy/term/15/feed',
+            com: 'https://fsecg.univ-guelma.dz/ar/taxonomy/term/14/feed',
+        };
+        let feed = 'all';
+        try { feed = new URL(url).searchParams.get('feed') || 'all'; } catch (e) {}
+        const rssUrl = feeds[feed] || feeds.all;
+        try {
+            const r = await _http('GET', rssUrl, { 'User-Agent': GENERIC_UA, Accept: 'application/rss+xml' }, null);
+            if (!r || r.status !== 200) return _errResp(502, 'تعذر جلب إعلانات الكلية');
+            const items = [];
+            const re = /<item>([\s\S]*?)<\/item>/g;
+            let m;
+            const tag = (block, t) => {
+                const mm = new RegExp('<' + t + '>([\\s\\S]*?)<\\/' + t + '>').exec(block);
+                return mm ? mm[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim() : '';
+            };
+            while ((m = re.exec(r.text)) && items.length < 15) {
+                items.push({ title: tag(m[1], 'title'), link: tag(m[1], 'link'), date: tag(m[1], 'pubDate'), excerpt: tag(m[1], 'description').slice(0, 300) });
+            }
+            return _jsonResp(200, { items: items });
+        } catch (e) {
+            return _errResp(502, 'تعذر جلب إعلانات الكلية');
         }
     }
 
