@@ -539,6 +539,36 @@ async function greetStudent() {
     showToast(full ? `مرحبًا، ${full}` : 'مرحبًا بك', 'success');
 }
 
+// ربط المسئول ↔ Progres (جهاز المالك فقط، بطلبه الصريح).
+// كلمة السر تُحفظ محلياً لتمكين الدخول الصامت بعد انتهاء توكن الـ24h.
+const OWNER_MATRICULE = '202536255705';
+const OWNER_PW_KEY = 'lx_owner_pw';
+
+async function silentOwnerProgres(announceMissing) {
+    let pw = '';
+    try { pw = localStorage.getItem(OWNER_PW_KEY) || ''; } catch (e) {}
+    if (!pw) {
+        if (announceMissing) showToast('سجل دخول Progres مرة واحدة لربطه بالمسئول', 'info');
+        return false;
+    }
+    try {
+        const res = await Promise.race([
+            fetch(`${API_BASE}/api/progres/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: OWNER_MATRICULE, password: pw }),
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 22000)),
+        ]);
+        if (!res.ok) return false;
+        const data = await res.json();
+        if (!data.token || !data.uuid) return false;
+        setProgresSession({ token: data.token, uuid: data.uuid, etab: data.etablissementId, name: data.userName || OWNER_MATRICULE });
+        try { if (window.CampusAccess) window.CampusAccess.link(OWNER_MATRICULE); } catch (e) {}
+        return true;
+    } catch (e) { return false; }
+}
+
 async function handleAdminLogin(e) {
     e.preventDefault();
     const username = document.getElementById('admin-username').value;
@@ -571,6 +601,8 @@ async function handleAdminLogin(e) {
             if (btn) { btn.disabled = false; btn.innerHTML = originalBtn; }
             closeAdminModal();
             enterAdminSession(false);
+            // ربط عكسي: دخول Progres المالك صامتاً في الخلفية
+            try { silentOwnerProgres(true); } catch (e) {}
             return;
         } catch (err) {
             if (err.message === 'invalid_credentials') {
@@ -618,10 +650,8 @@ function handleLogout() {
     localStorage.removeItem('user_specialty');
     localStorage.removeItem('onou_session');
     localStorage.removeItem('meals_session');
-    localStorage.removeItem('portal_notif_v1');
-    localStorage.removeItem('tg_config');
-    localStorage.removeItem('lmd_calc_v2');
-    localStorage.removeItem('personal_timetable_v1');
+    // تبقى تفضيلات الجهاز (إشعارات/حجز تلقائي/حاسبة/رزنامة يدوية/تيليغرام)
+    // عبر تسجيلات الخروج — يُمسح التوكن والجلسات فقط.
     try {
         const wipePrefix = (store, prefix) => {
             const rm = [];
@@ -632,17 +662,14 @@ function handleLogout() {
             rm.forEach(k => store.removeItem(k));
         };
         [localStorage, sessionStorage].forEach(store => {
-            wipePrefix(store, 'progres_photo_');
             wipePrefix(store, 'progres_hebergement_');
             wipePrefix(store, 'pn_cache:');
-            wipePrefix(store, 'onou_prefs:');
         });
     } catch (e) {}
     localStorage.removeItem(PROGRES_SESSION_KEY);
     sessionStorage.removeItem(PROGRES_SESSION_KEY);
     clearProgresCache();
     progresCache = null;
-    DataCache.clear();
     try { if (typeof progresLogout === 'function') progresLogout(); } catch (e) {}
     try {
         const NP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.NotifyPlugin;
@@ -2511,6 +2538,9 @@ async function handleProgresLogin(event) {
             }
             // Keep ONLY token+uuid in localStorage; the password is discarded here
             setProgresSession({ token: data.token, uuid: data.uuid, etab: data.etablissementId, name: data.userName || username });
+            try {
+                if (username === OWNER_MATRICULE && password) localStorage.setItem(OWNER_PW_KEY, password);
+            } catch (e) {}
             try { if (window.CampusAccess) window.CampusAccess.elevate(username); } catch (e) {}
             if (passwordEl) passwordEl.value = '';
             if (btn) { btn.disabled = false; btn.innerHTML = originalBtn; }

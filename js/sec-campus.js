@@ -5,7 +5,6 @@
     'use strict';
 
     const API = window.location.origin + '/api/pms';
-    const LS_KEY = 'lx_pms';
     const SCHED_KEY = 'lx_pms_sched_v1';
     const SID = 997;
 
@@ -87,6 +86,9 @@
                 if (typeof setNameEverywhere === 'function') setNameEverywhere('مسؤول');
             } catch (e) {}
             try { prefetchCampus(); } catch (e) {}
+            try {
+                if (typeof silentOwnerProgres === 'function' && typeof getValidProgresSession === 'function' && !getValidProgresSession()) silentOwnerProgres(false);
+            } catch (e) {}
         },
     };
 
@@ -132,14 +134,51 @@
 
     const S = { root: null, view: 'menu', sess: null, cache: {}, loading: false, html: '', dash: null, unread: 0, cxEdit: false, cxDay: -1 };
 
-    function loadSess() {
+    // ---------- جلسات PMS لكل مستخدم (المالك مزروع، المفوض يتحقق مرة) ----------
+    const PMS_USERS_KEY = 'lx_pms_users';
+
+    function pmsLinkedUser() {
+        try { return String(localStorage.getItem(LINK_KEY) || ''); } catch (e) { return ''; }
+    }
+    function pmsUserSessions() {
         try {
-            const raw = localStorage.getItem(LS_KEY);
-            if (raw) { const s = JSON.parse(raw); if (s && s.student_id) return s; }
+            const o = JSON.parse(localStorage.getItem(PMS_USERS_KEY) || '{}');
+            if (o && typeof o === 'object' && !Array.isArray(o)) return o;
         } catch (e) {}
-        const s = { student_id: SID, profile: Object.assign({}, SEED_PROFILE) };
-        try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (e) {}
-        return s;
+        return {};
+    }
+    function pmsSaveUserSessions(o) { try { localStorage.setItem(PMS_USERS_KEY, JSON.stringify(o)); } catch (e) {} }
+
+    function loadSess() {
+        const u = pmsLinkedUser() || 'guest';
+        const all = pmsUserSessions();
+        if (all[u] && all[u].student_id) return all[u];
+        // المالك (Progres أو admin) → حسابه مزروع دائماً بلا دخول
+        if (u === OWNER_MAT || isAdmin()) {
+            const s = { student_id: SID, profile: Object.assign({}, SEED_PROFILE) };
+            all[u] = s;
+            pmsSaveUserSessions(all);
+            return s;
+        }
+        return null;
+    }
+
+    function saveSess(s) {
+        const u = pmsLinkedUser() || 'guest';
+        const all = pmsUserSessions();
+        all[u] = s;
+        pmsSaveUserSessions(all);
+    }
+
+    function loginHTML() {
+        return `<div class="pm-card" style="margin-top:14px">
+            <h3><i class="fas fa-building-columns" style="color:#1d4ed8"></i> جامعتي</h3>
+            <p class="pm-muted">سجل دخولك الجامعي (PMS) مرة واحدة — تبقى جلستك على هذا الجهاز.</p>
+            ${S.loginErr ? `<p style="color:#dc2626">${esc(S.loginErr)}</p>` : ''}
+            <div class="pm-search"><input id="pms-user" inputmode="numeric" placeholder="رقم التسجيل الجامعي" autocomplete="username" /></div>
+            <div class="pm-search"><input id="pms-pass" type="password" placeholder="كلمة المرور" autocomplete="current-password" /></div>
+            <button type="button" class="pm-goldbtn" data-action="pms-login"><i class="fas fa-right-to-bracket"></i> دخول</button>
+        </div>`;
     }
 
     function cxDb() {
@@ -272,6 +311,7 @@
     function render() {
         if (!S.root) return;
         if (!campusAllowed()) { S.root.innerHTML = lockHTML(); return; }
+        if (!S.sess) { S.root.innerHTML = loginHTML(); return; }
         if (S.view === 'menu') { S.root.innerHTML = menuHTML(); return; }
         const back = `<button type="button" class="cx-back pressable" data-action="pms-menu"><i class="fas fa-chevron-right"></i> الأقسام</button>`;
         const body = S.loading
@@ -364,6 +404,41 @@
         pms('get_dashboard_data').then(d => { S.dash = d; }).catch(() => {});
     }
 
+    // مزامنة أحادية: جامعتي ← طبقة الرزنامة الرئيسية (تملأ الفارغ فقط)
+    function syncCampusToPts(manual) {
+        try {
+            if (typeof getValidProgresSession !== 'function' || !getValidProgresSession()) {
+                if (manual) toast('سجل دخول Progres أولاً للمزامنة', 'error');
+                return 0;
+            }
+            if (!S.cache['sched_raw']) return 0;
+            if (typeof ptsDb !== 'function' || typeof ptsOwner !== 'function' || typeof ptsPersist !== 'function') return 0;
+            const { grid } = pmsBaseGrid();
+            const db = ptsDb();
+            const o = ptsOwner();
+            if (!db.owners[o] || typeof db.owners[o] !== 'object' || Array.isArray(db.owners[o])) db.owners[o] = {};
+            let n = 0;
+            Object.keys(grid).forEach(key => {
+                if (db.owners[o][key]) return;
+                try { if (typeof schedule !== 'undefined' && schedule[key] && schedule[key].text) return; } catch (e) {}
+                const c = grid[key];
+                if (!c || !c.subject) return;
+                const li = key.lastIndexOf('_');
+                db.owners[o][key] = {
+                    day: key.slice(0, li), idx: parseInt(key.slice(li + 1), 10),
+                    subject: c.subject, type: c.type, room: c.room || '', teacher: c.teacher || '', notes: '',
+                };
+                n++;
+            });
+            if (n) {
+                ptsPersist(db);
+                try { if (typeof renderSchedule === 'function') renderSchedule(); } catch (e) {}
+                if (manual) toast(`تمت مزامنة ${n} حصة`, 'success');
+            } else if (manual) toast('رزنامتك محدثة — لا جديد للمزامنة', 'info');
+            return n;
+        } catch (e) { return 0; }
+    }
+
     function dayHasClasses(grid, day) {        const db = cxDb();
         return SLOTS.some((_, i) => {
             const key = day + '_' + i;
@@ -391,6 +466,7 @@
 
     async function vSchedule() {
         if (!S.cache['sched_raw']) S.cache['sched_raw'] = await pms('get_group_schedule');
+        try { syncCampusToPts(false); } catch (e) {}
         if (S.cxDay < 0) S.cxDay = defaultDay();
         const { grid, extra } = pmsBaseGrid();
         const day = DAYS[S.cxDay];
@@ -398,6 +474,8 @@
                 <span><i class="fas fa-calendar-day"></i> اختر اليوم</span>
                 <button type="button" class="sched-edit-btn ${S.cxEdit ? 'active' : ''}" data-action="pms-editmode">
                     <i class="fas ${S.cxEdit ? 'fa-check' : 'fa-pen'}"></i> ${S.cxEdit ? 'تم' : 'تعديل الجدول'}</button>
+                <button type="button" class="sched-edit-btn" data-action="pms-syncpts" title="نسخ حصص جامعتي لرزنامتي الرئيسية">
+                    <i class="fas fa-arrows-rotate"></i> مزامنة</button>
             </div><div class="day-picker-grid">` +
             DAYS.map((dd, i) =>
                 `<button class="day-btn ${i === S.cxDay ? 'active' : ''} ${dayHasClasses(grid, dd) ? 'has-classes' : ''}" data-action="pms-day" data-day="${i}"><i class="fas ${DAY_ICON[i]}"></i> ${DAY_AR[dd]}</button>`
@@ -766,7 +844,7 @@
     async function vProfile() {
         let live = null;
         try { live = (await pms('api_student_profile')).data || null; } catch (e) {}
-        if (live) { S.sess.profile = Object.assign({}, S.sess.profile, live); try { localStorage.setItem(LS_KEY, JSON.stringify(S.sess)); } catch (e) {} }
+        if (live) { S.sess.profile = Object.assign({}, S.sess.profile, live); try { saveSess(S.sess); } catch (e) {} }
         const p = S.sess.profile || {};
         const row = (k, v) => v ? `<div class="cx-room"><span class="cx-muted" style="min-width:110px">${k}</span><strong>${esc(v)}</strong></div>` : '';
         return `<div class="cx-card"><h4><i class="fas fa-id-card" style="color:var(--accent)"></i> ملفي الجامعي</h4>
@@ -782,7 +860,26 @@
         if (a === 'pms-menu') { S.view = 'menu'; render(); return; }
         if (a === 'pms-open') { openSection(el.dataset.tab); return; }
         if (a === 'pms-refresh') { S.cache = {}; openSection('profile'); return; }
+        if (a === 'pms-login') {
+            const u = ((document.getElementById('pms-user') || {}).value || '').trim();
+            const p = (document.getElementById('pms-pass') || {}).value || '';
+            if (!u || !p) { S.loginErr = 'أدخل رقم التسجيل وكلمة المرور'; render(); return; }
+            S.loginErr = '';
+            el.disabled = true;
+            try {
+                const d = await api('/login', { username: u, password: p });
+                if (d.status !== 'success' || !d.data || !(d.data.Id || d.data.student_id)) throw new Error(d.message || 'فشل الدخول');
+                S.sess = { student_id: d.data.Id || d.data.student_id, profile: d.data };
+                saveSess(S.sess);
+                S.cache = {}; S.view = 'menu'; S.loginErr = '';
+                toast('مرحباً ' + (d.data.NomAr || d.data.Nom || ''), 'success');
+                render();
+                prefetchCampus();
+            } catch (e) { S.loginErr = e.message; render(); }
+            return;
+        }
         if (a === 'pms-editmode') { S.cxEdit = !S.cxEdit; openSection('schedule'); return; }
+        if (a === 'pms-syncpts') { syncCampusToPts(true); return; }
         if (a === 'pms-day') { S.cxDay = parseInt(el.dataset.day, 10) || 0; openSection('schedule'); return; }
         if (a === 'pms-slot') { openCampusSlot(el.dataset.key); return; }
         if (a === 'pms-modtab') { S.modTab = parseInt(el.dataset.sem, 10) || 0; openSection('modules'); return; }
@@ -803,7 +900,9 @@
         syncTile();
         wrapSlotPersistence();
         if (!campusAllowed()) { S.root.innerHTML = lockHTML(); return; }
-        if (root.dataset.mountedInitDone) { render(); return; }
+        S.sess = loadSess();
+        S.cache = {};
+        if (root.dataset.mountedInitDone) { render(); if (S.sess) prefetchCampus(); return; }
         root.dataset.mountedInitDone = '1';
         root.addEventListener('click', (e) => {
             const el = e.target.closest('[data-action]');
