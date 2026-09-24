@@ -1292,7 +1292,7 @@
             end_fr: en[0],
             end_ar: en[1],
             agency_name: String(raw.agency_name || '').trim(),
-            distance_m: _asFloat(raw.distance),
+            distance: _asFloat(raw.distance),
             lat: _asFloat(raw.lat),
             lng: _asFloat(raw.lng),
         };
@@ -1314,10 +1314,10 @@
             if (L) lines.push(L);
         }
         lines.sort(function (a, b) {
-            if (a.distance_m == null && b.distance_m == null) return 0;
-            if (a.distance_m == null) return 1;
-            if (b.distance_m == null) return -1;
-            return a.distance_m - b.distance_m;
+            if (a.distance == null && b.distance == null) return 0;
+            if (a.distance == null) return 1;
+            if (b.distance == null) return -1;
+            return a.distance - b.distance;
         });
         return lines;
     }
@@ -1400,9 +1400,18 @@
         }
         try {
             const payload = await _busGet('/api/starts/' + String(lineId), new URLSearchParams({ page: String(page) }));
-            let body = payload && payload.data && typeof payload.data === 'object' ? payload.data : {};
-            let rows = body.data;
-            let meta = body.meta && typeof body.meta === 'object' ? body.meta : {};
+            // الشكلان: paginator مسطح {data:[...], meta} أو متداخل {data:{data, meta}}.
+            let meta = {};
+            let rows = null;
+            if (payload && typeof payload === 'object') {
+                if (payload.meta && typeof payload.meta === 'object') meta = payload.meta;
+                const inner = payload.data;
+                if (Array.isArray(inner)) rows = inner;
+                else if (inner && typeof inner === 'object') {
+                    if (inner.meta && typeof inner.meta === 'object') meta = inner.meta;
+                    rows = inner.data;
+                }
+            }
             if (!Array.isArray(rows)) rows = [];
             const departures = [];
             for (let i = 0; i < rows.length; i++) {
@@ -1414,6 +1423,7 @@
             const per = _asInt(meta.per_page);
             return _jsonResp(200, {
                 data: departures,
+                departures: departures,
                 meta: {
                     current_page: cur != null ? cur : page,
                     last_page: last != null ? last : page,

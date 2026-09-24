@@ -184,7 +184,15 @@
     }
 
     function sortLines(arr) {
-        return arr.slice().sort((a, b) => {
+        const list = arr.slice();
+        // الوزارة لا ترسل مسافات: نحفظ ترتيبها الصاعد (مرتب بالقرب) بدل
+        // إعادة الفرز أبجدياً الذي كان يدمر ترتيب القرب.
+        if (!list.some((l) => l && l.distance != null)) {
+            const favs = list.filter((l) => S.favs.has(String(l && l.id)));
+            const rest = list.filter((l) => !S.favs.has(String(l && l.id)));
+            return favs.concat(rest);
+        }
+        return list.sort((a, b) => {
             const fa = S.favs.has(String(a && a.id)) ? 0 : 1;
             const fb = S.favs.has(String(b && b.id)) ? 0 : 1;
             if (fa !== fb) return fa - fb;

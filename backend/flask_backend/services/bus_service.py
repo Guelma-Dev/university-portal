@@ -137,8 +137,9 @@ def _fetch_json(path: str):
             try:
                 # Short probe: Render egress is usually blocked by the
                 # ministry, so don't let the direct attempt stall the request.
+                # (رقم واحد — طبقة _http البديلة لا تقبل tuple.)
                 resp = _session.get(f'{BUS_API_BASE}{path}',
-                                    timeout=(3, 6))
+                                    timeout=8)
                 if resp.status_code in (502, 503):
                     raise UpstreamError('egress blocked')
                 if resp.status_code != 200:
@@ -213,7 +214,10 @@ def _normalize_line(raw):
         'end_fr': end_fr,
         'end_ar': end_ar,
         'agency_name': str(raw.get('agency_name') or '').strip(),
-        'distance_m': _as_float(raw.get('distance')),
+        # الوزارة لا ترسل مسافة/إحداثيات: distance تبقى null والترتيب
+        # الصاعد من upstream (مرتب بالقرب) يُحفظ — الواجهة لا تعيد الفرز
+        # عند غياب المسافات عن الكل.
+        'distance': _as_float(raw.get('distance')),
         'lat': _as_float(raw.get('lat')),
         'lng': _as_float(raw.get('lng')),
     }
@@ -230,7 +234,7 @@ def _extract_lines(payload):
     if not isinstance(rows, list):
         raise UpstreamError('unexpected lines payload shape')
     lines = [line for line in (_normalize_line(r) for r in rows) if line]
-    lines.sort(key=lambda l: (l['distance_m'] is None, l['distance_m'] or 0))
+    lines.sort(key=lambda l: (l['distance'] is None, l['distance'] or 0))
     return lines
 
 
@@ -317,15 +321,25 @@ def line_starts(line_id: int):
 
     def produce():
         payload = _fetch_json(f'/starts/{line_id}?page={page}')
-        body = payload.get('data') if isinstance(payload, dict) else {}
-        body = body if isinstance(body, dict) else {}
-        rows = body.get('data')
-        meta = body.get('meta') if isinstance(body.get('meta'), dict) else {}
+        # الشكلان المرصودان حياً: Laravel paginator مسطح {data:[...], meta:{...}}
+        # أو قاموس متداخل {data:{data, meta}} — نقبل الاثنين.
+        meta = {}
+        if isinstance(payload, dict):
+            meta = payload.get('meta') if isinstance(payload.get('meta'), dict) else {}
+            inner = payload.get('data')
+            if isinstance(inner, dict):
+                meta = inner.get('meta') if isinstance(inner.get('meta'), dict) else meta
+                rows = inner.get('data')
+            else:
+                rows = inner
+        else:
+            rows = payload if isinstance(payload, list) else []
         if not isinstance(rows, list):
             rows = []
         departures = [d for d in (_normalize_departure(r) for r in rows) if d]
         return {
             'data': departures,
+            'departures': departures,
             'meta': {
                 'current_page': _as_int(meta.get('current_page'), page),
                 'last_page': _as_int(meta.get('last_page'), page),
