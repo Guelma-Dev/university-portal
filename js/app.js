@@ -185,19 +185,43 @@ async function renderMinistryExams() {
             }
             return '';
         };
+        const fmtDate = (d) => {
+            const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || ''));
+            return m ? `${m[1]}-${m[2]}-${m[3]}` : String(d || '--');
+        };
+        const fmtTime = (t) => {
+            const m = /^(\d{1,2}):(\d{2})/.exec(String(t || ''));
+            return m ? `${m[1].padStart(2, '0')}:${m[2]}` : String(t || '--');
+        };
+        const sessKey = (it) => pick(it, ['typeSessionAr', 'typeSession', 'libellePeriodeAr', 'libellePeriode', 'session']) || 'عام';
         box.innerHTML = '<p class="ins-note"><i class="fas fa-building-columns"></i> البرنامج الرسمي من الوزارة — أدناه تواريخ معلنة من الإدارة.</p>' + groups.map(g => {
             if (!g.items.length) return '';
-            const rows = g.items.map(it => {
-                const mod = pick(it, ['mcLibelleAr', 'mcLibelleFr', 'matiereLibelleAr', 'matiere', 'libelleAr', 'libelle']);
-                const date = pick(it, ['dateExamen', 'date', 'jour']);
-                const time = pick(it, ['heureDebut', 'heure', 'time']);
-                const place = pick(it, ['salle', 'salleExamen', 'lieu']);
-                const extra = pick(it, ['heureFin', 'duree', 'libellePeriodeAr', 'libellePeriode', 'typeSessionAr', 'typeSession']);
-                return `<tr><td>${escHtml(mod || 'مادة')}${extra ? `<br><small style="opacity:.7">${escHtml(extra)}</small>` : ''}</td><td dir="ltr">${escHtml(date || '--')}</td><td dir="ltr">${escHtml(time || '--')}</td><td>${escHtml(place || '--')}</td></tr>`;
+            // تجميع الدورات داخل السنة + فرز زمني (العادية/الاستدراكية كانت مختلطة)
+            const bySess = {};
+            g.items.forEach(it => {
+                const k = sessKey(it);
+                (bySess[k] = bySess[k] || []).push(it);
+            });
+            return Object.keys(bySess).sort().map(sk => {
+                const arr = bySess[sk].slice().sort((a, b) => {
+                    const da = pick(a, ['dateExamen', 'date', 'jour']);
+                    const db = pick(b, ['dateExamen', 'date', 'jour']);
+                    if (da !== db) return da < db ? -1 : 1;
+                    return pick(a, ['heureDebut', 'heure', 'time']) < pick(b, ['heureDebut', 'heure', 'time']) ? -1 : 1;
+                });
+                const rows = arr.map(it => {
+                    const mod = pick(it, ['mcLibelleAr', 'mcLibelleFr', 'matiereLibelleAr', 'matiere', 'libelleAr', 'libelle']);
+                    const date = fmtDate(pick(it, ['dateExamen', 'date', 'jour']));
+                    const time = fmtTime(pick(it, ['heureDebut', 'heure', 'time']));
+                    const place = pick(it, ['salle', 'salleExamen', 'lieu']);
+                    const dur = pick(it, ['duree']);
+                    const extra = pick(it, ['heureFin', 'libellePeriodeAr', 'libellePeriode']);
+                    return `<tr><td>${escHtml(mod || 'مادة')}${dur ? `<br><small style="opacity:.7">المدة ${escHtml(dur)} د</small>` : ''}${extra ? `<br><small style="opacity:.7">${escHtml(extra)}</small>` : ''}</td><td dir="ltr" style="white-space:nowrap">${escHtml(date)}</td><td dir="ltr" style="white-space:nowrap">${escHtml(time)}</td><td>${escHtml(place || '--')}</td></tr>`;
+                }).join('');
+                const head = `<h3 style="${H3}">${escHtml(g.label || 'البرنامج الرسمي')}${sk !== 'عام' ? ' — ' + escHtml(sk) : ''}</h3>`;
+                return head + `<table class="exam-table"><thead><tr><th>المادة</th><th>التاريخ</th><th>الوقت</th><th>المكان</th></tr></thead>
+                    <tbody>${rows}</tbody></table>`;
             }).join('');
-            return `<h3 style="${H3}">${escHtml(g.label || 'البرنامج الرسمي')}</h3>
-                <table class="exam-table"><thead><tr><th>المادة</th><th>التاريخ</th><th>الوقت</th><th>المكان</th></tr></thead>
-                <tbody>${rows}</tbody></table>`;
         }).join('');
     } catch (e) { /* ministry unreachable: admin dates remain */ }
 }
@@ -221,10 +245,10 @@ function renderExams(sem) {
         const time = ex.time || ex.start_time || '';
         const place = ex.place || ex.location || ex.room || '';
         return `<tr>
-            <td>${subject}</td>
-            <td>${date}</td>
-            <td>${time}</td>
-            <td>${place}</td>
+            <td>${escHtml(subject)}</td>
+            <td dir="ltr" style="white-space:nowrap">${escHtml(date)}</td>
+            <td dir="ltr" style="white-space:nowrap">${escHtml(time)}</td>
+            <td>${escHtml(place)}</td>
         </tr>`;
     }).join('');
     container.innerHTML = `
