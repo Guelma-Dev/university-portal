@@ -1,8 +1,8 @@
 {
-  "versionCode": 51,
-  "versionName": "1.4.35",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-51.apk",
-  "sha256": "10d1286d2cfc2b8e0224d99d06139aaaf3970c69a040eeef1e8160e738cd6937",
-  "size": 5548314,
+  "versionCode": 52,
+  "versionName": "1.4.36",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-52.apk",
+  "sha256": "accaa8d9a9ff9576c2fc05629da389832396d811ded3f5f9d3c7791847b24657",
+  "size": 5548732,
   "mandatory": false
 }
