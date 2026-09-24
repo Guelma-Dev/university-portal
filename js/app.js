@@ -399,6 +399,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
     }
 
+    // Self-heal: الجلسة الحالية ضائعة لكن توجد حسابات محفوظة
+    // والخروج لم يكن صريحاً → استعادة أحدث حساب صالح بصمت.
+    try {
+        if (!getValidProgresSession() && localStorage.getItem('progres_logged_out') !== '1' && typeof getProgresAccounts === 'function') {
+            const nowMs = Date.now();
+            const acc = getProgresAccounts().find(a => {
+                if (!a || !a.token || !a.uuid) return false;
+                try {
+                    const pay = JSON.parse(atob(String(a.token).split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                    return !pay || !pay.exp || nowMs < pay.exp * 1000;
+                } catch (e) { return true; }
+            });
+            if (acc) setProgresSession({ token: acc.token, uuid: acc.uuid, etab: acc.etab, name: acc.name });
+        }
+    } catch (e) {}
     // Student auto-login — restore persistent Progres session
     const pSession = getValidProgresSession();
     if (pSession) {
@@ -2471,6 +2486,7 @@ function getValidProgresSession() {
 
 function setProgresSession(session) {
     localStorage.setItem(PROGRES_SESSION_KEY, JSON.stringify(session));
+    try { localStorage.removeItem('progres_logged_out'); } catch (e) {}
     rememberProgresAccount(session);
     // Keep the native auto-booker armed with the current ministry token.
     try {
@@ -2483,6 +2499,7 @@ function setProgresSession(session) {
 }
 
 function progresLogout() {
+    try { localStorage.setItem('progres_logged_out', '1'); } catch (e) {}
     try { if (window.CampusAccess) window.CampusAccess.unlink(); } catch (e) {}
     try {
         const s = getProgresSession();
@@ -3143,8 +3160,9 @@ async function openProgresView(view) {
         setGradesCardView(false);
         updateBnActive();
         if (e.message === 'status-401') {
-            progresLogout();
-            showToast('انتهت جلسة بروقرس، سجل دخول من جديد', 'error');
+            // 401 عابر (جسر/وزارة) شائع — لا نمسح الجلسة أبداً من هنا؛
+            // المسح فقط عند خروج صريح أو دخول جديد. نرشد لإعادة الدخول.
+            showToast('تعذر التحقق من الجلسة — إن تكرر أعد تسجيل الدخول', 'error');
         } else {
             content.innerHTML = '<div class="mobile-empty"><i class="fas fa-triangle-exclamation"></i><p>تعذر جلب البيانات حالياً، حاول من جديد</p></div>';
         }
