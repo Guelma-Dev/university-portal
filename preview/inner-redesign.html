@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مقترحات التصميم الداخلي — بوابة الطالب (محلي فقط)</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Amiri:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* ============ معاينة التصميم الداخلي — ملف محلي للنقاش فقط ============ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+    --bg: #0B0E14; --card: #131927; --line: rgba(255,255,255,.08);
+    --text: #F5F7FA; --dim: #8A93A6;
+    --blue: #3B82F6; --blue-2: #60A5FA; --blue-deep: #2563EB;
+    --ok: #34D399; --bad: #FF7070; --amber: #FBBF24;
+}
+body {
+    font-family: 'Tajawal', system-ui, sans-serif;
+    background: #070A10; color: var(--text);
+    min-height: 100vh; padding-bottom: 60px;
+}
+/* خلفية المسرح */
+.stage-orb { position: fixed; border-radius: 50%; filter: blur(90px); opacity: .16; pointer-events: none; }
+.orb-1 { width: 480px; height: 480px; top: -160px; right: -120px; background: #2563EB; }
+.orb-2 { width: 420px; height: 420px; bottom: -140px; left: -120px; background: #7C3AED; }
+
+.topbar { position: sticky; top: 0; z-index: 50; padding: 18px 26px 14px;
+    background: rgba(7,10,16,.86); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line); }
+.topbar h1 { font-size: 1.25rem; font-weight: 900; }
+.topbar h1 em { font-family: 'Amiri', serif; font-style: italic; color: var(--blue-2); }
+.topbar p { color: var(--dim); font-size: .8rem; margin-top: 3px; }
+.tabs { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.tab { border: 1px solid var(--line); background: var(--card); color: var(--dim);
+    border-radius: 999px; padding: 9px 18px; font-family: inherit; font-weight: 800;
+    font-size: .85rem; cursor: pointer; transition: all .2s; }
+.tab.on { background: var(--blue); color: #fff; border-color: var(--blue);
+    box-shadow: 0 6px 20px rgba(59,130,246,.4); }
+.note { display: inline-block; margin-inline-start: auto; color: var(--amber);
+    font-size: .75rem; font-weight: 700; border: 1px dashed rgba(251,191,36,.4);
+    border-radius: 999px; padding: 7px 14px; }
+
+.stage { display: flex; gap: 34px; padding: 30px 26px; flex-wrap: wrap; justify-content: center; }
+.variant { display: none; gap: 34px; flex-wrap: wrap; justify-content: center; }
+.variant.on { display: flex; }
+.v-col { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.v-col > small { color: var(--dim); font-weight: 700; font-size: .78rem; letter-spacing: .03em; }
+
+/* ============ إطار الهاتف ============ */
+.phone { width: 372px; height: 780px; border-radius: 42px; overflow: hidden;
+    border: 7px solid #232B3D; box-shadow: 0 30px 70px rgba(0,0,0,.6);
+    position: relative; background: var(--bg); flex: 0 0 auto; }
+.phone .scr { height: 100%; overflow-y: auto; scrollbar-width: none; padding-bottom: 84px; }
+.phone .scr::-webkit-scrollbar { display: none; }
+.status { display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 20px 4px; font-size: .72rem; font-weight: 800; color: var(--dim); }
+.notch { position: absolute; top: 8px; right: 50%; transform: translateX(50%);
+    width: 110px; height: 24px; border-radius: 999px; background: #232B3D; z-index: 5; }
+
+/* عناصر مشتركة */
+.appbar { display: flex; align-items: center; gap: 12px; padding: 12px 18px 6px; }
+.avatar { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center;
+    font-size: 1.2rem; background: linear-gradient(135deg, var(--blue), #7C3AED); }
+.appbar .who b { display: block; font-size: .95rem; }
+.appbar .who span { font-size: .72rem; color: var(--dim); }
+.appbar .sp { flex: 1; }
+.icbtn { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+    background: rgba(255,255,255,.06); color: var(--dim); font-size: .85rem; }
+
+.bottomnav { position: absolute; bottom: 0; right: 0; left: 0; z-index: 10;
+    display: flex; padding: 8px 6px calc(10px + 6px); }
+.bn { flex: 1; text-align: center; font-size: .62rem; font-weight: 800; color: var(--dim);
+    padding: 6px 0; border-radius: 14px; }
+.bn i { display: block; font-size: 1.05rem; margin-bottom: 3px; }
+.bn.on { color: var(--blue-2); }
+
+.card { border-radius: 20px; padding: 16px; position: relative; }
+h4.sect { font-size: 1.05rem; font-weight: 900; margin: 18px 18px 10px; display: flex; align-items: center; gap: 8px; }
+h4.sect .lnk { margin-inline-start: auto; font-size: .75rem; color: var(--blue-2); font-weight: 800; }
+.badge { font-variant-numeric: tabular-nums; font-weight: 900; border-radius: 10px; padding: 5px 10px; font-size: .9rem; }
+.badge.ok { color: var(--ok); background: rgba(52,211,153,.13); }
+.badge.bad { color: var(--bad); background: rgba(255,112,112,.13); }
+.bar { height: 6px; border-radius: 99px; background: rgba(255,255,255,.07); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 99px; width: 0;
+    animation: grow 1.2s cubic-bezier(.16,1,.3,1) .3s forwards; }
+@keyframes grow { to { width: var(--w); } }
+/* نصوص مشتركة لكل المتغيرات (كانت محصورة في A فكسرت C) */
+.next .t b, .slot .t b, .subj .t b, .tile b { display: block; }
+.next .t span, .slot .t span, .subj .t span, .tile span { font-size: .72rem; color: var(--dim); }
+.next .t, .subj .t { min-width: 0; }
+
+/* ============================================================
+   A — زجاج بينتو (Fintech Bento)
+   ============================================================ */
+.vA .scr { background: radial-gradient(100% 60% at 80% 0%, rgba(59,130,246,.10), transparent 60%), var(--bg); }
+.vA .card { background: linear-gradient(160deg, rgba(255,255,255,.055), rgba(255,255,255,.02)), var(--card);
+    border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(2,6,18,.45), inset 0 1px 0 rgba(255,255,255,.06); }
+.vA .bento { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 4px 16px 0; }
+.vA .bento .wide { grid-column: 1 / -1; }
+.vA .gpa-card { display: flex; align-items: center; gap: 14px; }
+.ring { width: 74px; height: 74px; border-radius: 50%; flex: 0 0 auto;
+    background: conic-gradient(var(--blue-2) calc(var(--p) * 1%), rgba(255,255,255,.08) 0);
+    display: grid; place-items: center; }
+.ring::before { content: ""; position: absolute; width: 58px; height: 58px; border-radius: 50%; background: #10151F; }
+.ring b { position: relative; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.ring b small { display: block; font-size: .58rem; color: var(--dim); font-weight: 700; text-align: center; }
+.vA .gpa-card .t b { font-size: .95rem; display: block; }
+.vA .gpa-card .t span { font-size: .72rem; color: var(--dim); }
+.vA .tile { display: flex; flex-direction: column; gap: 8px; }
+.vA .tile .ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+    background: rgba(59,130,246,.13); color: var(--blue-2); font-size: .95rem; }
+.vA .tile b { font-size: .88rem; }
+.vA .tile span { font-size: .7rem; color: var(--dim); }
+.vA .next { display: flex; align-items: center; gap: 12px; }
+.vA .next .time { font-size: 1.3rem; font-weight: 900; font-variant-numeric: tabular-nums;
+    background: linear-gradient(135deg, #EAF3FF, #67B3FF); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.vA .next .t b { display: block; font-size: .9rem; }
+.vA .next .t span { font-size: .72rem; color: var(--dim); }
+.vA .chips { display: flex; gap: 8px; padding: 12px 16px 0; overflow: hidden; }
+.vA .chip { flex: 1; text-align: center; padding: 12px 0; border-radius: 16px;
+    background: var(--card); border: 1px solid var(--line); font-size: .72rem; font-weight: 800; color: var(--dim); }
+.vA .chip i { display: block; font-size: 1rem; color: var(--blue-2); margin-bottom: 5px; }
+.vA .timeline { padding: 0 16px; }
+.vA .slot { display: flex; gap: 12px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); }
+.vA .slot:first-child { border-top: none; }
+.vA .slot .time { font-weight: 900; font-variant-numeric: tabular-nums; font-size: .9rem; color: var(--blue-2); width: 44px; }
+.vA .slot .t b { display: block; font-size: .88rem; }
+.vA .slot .t span { font-size: .7rem; color: var(--dim); }
+.vA .slot .dot { margin-inline-start: auto; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.vA .bottomnav { background: rgba(13,19,34,.94); border-top: 1px solid var(--line); }
+
+/* شاشة النقاط A */
+.vA .hero-gpa { text-align: center; padding: 22px 16px 18px; }
+.vA .hero-gpa .big { font-size: 3rem; font-weight: 900; font-variant-numeric: tabular-nums;
+    background: linear-gradient(135deg, #EAF3FF, #67B3FF 55%, #3B82F6);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+.vA .hero-gpa p { color: var(--dim); font-size: .78rem; font-weight: 700; }
+.vA .sem { display: flex; gap: 8px; padding: 0 16px 12px; }
+.vA .sem button { flex: 1; border: 1px solid var(--line); background: transparent; color: var(--dim);
+    border-radius: 999px; padding: 9px 0; font-family: inherit; font-weight: 800; font-size: .8rem; }
+.vA .sem button.on { background: #0B0E14; border-color: #0B0E14; color: #fff; }
+.vA .subj { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-top: 1px solid var(--line); }
+.vA .subj:first-child { border-top: none; }
+.vA .subj .t { flex: 1; min-width: 0; }
+.vA .subj .t b { display: block; font-size: .92rem; }
+.vA .subj .t span { font-size: .7rem; color: var(--dim); }
+.vA .subj .bar { width: 74px; }
+
+/* ============================================================
+   B — أورورا تحريرية (Editorial Aurora)
+   ============================================================ */
+.vB .scr { background: var(--bg); position: relative; }
+.vB .scr::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(60% 40% at 85% 0%, rgba(124,58,237,.22), transparent 65%),
+                radial-gradient(50% 35% at 10% 15%, rgba(59,130,246,.20), transparent 60%); }
+.vB .appbar .who b { font-family: 'Amiri', serif; font-style: italic; font-size: 1.1rem; }
+.vB h4.sect { font-family: 'Amiri', serif; font-style: italic; font-weight: 400; font-size: 1.3rem; }
+.vB .card { background: linear-gradient(150deg, rgba(124,58,237,.10), rgba(59,130,246,.06) 55%, rgba(255,255,255,.02)), var(--card);
+    border: 1px solid transparent;
+    background-clip: padding-box; position: relative; }
+.vB .card::after { content: ""; position: absolute; inset: 0; border-radius: 20px; padding: 1px; pointer-events: none;
+    background: linear-gradient(140deg, rgba(96,165,250,.55), rgba(124,58,237,.35) 45%, rgba(255,255,255,.06));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude; }
+.vB .greet { padding: 8px 20px 2px; }
+.vB .greet em { font-family: 'Amiri', serif; font-style: italic; font-size: 1.6rem; display: block; line-height: 1.35; }
+.vB .greet span { color: var(--dim); font-size: .78rem; }
+.vB .hero { margin: 12px 16px 0; padding: 20px; border-radius: 22px; overflow: hidden; position: relative;
+    background: linear-gradient(135deg, #2563EB, #7C3AED); }
+.vB .hero::after { content: ""; position: absolute; width: 190px; height: 190px; border-radius: 50%;
+    background: rgba(255,255,255,.14); top: -80px; left: -50px; }
+.vB .hero .lbl { font-size: .72rem; font-weight: 800; opacity: .85; }
+.vB .hero .num { font-size: 2.7rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.vB .hero .num small { font-size: .9rem; font-weight: 700; opacity: .8; }
+.vB .hero .row { display: flex; gap: 16px; margin-top: 12px; font-size: .74rem; font-weight: 700; opacity: .95; }
+.vB .hero .row i { margin-inline-end: 5px; }
+.vB .next { display: flex; align-items: center; gap: 12px; }
+.vB .next .time { font-size: 1.25rem; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--blue-2); }
+.vB .next .t b { display: block; font-size: .9rem; }
+.vB .next .t span { font-size: .72rem; color: var(--dim); }
+.vB .list { padding: 0 16px; }
+.vB .rowi { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--line); margin-bottom: 8px; }
+.vB .rowi .ic { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
+    background: linear-gradient(135deg, rgba(59,130,246,.25), rgba(124,58,237,.25)); color: #BFD4FF; }
+.vB .rowi .t { flex: 1; }
+.vB .rowi .t b { display: block; font-size: .9rem; }
+.vB .rowi .t span { font-size: .7rem; color: var(--dim); }
+.vB .rowi > .val { font-weight: 900; font-variant-numeric: tabular-nums; }
+.vB .rowi > .val.ok { color: var(--ok); } .vB .rowi > .val.bad { color: var(--bad); }
+.vB .bottomnav { background: rgba(19,14,34,.9); border-top: 1px solid rgba(124,58,237,.25); }
+.vB .bn.on { color: #A78BFA; }
+.vB .subj .bar i { background: linear-gradient(90deg, #3B82F6, #A78BFA) !important; }
+
+/* شاشة النقاط B */
+.vB .hero-gpa { padding: 16px; }
+.vB .sem { padding: 0 16px 12px; }
+.vB .sem button.on { background: linear-gradient(135deg, #2563EB, #7C3AED); border-color: transparent; color: #fff; }
+.vB .subj { background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 16px;
+    margin: 0 16px 8px; padding: 12px 14px; border-top: 1px solid var(--line); }
+
+/* ============================================================
+   C — ورق فاتح (Light Paper)
+   ============================================================ */
+.vC .phone { background: #F4F6FB; }
+.vC .scr { background: #F4F6FB; }
+.vC .status, .vC .appbar .who span, .vC .tile span, .vC .next .t span,
+.vC .slot .t span, .vC .subj .t span, .vC .hero-gpa p { color: #6B7280; }
+.vC .status, .vC .appbar .who b, .vC .tile b, .vC h4.sect,
+.vC .next .t b, .vC .slot .t b, .vC .subj .t b, .vC .slot .time { color: #111827; }
+.vC .card { background: #FFFFFF; border: 1px solid #E8ECF3; box-shadow: 0 8px 24px rgba(17,24,39,.06); }
+.vC .icbtn { background: #EEF1F7; color: #6B7280; }
+.vC .ring::before { background: #fff; }
+.vC .ring b { color: #111827; }
+.vC .ring b small { color: #6B7280; }
+.vC .gpa-card .t b { color: #111827; }
+.vC .gpa-card .t span { color: #6B7280; }
+.vC .tile .ic { background: #EAF1FE; color: #2563EB; }
+.vC .next { gap: 10px; }
+.vC .next .time { font-size: 1.15rem; }
+.vC .next .t { min-width: 0; }
+.vC .next .time { background: none; -webkit-background-clip: initial; background-clip: initial; color: #2563EB; }
+.vC .chips .chip { background: #fff; border-color: #E8ECF3; color: #6B7280; }
+.vC .chips .chip i { color: #2563EB; }
+.vC .slot .dot { background: #10B981; }
+.vC .hero-gpa .big { background: linear-gradient(135deg, #1D4ED8, #2563EB); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.vC .sem button { border-color: #E8ECF3; color: #6B7280; }
+.vC .sem button.on { background: #111827; border-color: #111827; color: #fff; }
+.vC .bar { background: #EDF0F6; }
+.vC .bottomnav { background: #FFFFFF; border-top: 1px solid #E8ECF3; }
+.vC .bn.on { color: #2563EB; }
+.vC .badge.ok { color: #059669; background: #E7F8F1; }
+.vC .badge.bad { color: #DC2626; background: #FDECEC; }
+.vC .avatar { background: linear-gradient(135deg, #2563EB, #4F46E5); }
+.vC .subj .bar i { background: #2563EB !important; }
+
+@media (max-width: 1400px) { .phone { transform: scale(.92); transform-origin: top; } }
+</style>
+</head>
+<body>
+<div class="stage-orb orb-1"></div><div class="stage-orb orb-2"></div>
+
+<header class="topbar">
+    <h1>مقترحات <em>التصميم الداخلي</em> — بوابة الطالب</h1>
+    <p>نسخ محلية للنقاش فقط · نفس بياناتك الحقيقية · قول: بدّل لون، كبّر، قرّب… لين نعجبك</p>
+    <div class="tabs">
+        <button class="tab on" onclick="show('a', this)">A · زجاج بينتو</button>
+        <button class="tab" onclick="show('b', this)">B · أورورا تحريرية</button>
+        <button class="tab" onclick="show('c', this)">C · ورق فاتح</button>
+        <span class="note">محلي — لا نشر</span>
+    </div>
+</header>
+
+<main class="stage">
+
+<!-- ================= A ================= -->
+<section class="variant vA on" id="v-a">
+    <div class="v-col">
+        <small>الرئيسية</small>
+        <div class="phone"><span class="notch"></span><div class="scr">
+            <div class="status"><span>9:04</span><span>▮▮▮ ⌁ 63%</span></div>
+            <div class="appbar">
+                <div class="avatar">🎓</div>
+                <div class="who"><b>Mohamed</b><span>ليسانس — إعلام آلي · س2</span></div>
+                <div class="sp"></div>
+                <div class="icbtn"><i class="fas fa-bell"></i></div>
+                <div class="icbtn"><i class="fas fa-bars"></i></div>
+            </div>
+            <div class="bento">
+                <div class="card wide gpa-card">
+                    <div class="ring" style="--p:57"><b>11.42<small>المعدل</small></b></div>
+                    <div class="t"><b>معدل عام مرشّح للصعود</b><span>باقي 6 نقاط لتقفيل السداسي · 24/30 رصيد</span></div>
+                </div>
+                <div class="card wide next">
+                    <div class="time">08:00</div>
+                    <div class="t"><b>رياضيات مالية</b><span>القاعة H2.7 · سيعة بورديمة</span></div>
+                    <div class="sp"></div>
+                    <span class="badge ok">اليوم</span>
+                </div>
+                <div class="card tile"><span class="ic"><i class="fas fa-utensils"></i></span><b>22 وجبة</b><span>رصيد المطعم</span></div>
+                <div class="card tile"><span class="ic"><i class="fas fa-bus"></i></span><b>07:15</b><span>خط النقل 04</span></div>
+            </div>
+            <h4 class="sect">وصول سريع</h4>
+            <div class="chips">
+                <div class="chip"><i class="fas fa-file-lines"></i>النقاط</div>
+                <div class="chip"><i class="fas fa-calendar-week"></i>الرزنامة</div>
+                <div class="chip"><i class="fas fa-book-open"></i>المكتبة</div>
+                <div class="chip"><i class="fas fa-file-invoice-dollar"></i>الديون</div>
+            </div>
+            <h4 class="sect">جدول اليوم <span class="lnk">الرزنامة كاملة</span></h4>
+            <div class="card timeline">
+                <div class="slot"><div class="time">08:00</div><div class="t"><b>رياضيات مالية</b><span>H2.7 · سيعة بورديمة</span></div><span class="dot"></span></div>
+                <div class="slot"><div class="time">09:30</div><div class="t"><b>محاسبة التسيير</b><span>H1.8 · نسرين معياش</span></div><span class="dot" style="background:var(--amber)"></span></div>
+                <div class="slot"><div class="time">11:00</div><div class="t"><b>محاسبة التسيير</b><span>H2.7 · نسرين معياش</span></div></div>
+            </div>
+            <div style="height:70px"></div>
+            <div class="bottomnav">
+                <div class="bn on"><i class="fas fa-house"></i>الرئيسية</div>
+                <div class="bn"><i class="fas fa-file-lines"></i>النقاط</div>
+                <div class="bn"><i class="fas fa-id-card"></i>البطاقة</div>
+                <div class="bn"><i class="fas fa-book-open"></i>المكتبة</div>
+                <div class="bn"><i class="fas fa-circle-user"></i>حسابي</div>
+            </div>
+        </div></div>
+    </div>
+    <div class="v-col">
+        <small>النقاط</small>
+        <div class="phone"><span class="notch"></span><div class="scr">
+            <div class="status"><span>9:04</span><span>▮▮▮ ⌁ 63%</span></div>
+            <div class="appbar"><div class="icbtn"><i class="fas fa-arrow-right"></i></div>
+                <div class="who"><b>كشف النقاط</b></div></div>
+            <div class="hero-gpa">
+                <div class="big">11.42</div>
+                <p>معدل السداسي الأول · تقدّمك أعلى من 68% من القسم</p>
+            </div>
+            <div class="sem"><button class="on">السداسي 1</button><button>السداسي 2</button></div>
+            <div class="card" style="margin:0 16px">
+                <div class="subj"><div class="t"><b>اقتصاد وتنظيم المنشأة</b><span>معامل 3 · 4.5 رصيد</span></div><div class="bar" style="width:74px"><i style="--w:71%;background:linear-gradient(90deg,#3B82F6,#60A5FA)"></i></div><span class="badge ok">14.25</span></div>
+                <div class="subj"><div class="t"><b>رياضيات مالية</b><span>معامل 3 · 4.5 رصيد</span></div><div class="bar" style="width:74px"><i style="--w:64%;background:linear-gradient(90deg,#3B82F6,#60A5FA)"></i></div><span class="badge ok">12.75</span></div>
+                <div class="subj"><div class="t"><b>قانون الأعمال</b><span>معامل 2 · 3 رصيد</span></div><div class="bar" style="width:74px"><i style="--w:55%;background:linear-gradient(90deg,#3B82F6,#60A5FA)"></i></div><span class="badge ok">11.00</span></div>
+                <div class="subj"><div class="t"><b>محاسبة التسيير</b><span>معامل 3 · 4.5 رصيد</span></div><div class="bar" style="width:74px"><i style="--w:48%;background:linear-gradient(90deg,#F59E0B,#FBBF24)"></i></div><span class="badge bad">9.50</span></div>
+            </div>
+            <div style="height:70px"></div>
+            <div class="bottomnav">
+                <div class="bn"><i class="fas fa-house"></i>الرئيسية</div>
+                <div class="bn on"><i class="fas fa-file-lines"></i>النقاط</div>
+                <div class="bn"><i class="fas fa-id-card"></i>البطاقة</div>
+                <div class="bn"><i class="fas fa-book-open"></i>المكتبة</div>
+                <div class="bn"><i class="fas fa-circle-user"></i>حسابي</div>
+            </div>
+        </div></div>
+    </div>
+</section>
+
+<!-- ================= B ================= -->
+<section class="variant vB" id="v-b">
+    <div class="v-col">
+        <small>الرئيسية</small>
+        <div class="phone"><span class="notch"></span><div class="scr">
+            <div class="status"><span>9:04</span><span>▮▮▮ ⌁ 63%</span></div>
+            <div class="appbar">
+                <div class="avatar">🎓</div>
+                <div class="who"><b>Mohamed</b><span>ليسانس — إعلام آلي · س2</span></div>
+                <div class="sp"></div>
+                <div class="icbtn"><i class="fas fa-bell"></i></div>
+                <div class="icbtn"><i class="fas fa-bars"></i></div>
+            </div>
+            <div class="greet"><em>صباح النور، Mohamed.</em><span>عندك 3 حصص اليوم — أول واحدة 08:00.</span></div>
+            <div class="hero">
+                <div class="lbl">معدلك العام</div>
+                <div class="num">11.42 <small>/ 20</small></div>
+                <div class="row"><span><i class="fas fa-arrow-trend-up"></i> +0.85 هذا الشهر</span><span><i class="fas fa-layer-group"></i> 24/30 رصيد</span></div>
+            </div>
+            <h4 class="sect">حصة اليوم القادمة</h4>
+            <div class="list">
+                <div class="rowi"><div class="ic"><i class="fas fa-square-root-variable"></i></div>
+                    <div class="t"><b>رياضيات مالية</b><span>08:00 · القاعة H2.7</span></div>
+                    <span class="badge ok">قريبًا</span></div>
+            </div>
+            <h4 class="sect">خدماتك</h4>
+            <div class="list">
+                <div class="rowi"><div class="ic"><i class="fas fa-utensils"></i></div><div class="t"><b>وجبات اليوم</b><span>الغداء محجوز ✓</span></div><span class="val">22</span></div>
+                <div class="rowi"><div class="ic"><i class="fas fa-bus"></i></div><div class="t"><b>النقل الحي</b><span>خط 04 · 07:15</span></div><i class="fas fa-chevron-left" style="color:var(--dim)"></i></div>
+                <div class="rowi"><div class="ic"><i class="fas fa-file-invoice-dollar"></i></div><div class="t"><b>الديون</b><span>لا مستحقات</span></div><span class="val ok">0.00</span></div>
+            </div>
+            <div style="height:70px"></div>
+            <div class="bottomnav">
+                <div class="bn on"><i class="fas fa-house"></i>الرئيسية</div>
+                <div class="bn"><i class="fas fa-file-lines"></i>النقاط</div>
+                <div class="bn"><i class="fas fa-id-card"></i>البطاقة</div>
+                <div class="bn"><i class="fas fa-book-open"></i>المكتبة</div>
+                <div class="bn"><i class="fas fa-circle-user"></i>حسابي</div>
+            </div>
+        </div></div>
+    </div>
+    <div class="v-col">
+        <small>النقاط</small>
+        <div class="phone"><span class="notch"></span><div class="scr">
+            <div class="status"><span>9:04</span><span>▮▮▮ ⌁ 63%</span></div>
+            <div class="appbar"><div class="icbtn"><i class="fas fa-arrow-right"></i></div>
+                <div class="who"><b style="font-family:'Amiri',serif;font-style:italic;font-size:1.1rem">كشف النقاط</b></div></div>
+            <div class="hero" style="margin:12px 16px">
+                <div class="lbl">السداسي الأول</div>
+                <div class="num">11.42 <small>/ 20</small></div>
+                <div class="row"><span><i class="fas fa-check"></i> مقبل</span><span><i class="fas fa-coins"></i> 24/30 رصيد</span></div>
+            </div>
+            <div class="sem"><button class="on">السداسي 1</button><button>السداسي 2</button></div>
+            <div class="list" style="padding-top:4px">
+                <div class="subj"><div class="t"><b>اقتصاد وتنظيم المنشأة</b><span>معامل 3</span></div><div class="bar" style="width:74px"><i style="--w:71%;background:linear-gradient(90deg,#3B82F6,#A78BFA)"></i></div><span class="badge ok">14.25</span></div>
+                <div class="subj"><div class="t"><b>رياضيات مالية</b><span>معامل 3</span></div><div class="bar" style="width:74px"><i style="--w:64%;background:linear-gradient(90deg,#3B82F6,#A78BFA)"></i></div><span class="badge ok">12.75</span></div>
+                <div class="subj"><div class="t"><b>قانون الأعمال</b><span>معامل 2</span></div><div class="bar" style="width:74px"><i style="--w:55%;background:linear-gradient(90deg,#3B82F6,#A78BFA)"></i></div><span class="badge ok">11.00</span></div>
+                <div class="subj"><div class="t"><b>محاسبة التسيير</b><span>معامل 3</span></div><div class="bar" style="width:74px"><i style="--w:48%;background:linear-gradient(90deg,#F59E0B,#FBBF24)"></i></div><span class="badge bad">9.50</span></div>
+            </div>
+            <div style="height:70px"></div>
+            <div class="bottomnav">
+                <div class="bn"><i class="fas fa-house"></i>الرئيسية</div>
+                <div class="bn on"><i class="fas fa-file-lines"></i>النقاط</div>
+                <div class="bn"><i class="fas fa-id-card"></i>البطاقة</div>
+                <div class="bn"><i class="fas fa-book-open"></i>المكتبة</div>
+                <div class="bn"><i class="fas fa-circle-user"></i>حسابي</div>
+            </div>
+        </div></div>
+    </div>
+</section>
+
+<!-- ================= C ================= -->
+<section class="variant vC" id="v-c">
+    <div class="v-col">
+        <small>الرئيسية</small>
+        <div class="phone"><span class="notch"></span><div class="scr">
+            <div class="status"><span>9:04</span><span>▮▮▮ ⌁ 63%</span></div>
+            <div class="appbar">
+                <div class="avatar">🎓</div>
+                <div class="who"><b>Mohamed</b><span>ليسانس — إعلام آلي · س2</span></div>
+                <div class="sp"></div>
+                <div class="icbtn"><i class="fas fa-bell"></i></div>
+                <div class="icbtn"><i class="fas fa-bars"></i></div>
+            </div>
+            <div class="bento">
+                <div class="card wide gpa-card">
+                    <div class="ring" style="--p:57"><b>11.42<small>المعدل</small></b></div>
+                    <div class="t"><b>معدل عام مرشّح للصعود</b><span>باقي 6 نقاط لتقفيل السداسي · 24/30 رصيد</span></div>
+                </div>
+                <div class="card wide next">
+                    <div class="time">08:00</div>
+                    <div class="t"><b>رياضيات مالية</b><span>القاعة H2.7 · سيعة بورديمة</span></div>
+                    <div class="sp"></div>
+                    <span class="badge ok">اليوم</span>
+                </div>
+                <div class="card tile"><span class="ic" style="background:#EAF1FE;color:#2563EB"><i class="fas fa-utensils"></i></span><b>22 وجبة</b><span>رصيد المطعم</span></div>
+                <div class="card tile"><span class="ic" style="background:#EAF1FE;color:#2563EB"><i class="fas fa-bus"></i></span><b>07:15</b><span>خط النقل 04</span></div>
+            </div>
+            <h4 class="sect">وصول سريع</h4>
+            <div class="chips">
+                <div class="chip"><i class="fas fa-file-lines"></i>النقاط</div>
+                <div class="chip"><i class="fas fa-calendar-week"></i>الرزنامة</div>
+                <div class="chip"><i class="fas fa-book-open"></i>المكتبة</div>
+                <div class="chip"><i class="fas fa-file-invoice-dollar"></i>الديون</div>
+            </div>
+            <h4 class="sect">جدول اليوم</h4>
+            <div class="card timeline">
+                <div class="slot"><div class="time">08:00</div><div class="t"><b>رياضيات مالية</b><span>H2.7 · سيعة بورديمة</span></div><span class="dot"></span></div>
+                <div class="slot"><div class="time">09:30</div><div class="t"><b>محاسبة التسيير</b><span>H1.8 · نسرين معياش</span></div><span class="dot" style="background:#F59E0B"></span></div>
+            </div>
+            <div style="height:70px"></div>
+            <div class="bottomnav">
+                <div class="bn on"><i class="fas fa-house"></i>الرئيسية</div>
+                <div class="bn"><i class="fas fa-file-lines"></i>النقاط</div>
+                <div class="bn"><i class="fas fa-id-card"></i>البطاقة</div>
+                <div class="bn"><i class="fas fa-book-open"></i>المكتبة</div>
+                <div class="bn"><i class="fas fa-circle-user"></i>حسابي</div>
+            </div>
+        </div></div>
+    </div>
+    <div class="v-col">
+        <small>النقاط</small>
+        <div class="phone"><span class="notch"></span><div class="scr">
+            <div class="status"><span>9:04</span><span>▮▮▮ ⌁ 63%</span></div>
+            <div class="appbar"><div class="icbtn" style="background:#EEF1F7;color:#111827"><i class="fas fa-arrow-right"></i></div>
+                <div class="who"><b>كشف النقاط</b></div></div>
+            <div class="hero-gpa">
+                <div class="big">11.42</div>
+                <p>معدل السداسي الأول · تقدّمك أعلى من 68% من القسم</p>
+            </div>
+            <div class="sem"><button class="on">السداسي 1</button><button>السداسي 2</button></div>
+            <div class="card" style="margin:0 16px">
+                <div class="subj"><div class="t"><b>اقتصاد وتنظيم المنشأة</b><span>معامل 3</span></div><div class="bar" style="width:74px"><i style="--w:71%"></i></div><span class="badge ok">14.25</span></div>
+                <div class="subj"><div class="t"><b>رياضيات مالية</b><span>معامل 3</span></div><div class="bar" style="width:74px"><i style="--w:64%"></i></div><span class="badge ok">12.75</span></div>
+                <div class="subj"><div class="t"><b>محاسبة التسيير</b><span>معامل 3</span></div><div class="bar" style="width:74px"><i style="--w:48%;background:#F59E0B"></i></div><span class="badge bad">9.50</span></div>
+            </div>
+            <div style="height:70px"></div>
+            <div class="bottomnav">
+                <div class="bn"><i class="fas fa-house"></i>الرئيسية</div>
+                <div class="bn on"><i class="fas fa-file-lines"></i>النقاط</div>
+                <div class="bn"><i class="fas fa-id-card"></i>البطاقة</div>
+                <div class="bn"><i class="fas fa-book-open"></i>المكتبة</div>
+                <div class="bn"><i class="fas fa-circle-user"></i>حسابي</div>
+            </div>
+        </div></div>
+    </div>
+</section>
+</main>
+
+<script>
+function show(v, btn) {
+    document.querySelectorAll('.variant').forEach(s => s.classList.remove('on'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+    document.getElementById('v-' + v).classList.add('on');
+    btn.classList.add('on');
+    // أعد تشغيل أنيميشن الأشرطة عند كل تبديل
+    document.querySelectorAll('.variant.on .bar i').forEach(b => {
+        b.style.animation = 'none'; void b.offsetWidth; b.style.animation = '';
+    });
+}
+</script>
+</body>
+</html>
