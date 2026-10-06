@@ -1,13 +1,12 @@
 {
-  "versionCode": 60,
-  "versionName": "1.4.44",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-60.apk",
-  "sha256": "0aaf1edb2a9db0198238a0a4a6aa317707c3b043cfb4e369e175479a9794492e",
-  "size": 5563375,
+  "versionCode": 61,
+  "versionName": "1.4.45",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-61.apk",
+  "sha256": "22454943c0c9eff8d888afc7f0a32a2490bc964eb51b39890742c4a49cf980d3",
+  "size": 5564313,
   "mandatory": false,
   "changelog": [
-    "إصلاح الوميض الأبيض: سبلاش النظام صار كحلي مع تلاشي ناعم",
-    "توحيد الألوان: أزرق #3B82F6 وكروت كحلية بلا أي كريمي",
-    "الرئيسية والحساب بنفس الهوية + شريط سفلي مدمج"
+    "سبلاش مخطط أزرق: شبكة ثم رسم الشعار بالنقاط المضيئة ثم اكتماله",
+    "بطاقات الرئيسية تدخل متتابعة بتأثير الارتداد الفاخر"
   ]
 }
