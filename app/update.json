@@ -1,13 +1,12 @@
 {
-  "versionCode": 57,
-  "versionName": "1.4.41",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-57.apk",
-  "sha256": "9c79c7e3aa918e43d7e979904a0cc0edffdc043b8fa06d5769e65d71eb456fd8",
-  "size": 5555299,
+  "versionCode": 58,
+  "versionName": "1.4.42",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-58.apk",
+  "sha256": "d4eed4e9bd87a4a7996bafa0079d4f864f216141fe77a66a42a04c9971e422fe",
+  "size": 5555296,
   "mandatory": false,
   "changelog": [
-    "إصلاح جذري للتثبيت: قناة التبليغ صارت قابلة للملء + جلسة مصغرة",
-    "عند أي رفض صامت ينتقل التثبيت تلقائياً لمثبت النظام بلا زر",
-    "زر التثبيت عبر النظام يبقى احتياطياً في بطاقة الخطأ"
+    "تحديث اختبار: التحقق من الإصلاح الجذري للتثبيت",
+    "المفروض تظهر نافذة النظام وتثبت مباشرة"
   ]
 }
