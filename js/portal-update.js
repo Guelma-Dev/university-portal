@@ -720,16 +720,22 @@ window.PortalUpdate = (function () {
                     setState({ name: 'installing', installingAt: Date.now(), viaSystem: false, error: '', errorCode: '' });
                 } else if (phase === 'failed') {
                     fgFinished();
-                    // Bare STATUS_FAILURE with no legacy/message = the ROM
-                    // silently refused the raw session (Realme/ColorOS do
-                    // this). Route to the system-installer plan instead.
                     var rawMsg = ev && ev.message ? String(ev.message) : '';
-                    var bare = /^system status=1 \(/.test(rawMsg) && rawMsg.indexOf('legacy=') === -1;
-                    var code = bare ? 'install-session-blocked' : 'install-failed';
+                    // Bare message-less failure = silent ROM refusal of the raw
+                    // session (Morphe parity): escalate AUTOMATICALLY to the
+                    // system installer with the already-verified file — no
+                    // re-download, no extra tap. installViaSystem owns states.
+                    var bare = (/^system status=1 \(/.test(rawMsg) && rawMsg.indexOf('legacy=') === -1)
+                        || rawMsg === 'no-status-extra';
+                    if (bare && state.remote) {
+                        toast('أكمل التثبيت عبر مثبت النظام', 'info');
+                        installViaSystem();
+                        return;
+                    }
                     // Surface the system reason (storage, signature, blocked...)
                     // instead of hiding it behind a generic message.
                     var detail = rawMsg ? ' — ' + rawMsg.slice(0, 200) : '';
-                    setState({ name: 'error', error: withLegacyHint('تعذر تثبيت التحديث' + detail), errorCode: code });
+                    setState({ name: 'error', error: withLegacyHint('تعذر تثبيت التحديث' + detail), errorCode: 'install-failed' });
                     attachInstaller();
                 }
             });
@@ -939,12 +945,6 @@ window.PortalUpdateUI = (function () {
             h = '<div class="mupd-card"><p class="mupd-msg"><i class="fas fa-spinner fa-spin"></i> ' + sysHint + '</p>'
                 + (st.viaSystem ? '' : '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installUpdate()"><i class="fas fa-rotate"></i> إعادة المحاولة</button>') + '</div>';
         } else if (st.name === 'error') {
-            if (st.errorCode === 'install-session-blocked') {
-                h = '<div class="mupd-card err"><p class="mupd-err"><i class="fas fa-triangle-exclamation"></i> نظام الهاتف رفض التثبيت المباشر — بعض الأجهزة (Realme وأخواتها) تقيد جلسات التثبيت الصامتة. الملف سليم ومفحوص، أكمل عبر مثبت النظام:</p>'
-                    + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installViaSystem()"><i class="fas fa-right-to-bracket"></i> التثبيت عبر النظام</button>'
-                    + '<div class="mupd-row"><button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.installUpdate()">إعادة المحاولة</button>'
-                    + (st.remote && st.remote.apkUrl ? '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.openDownloadPage()">المتصفح</button>' : '') + '</div></div>';
-            } else {
             var dlFail = /تنزيل/.test(String(st.error || ''));
             h = '<div class="mupd-card err"><p class="mupd-err"><i class="fas fa-triangle-exclamation"></i> '
                 + esc(st.error || (dlFail ? 'تعذر تنزيل التحديث' : 'تعذر تثبيت التحديث')) + '</p>'
@@ -952,10 +952,10 @@ window.PortalUpdateUI = (function () {
                     ? '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openUnknownSources()"><i class="fas fa-gear"></i> فتح إعدادات التثبيت</button>'
                     : '')
                 + (st.errorCode === 'install-failed' && st.remote && st.remote.apkUrl
-                    ? '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openDownloadPage()"><i class="fas fa-globe"></i> تنزيل عبر المتصفح</button>'
+                    ? '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installViaSystem()"><i class="fas fa-right-to-bracket"></i> التثبيت عبر النظام</button>'
+                    + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.openDownloadPage()"><i class="fas fa-globe"></i> تنزيل عبر المتصفح</button>'
                     : '')
                 + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.checkUpdate({manual:true})"><i class="fas fa-rotate"></i> إعادة المحاولة</button></div>';
-            }
         }
         box.innerHTML = h;
     }

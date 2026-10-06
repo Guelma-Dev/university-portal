@@ -56,34 +56,16 @@ public final class UpdateInstaller {
         } catch (Exception e) {
             throw new Exception("stage=installer: " + msg(e));
         }
+        // Minimal session on purpose: the APK content already declares its
+        // target package, the caller uid is the default originator, and
+        // USER_ACTION_REQUIRED is already the default for apps without
+        // UPDATE_PACKAGES_WITHOUT_USER_ACTION. Every extra attribution
+        // signal (setAppPackageName / setOriginatingUid / setPackageSource)
+        // is one more thing a strict ROM guard can disagree with — ColorOS
+        // silently kills such sessions pre-confirmation. Verified Morphe
+        // pattern: minimal session first, escalate on silent refusal.
         PackageInstaller.SessionParams params =
             new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
-        try {
-            params.setAppPackageName(ctx.getPackageName());
-        } catch (Exception e) {
-            throw new Exception("stage=params: " + msg(e));
-        }
-        // Morphe recipe (verified from its bytecode): attribute the session
-        // as store-sourced on API 33+ so strict ROMs treat it like a store
-        // update instead of a hostile sideload. Originating uid is explicit.
-        // NOTE: setRequestUpdateOwnership (API 34) is deliberately NOT set:
-        // it needs UPDATE_PACKAGES_WITHOUT_USER_ACTION (not granted to
-        // sideloaded apps) and could turn a working session into a silent
-        // refusal. The External/FileProvider plan is our ownership-free path.
-        try {
-            params.setOriginatingUid(android.os.Process.myUid());
-        } catch (Exception ignored) {}
-        if (Build.VERSION.SDK_INT >= 31) {
-            try {
-                // PACKAGE_SOURCE_STORE (=1): hidden constant, hence the literal.
-                params.setPackageSource(1);
-            } catch (Exception ignored) {}
-        }
-        if (Build.VERSION.SDK_INT >= 31) {
-            try {
-                params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED);
-            } catch (Exception ignored) {}
-        }
         int sessionId;
         try {
             sessionId = pi.createSession(params);
@@ -109,8 +91,14 @@ public final class UpdateInstaller {
             }
             Intent callback = new Intent(ctx, UpdateInstallReceiver.class);
             callback.setAction("dz.guelma.portal.INSTALL_STATUS");
+            // FLAG_MUTABLE is MANDATORY here (not optional): the system
+            // reports session status by filling extras into this intent at
+            // send() time, and fill-in is silently ignored for immutable
+            // PendingIntents (empty callback, nothing installed; targetSdk
+            // 35+ even throws). Pre-31 has no mutability flag and is mutable
+            // by default, so plain UPDATE_CURRENT there.
             int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-            if (Build.VERSION.SDK_INT >= 23) flags |= PendingIntent.FLAG_IMMUTABLE;
+            if (Build.VERSION.SDK_INT >= 31) flags |= PendingIntent.FLAG_MUTABLE;
             PendingIntent pi2 = PendingIntent.getBroadcast(ctx, sessionId, callback, flags);
             try {
                 session.commit(pi2.getIntentSender());
