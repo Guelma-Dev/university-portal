@@ -52,7 +52,15 @@
         var splash = C && C.Plugins && C.Plugins.SplashScreen;
         if (splash && splash.hide) {
             var tryHide = function () {
-                splash.hide().catch(function () {});
+                // Smooth 500ms fade into the animated in-app splash (Nova):
+                // no double-splash, no white cut.
+                try {
+                    splash.hide({ fadeOutDuration: 500 }).catch(function () {
+                        splash.hide().catch(function () {});
+                    });
+                } catch (e) {
+                    splash.hide().catch(function () {});
+                }
             };
             // Hide as soon as the first content frame is painted (login UI visible).
             // Fail-safe at 4s so the screen never sticks black if the bridge is late.

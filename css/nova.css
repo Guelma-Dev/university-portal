@@ -1,96 +1,107 @@
 /* ============================================================
-   NOVA — Dark Navy Glass theme (v1). Loaded LAST: overrides only.
-   Palette: navy #090D16 / #0D1420, indigo #7C8CFF, violet #A78BFA.
-   Motion: transform + opacity ONLY (GPU). Respects reduced-motion.
+   NOVA v2 — Unified Dark Navy (spec-locked tokens).
+   bg #090D16 / cards #131927 / borders white-10 / text #FFF-#94A3B8
+   accent BLUE gradient #3B82F6->#2563EB / inputs #1A2234.
+   Loaded LAST: overrides only. Motion: transform+opacity (GPU).
    Revert = delete the <link> + splash div + portal-feel.js script.
    ============================================================ */
 
-/* ---- 1. Tokens: navy + indigo (dark only; light toggle is hidden) ---- */
-:root, :root[data-theme="dark"] {
+/* ---- 1. Spec tokens (dark only; light toggle is hidden+forced) ---- */
+:root, :root[data-theme="dark"], :root[data-theme="light"] {
     --bg: #090D16;
-    --bg-2: #0D1420;
-    --surface: rgba(255, 255, 255, .045);
-    --surface-2: rgba(255, 255, 255, .08);
-    --brand: #7C8CFF;
-    --brand-dark: #5A6BF0;
-    --brand-light: #A78BFA;
-    --accent: #7C8CFF;
-    --accent-hover: #A78BFA;
-    --accent-glow: rgba(124, 140, 255, .35);
-    --accent-light: rgba(124, 140, 255, .12);
-    --gold: #7C8CFF;
-    --gold-soft: #A78BFA;
-    --gold-deep: #5A6BF0;
-    --gold-wash: rgba(124, 140, 255, .10);
-    --gold-line: rgba(124, 140, 255, .30);
-    --text: #E9EEF9;
-    --text-2: #8F99B3;
-    --text-primary: #E9EEF9;
-    --text-secondary: #8F99B3;
+    --bg-2: #0C1220;
+    --surface: #131927;
+    --surface-2: #1A2234;
+    --brand: #3B82F6;
+    --brand-dark: #2563EB;
+    --brand-light: #60A5FA;
+    --accent: #3B82F6;
+    --accent-hover: #60A5FA;
+    --accent-glow: rgba(59, 130, 246, .38);
+    --accent-light: rgba(59, 130, 246, .12);
+    --gold: #3B82F6;
+    --gold-soft: #60A5FA;
+    --gold-deep: #2563EB;
+    --gold-wash: rgba(59, 130, 246, .10);
+    --gold-line: rgba(255, 255, 255, .08);
+    --text: #FFFFFF;
+    --text-2: #94A3B8;
+    --text-primary: #FFFFFF;
+    --text-secondary: #94A3B8;
     --bg-primary: #090D16;
-    --bg-secondary: #0D1420;
-    --bg-tertiary: rgba(255, 255, 255, .045);
-    --bg-card: rgba(255, 255, 255, .045);
+    --bg-secondary: #0C1220;
+    --bg-tertiary: #131927;
+    --bg-card: #131927;
     --glass-line: rgba(255, 255, 255, .08);
+    --input-bg: #1A2234;
     --danger: #FF7070;
     --success: #34D399;
-}
-
-/* Force dark look even if something flips the attribute */
-:root[data-theme="light"] {
-    --bg: #090D16;
-    --bg-2: #0D1420;
-    --surface: rgba(255, 255, 255, .045);
-    --surface-2: rgba(255, 255, 255, .08);
-    --text: #E9EEF9;
-    --text-2: #8F99B3;
-    --text-primary: #E9EEF9;
-    --text-secondary: #8F99B3;
-    --bg-primary: #090D16;
-    --bg-secondary: #0D1420;
-    --bg-tertiary: rgba(255, 255, 255, .045);
-    --bg-card: rgba(255, 255, 255, .045);
+    --warning: #FBBF24;
+    --info: #60A5FA;
 }
 
 /* Theme toggles hidden while Nova is forced-dark */
 button[onclick="toggleTheme()"], button[onclick="toggleTheme(); toggleAppMenu();"] { display: none !important; }
 
-/* ---- 2. Ambient background: two static navy orbs (no animation = free) ---- */
+/* ---- 2. Home scope: kill every cream/white card, both themes ---- */
+#section-home, [data-theme="light"] #section-home {
+    --s-bg:       #090D16;
+    --s-bg-soft:  #0C1220;
+    --s-card:     #131927;
+    --s-card2:    #161E32;
+    --s-card3:    #1A2234;
+    --s-edge:     rgba(255, 255, 255, .08);
+    --s-edge-hi:  rgba(255, 255, 255, .10);
+    --s-txt:      #FFFFFF;
+    --s-txt2:     #94A3B8;
+    --s-txt3:     #7A869E;
+    --s-gold:     #3B82F6;
+    --s-gold-soft:#60A5FA;
+}
+
+/* ---- 3. Ambient background: two static blue orbs ---- */
 body::before, body::after {
-    content: ""; position: fixed; inset: auto; z-index: 0; pointer-events: none;
+    content: ""; position: fixed; z-index: 0; pointer-events: none;
 }
 body::before {
     top: -140px; inset-inline-start: -120px; width: 340px; height: 340px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(124, 140, 255, .16), transparent 70%);
+    background: radial-gradient(circle, rgba(59, 130, 246, .15), transparent 70%);
 }
 body::after {
     bottom: -160px; inset-inline-end: -140px; width: 380px; height: 380px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(167, 139, 250, .13), transparent 70%);
+    background: radial-gradient(circle, rgba(37, 99, 235, .12), transparent 70%);
 }
-body { background: var(--bg); }
+body { background: #090D16 !important; }
 
-/* ---- 3. Glass cards ---- */
+/* ---- 4. Unified glass cards + smooth transitions ---- */
 .subject-card, .admin-card, .dh-hero-card, .calc-module-card, .view-card,
-.stat-card, .rsc-card, .mupd-card, .file-card, .transcript-card, .sid-card,
-.set-group, .cx-card, .mupd-card, .notif-card, .sched-card, .exam-card,
-.grade-card, .lib-level-card, .mod-card, .acc-card {
-    background: linear-gradient(160deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .028)) !important;
+.stat-card, .rsc-card, .mupd-card, .file-card, .transcript-card,
+.set-group, .set-row, .cx-card, .notif-card, .sched-card, .exam-card,
+.grade-card, .lib-level-card, .mod-card, .acc-card, .modal-card,
+.app-menu, .pomo-panel, .guest-card {
+    background: linear-gradient(160deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02)), #131927 !important;
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     backdrop-filter: blur(16px) saturate(140%);
     border: 1px solid rgba(255, 255, 255, .08) !important;
     border-radius: 20px !important;
     box-shadow: 0 10px 32px rgba(2, 6, 18, .45) !important;
+    transition: all .3s ease;
+}
+.section { transition: all .3s ease; }
+.toast {
+    background: #1A2234 !important; color: #fff !important;
+    border: 1px solid rgba(255, 255, 255, .1) !important;
 }
 
-/* ---- 4. Buttons: indigo→violet + press scale (scale prop = no transform clash) ---- */
+/* ---- 5. Buttons: unified BLUE gradient + press scale ---- */
 .btn-primary {
-    background: linear-gradient(135deg, #7C8CFF, #A78BFA) !important;
+    background: linear-gradient(135deg, #3B82F6, #2563EB) !important;
     color: #fff !important;
     border-radius: 16px !important;
-    box-shadow: 0 8px 26px rgba(124, 140, 255, .35) !important;
+    box-shadow: 0 8px 26px rgba(59, 130, 246, .38) !important;
     transition: scale .15s ease, opacity .15s ease, box-shadow .2s ease !important;
 }
-.btn-primary:hover { background: linear-gradient(135deg, #8B9BFF, #B79EFB) !important; }
+.btn-primary:hover { filter: brightness(1.08); }
 .btn, .bn-item, .qa-item, button {
     transition: scale .15s ease, opacity .15s ease;
 }
@@ -100,23 +111,24 @@ body { background: var(--bg); }
 .btn-ghost {
     border-radius: 14px !important;
     border: 1px solid rgba(255, 255, 255, .1) !important;
+    color: #fff !important;
 }
 
-/* ---- 5. Inputs: soft modern + indigo focus glow + red error shake ---- */
+/* ---- 6. Inputs: #1A2234 + blue focus glow + red error shake ---- */
 .input-group input, .input-group select, .input-group textarea,
 .lux-input input, input[type="text"], input[type="password"], input[type="number"], input[type="email"] {
-    background: rgba(255, 255, 255, .05) !important;
+    background: #1A2234 !important;
     border: 1px solid rgba(255, 255, 255, .1) !important;
     border-radius: 16px !important;
-    color: var(--text) !important;
+    color: #fff !important;
 }
 .input-group input::placeholder, .input-group textarea::placeholder { color: #5D6880 !important; }
 .input-group input:focus, .input-group select:focus, .input-group textarea:focus,
 .input-group input:focus-visible {
     outline: none !important;
-    border-color: rgba(124, 140, 255, .65) !important;
-    box-shadow: 0 0 0 4px rgba(124, 140, 255, .14), 0 0 22px rgba(124, 140, 255, .25) !important;
-    background: rgba(255, 255, 255, .07) !important;
+    border-color: rgba(59, 130, 246, .65) !important;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, .14), 0 0 22px rgba(59, 130, 246, .28) !important;
+    background: #1A2234 !important;
 }
 .field-error input, .input-error {
     border-color: rgba(255, 112, 112, .7) !important;
@@ -139,36 +151,35 @@ body { background: var(--bg); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* ---- 6. Screen transitions: scale + fade (GPU only) ---- */
+/* ---- 7. Screen transitions: scale + fade (GPU only) ---- */
 .section.active { animation: nova-in .38s cubic-bezier(.22, .9, .3, 1) !important; }
 @keyframes nova-in {
     from { opacity: 0; transform: scale(.985) translateY(10px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* ---- 7. Shell glass: app-bar + bottom-nav ---- */
+/* ---- 8. Shell: app-bar glass + bottom-nav #0D1322 ---- */
 .app-bar, .appbar, #app-bar {
-    background: rgba(9, 13, 22, .72) !important;
+    background: rgba(9, 13, 22, .78) !important;
     -webkit-backdrop-filter: blur(18px) saturate(150%);
     backdrop-filter: blur(18px) saturate(150%);
     border-bottom: 1px solid rgba(255, 255, 255, .07) !important;
 }
 .bottom-nav, .bottom-nav .bn-inner {
-    background: rgba(9, 13, 22, .78) !important;
-    -webkit-backdrop-filter: blur(18px) saturate(150%);
-    backdrop-filter: blur(18px) saturate(150%);
-    border-top: 1px solid rgba(255, 255, 255, .07) !important;
+    background: #0D1322 !important;
+    border-top: 1px solid rgba(255, 255, 255, .10) !important;
+    box-shadow: 0 -8px 28px rgba(2, 6, 18, .5) !important;
 }
 .bn-item.active, .bn-item.on {
-    color: #A78BFA !important;
-    text-shadow: 0 0 18px rgba(167, 139, 250, .6);
+    color: #60A5FA !important;
+    text-shadow: 0 0 18px rgba(96, 165, 250, .65);
 }
 
-/* ---- 8. Animated splash: SVG path drawing + glow flash + fade ---- */
+/* ---- 9. Animated splash: SVG path drawing + glow flash + fade ---- */
 #nova-splash {
     position: fixed; inset: 0; z-index: 9999;
     display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(120% 120% at 50% 20%, #101A33 0%, #090D16 60%);
+    background: radial-gradient(120% 120% at 50% 20%, #0E1730 0%, #0B101D 60%);
     transition: opacity .55s ease, visibility .55s;
 }
 #nova-splash.done { opacity: 0; visibility: hidden; }
@@ -182,15 +193,15 @@ body { background: var(--bg); }
 .nova-sp-logo .draw.d2 { animation-delay: .18s; }
 .nova-sp-logo .draw.d3 { animation-delay: .36s; }
 @keyframes nova-draw { to { stroke-dashoffset: 0; } }
-.nova-sp-logo.flash { filter: drop-shadow(0 0 22px rgba(167, 139, 250, .9)); transition: filter .4s ease; }
+.nova-sp-logo.flash { filter: drop-shadow(0 0 22px rgba(96, 165, 250, .9)); transition: filter .4s ease; }
 .nova-sp-name { font-size: 1.5rem; font-weight: 800; color: #fff; margin: 0; animation: nova-fade-slide .5s .5s ease backwards; }
-.nova-sp-sub { font-size: .85rem; color: var(--text-2); margin: 0; animation: nova-fade-slide .5s .65s ease backwards; }
+.nova-sp-sub { font-size: .85rem; color: #94A3B8; margin: 0; animation: nova-fade-slide .5s .65s ease backwards; }
 .nova-sp-bar { width: 120px; height: 3px; border-radius: 99px; background: rgba(255, 255, 255, .1); overflow: hidden; }
 .nova-sp-bar > span { display: block; height: 100%; width: 40%; border-radius: inherit;
-    background: linear-gradient(90deg, #7C8CFF, #A78BFA); animation: nova-load 1.1s ease-in-out infinite; }
+    background: linear-gradient(90deg, #3B82F6, #2563EB); animation: nova-load 1.1s ease-in-out infinite; }
 @keyframes nova-load { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
 
-/* ---- 9. Reduced motion: kill it all ---- */
+/* ---- 10. Reduced motion: kill it all ---- */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
     #nova-splash { display: none !important; }

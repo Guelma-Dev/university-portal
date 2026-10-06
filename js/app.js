@@ -448,7 +448,7 @@ function applyTheme(theme) {
     APP_STATE.theme = theme;
     localStorage.setItem('theme', theme);
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0A0A0C' : '#F6F4EF');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#090D16' : '#F6F4EF');
     if (window.PortalNative && window.PortalNative.setStatusBarTheme) {
         try { window.PortalNative.setStatusBarTheme(theme); } catch (e) {}
     }

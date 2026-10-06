@@ -13,7 +13,7 @@
         <!-- Draw into display cutouts (no letterbox strip) and keep any
              transient window background identical to the app background. -->
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
-        <item name="android:windowBackground">#07080B</item>
+        <item name="android:windowBackground">#0B101D</item>
     </style>
 
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
@@ -25,6 +25,6 @@
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
-        <item name="windowSplashScreenBackground">#FFFFFF</item>
+        <item name="windowSplashScreenBackground">#0B101D</item>
     </style>
 </resources>

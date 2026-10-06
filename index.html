@@ -9,17 +9,17 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="المنصة الجامعية">
-    <link rel="manifest" href="manifest.json?v=1.4.43">
+    <link rel="manifest" href="manifest.json?v=1.4.44">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css?v=1.4.43">
-    <link rel="stylesheet" href="css/luxury.css?v=1.4.43">
-    <link rel="stylesheet" href="css/auth.css?v=1.4.43">
-    <link rel="stylesheet" href="css/native.css?v=1.4.43">
-    <link rel="stylesheet" href="css/campus.css?v=1.4.43">
-    <link rel="stylesheet" href="css/nova.css?v=1.4.43">
+    <link rel="stylesheet" href="css/styles.css?v=1.4.44">
+    <link rel="stylesheet" href="css/luxury.css?v=1.4.44">
+    <link rel="stylesheet" href="css/auth.css?v=1.4.44">
+    <link rel="stylesheet" href="css/native.css?v=1.4.44">
+    <link rel="stylesheet" href="css/campus.css?v=1.4.44">
+    <link rel="stylesheet" href="css/nova.css?v=1.4.44">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -39,7 +39,7 @@
         }
     </script>
     <script>
-        (function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#0A0A0C':'#F6F4EF');})();
+        (function(){try{localStorage.setItem('theme','dark');}catch(e){}document.documentElement.setAttribute('data-theme','dark');var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content','#0B101D');})();
         (function(){var d=document.getElementById('hh-date');if(d){try{d.textContent=new Date().toLocaleDateString('ar-DZ',{weekday:'long',day:'numeric',month:'long'});}catch(e){}}}());
     </script>
 </head>
@@ -50,8 +50,8 @@
             <svg class="nova-sp-logo" id="nova-sp-logo" viewBox="0 0 64 64">
                 <defs>
                     <linearGradient id="novaGrad" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0" stop-color="#7C8CFF"></stop>
-                        <stop offset="1" stop-color="#A78BFA"></stop>
+                        <stop offset="0" stop-color="#3B82F6"></stop>
+                        <stop offset="1" stop-color="#2563EB"></stop>
                     </linearGradient>
                 </defs>
                 <polygon class="draw" pathLength="100" points="32,9 58,21 32,33 6,21"></polygon>
@@ -895,20 +895,20 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/native.js?v=1.4.43"></script>
-    <script src="js/app.js?v=1.4.43"></script>
-    <script src="js/sec-loader.js?v=1.4.43"></script>
-    <script src="js/sec-transport.js?v=1.4.43"></script>
-    <script src="js/sec-meals.js?v=1.4.43"></script>
-    <script src="js/sec-profile.js?v=1.4.43"></script>
-    <script src="js/portal-notify.js?v=1.4.43"></script>
-    <script src="js/portal-update.js?v=1.4.43"></script>
-    <script src="js/sec-inscription.js?v=1.4.43"></script>
-    <script src="js/sec-study.js?v=1.4.43"></script>
-    <script src="js/sec-campus.js?v=1.4.43"></script>
-    <script src="js/portal-feel.js?v=1.4.43"></script>
-    <script src="js/native-shell.js?v=1.4.43" defer></script>
-    <script src="js/auth-ui.js?v=1.4.43" defer></script>
+    <script src="js/native.js?v=1.4.44"></script>
+    <script src="js/app.js?v=1.4.44"></script>
+    <script src="js/sec-loader.js?v=1.4.44"></script>
+    <script src="js/sec-transport.js?v=1.4.44"></script>
+    <script src="js/sec-meals.js?v=1.4.44"></script>
+    <script src="js/sec-profile.js?v=1.4.44"></script>
+    <script src="js/portal-notify.js?v=1.4.44"></script>
+    <script src="js/portal-update.js?v=1.4.44"></script>
+    <script src="js/sec-inscription.js?v=1.4.44"></script>
+    <script src="js/sec-study.js?v=1.4.44"></script>
+    <script src="js/sec-campus.js?v=1.4.44"></script>
+    <script src="js/portal-feel.js?v=1.4.44"></script>
+    <script src="js/native-shell.js?v=1.4.44" defer></script>
+    <script src="js/auth-ui.js?v=1.4.44" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});
