@@ -1,14 +1,14 @@
 {
-  "versionCode": 64,
-  "versionName": "1.4.48",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-64.apk",
-  "sha256": "121f3d9204bef660709d40ae91022a1477baeccb22654ebb5a48828d0548259d",
-  "size": 5865256,
+  "versionCode": 65,
+  "versionName": "1.4.49",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-65.apk",
+  "sha256": "410247b824ae26e51bd63245bddcd8ab99f2849cccce2b175f26823b23d184d4",
+  "size": 5865063,
   "mandatory": false,
   "changelog": [
-    "هوية كحلية موحدة: وداعاً للبطاقات البيضاء والنص الخفي وبقايا الذهبي",
-    "شاشة دخول كاملة الشاشة + زر تسجيل المسؤول بدل Google/Apple",
-    "سبلاش أخف وأسرع (~2ث) — انسيابية على كل الهواتف",
-    "أداء: إزالة blur الثقيل وبرق أخف — نهاية التقطيع"
+    "سبلاش أخف بكثير: بلا رسم مسارات — انسيابي على الضعيفة (GPU فقط)",
+    "الشريط السفلي رجع مثبتاً كامل العرض (بلا عائم)",
+    "الشاشات الداخلية (النقاط/بطاقة الطالب/المكتبة) موحدة كحلي-أزرق",
+    "أنيميشن دخول متدرج لطيف في كل الشاشات"
   ]
 }
