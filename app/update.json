@@ -1,12 +1,13 @@
 {
-  "versionCode": 54,
-  "versionName": "1.4.38",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-54.apk",
-  "sha256": "8f0a87dd6c732a7c287cb46acb2537191aff612d673c5a61483ea4d5801a1fda",
-  "size": 5553955,
+  "versionCode": 55,
+  "versionName": "1.4.39",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-55.apk",
+  "sha256": "5872d637c491cad192d4d758f37272e2df9f5b0d829d2898864a9ad299c030e5",
+  "size": 5555632,
   "mandatory": false,
   "changelog": [
-    "تحديث اختبار لمنظومة التحديث الجديدة (لا تغييرات وظيفية)",
-    "إن ظهرت لك هذه البطاقة مع هذا السطر فالمحدث يعمل"
+    "إصلاح فشل التثبيت على Realme والأجهزة المقيدة: زر التثبيت عبر النظام",
+    "جلسات التثبيت صارت بمصدر المتجر + تأكيد مقاوم للحظر في الخلفية",
+    "تشخيص أدق لأخطاء النظام + تسوية التثبيت العالق تلقائياً"
   ]
 }
