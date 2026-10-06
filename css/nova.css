@@ -185,67 +185,68 @@ body.native-app .bottom-nav .bn-inner {
     filter: none !important;
 }
 
-/* ---- 9. Splash v5: the full draw-on restored (user request) with the jank
-   sources removed. Perf rules: the dot grid is STATIC (an animated opacity
-   on a full-screen layer repaints the whole screen every frame — that was
-   the stutter, not the draw itself); the draw/anchors/fill repaints stay
-   confined to the 148px stage; the exit is a fade + tiny scale, never a
-   full-screen ×9 zoom. Total ~2.9s. ---- */
+/* ---- 9. Splash v6 (user spec): full-screen blueprint grid -> the logo
+   DRAWS SLOWLY, alone (nothing else animates while it draws) -> color
+   fill -> wordmark -> the logo ZOOMS to swallow the screen and the app
+   opens. Smoothness: the grid is static, the draw repaints only the
+   148px stage, and the zoom scales that small composited layer (cheap) —
+   the full-screen ×13 bg-included swallow from 1.4.46 stays dead. ---- */
 #nova-splash {
     position: fixed; inset: 0; z-index: 9999;
     display: flex; align-items: center; justify-content: center;
     background: radial-gradient(120% 120% at 50% 20%, #101828 0%, #0B0E14 60%);
-    transition: opacity .45s ease, visibility .45s;
+    transition: opacity .55s ease, visibility .55s;
 }
 #nova-splash.done { opacity: 0; visibility: hidden; }
 .df-dotgrid {
-    position: absolute; inset: 0; opacity: .55;
-    background-image: radial-gradient(rgba(245, 247, 250, .055) 1px, transparent 1.5px);
-    background-size: 24px 24px;
-    -webkit-mask-image: radial-gradient(70% 60% at 50% 45%, #000 30%, transparent 100%);
-    mask-image: radial-gradient(70% 60% at 50% 45%, #000 30%, transparent 100%);
+    position: absolute; inset: 0; opacity: 1;
+    background-image: radial-gradient(rgba(191, 217, 255, .10) 1.2px, transparent 1.8px);
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(75% 65% at 50% 45%, #000 35%, transparent 100%);
+    mask-image: radial-gradient(75% 65% at 50% 45%, #000 35%, transparent 100%);
 }
 .df-sp-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .df-sp-stage {
     position: relative; width: 148px; height: 148px; overflow: visible;
     will-change: transform, opacity;
-    animation: df-stage-out .45s ease 2.5s forwards;
+    animation: df-stage-swallow .6s cubic-bezier(.4, 0, 1, 1) 3.15s forwards;
 }
-@keyframes df-stage-out { to { transform: scale(1.12); opacity: 0; } }
+@keyframes df-stage-swallow { to { transform: scale(8); opacity: 0; } }
 .df-sp-wire, .df-sp-fill { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-/* draw-on: white 2px strokes, pathLength=1, staggered outer->inner */
+/* slow solo draw: cap then book, long and graceful */
 .df-sp-wire .draw {
     fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
     stroke-dasharray: 1; stroke-dashoffset: 1;
-    animation: df-stroke 1.05s cubic-bezier(.16, 1, .3, 1) forwards, df-wire-out .3s ease 1.3s forwards;
+    animation: df-stroke 1.3s cubic-bezier(.16, 1, .3, 1) .15s forwards, df-wire-out .3s ease 1.9s forwards;
 }
-.df-sp-wire .draw.w2 { animation-delay: .3s, 1.3s; }
+.df-sp-wire .draw.w2 { animation-delay: .65s, 1.9s; }
 @keyframes df-stroke { to { stroke-dashoffset: 0; } }
 @keyframes df-wire-out { to { opacity: 0; } }
-/* blueprint anchors (4px squares) + bezier handles: visible while drawing */
+/* blueprint anchors + handles live only while drawing */
 .df-sp-wire .anchors rect { fill: #0B0E14; stroke: #BFD9FF; stroke-width: 1;
-    opacity: 0; animation: df-anchor-in .25s ease forwards, df-anchor-out .3s ease 1.25s forwards; }
-.df-sp-wire .anchors rect:nth-child(1) { animation-delay: .15s, 1.25s; }
-.df-sp-wire .anchors rect:nth-child(2) { animation-delay: .4s, 1.25s; }
-.df-sp-wire .anchors rect:nth-child(3) { animation-delay: .55s, 1.25s; }
-.df-sp-wire .anchors rect:nth-child(4) { animation-delay: .7s, 1.25s; }
-.df-sp-wire .anchors rect:nth-child(5) { animation-delay: .85s, 1.25s; }
-.df-sp-wire .anchors rect:nth-child(6) { animation-delay: 1s, 1.25s; }
+    opacity: 0; animation: df-anchor-in .25s ease forwards, df-anchor-out .3s ease 1.9s forwards; }
+.df-sp-wire .anchors rect:nth-child(1) { animation-delay: .2s, 1.9s; }
+.df-sp-wire .anchors rect:nth-child(2) { animation-delay: .45s, 1.9s; }
+.df-sp-wire .anchors rect:nth-child(3) { animation-delay: .6s, 1.9s; }
+.df-sp-wire .anchors rect:nth-child(4) { animation-delay: .75s, 1.9s; }
+.df-sp-wire .anchors rect:nth-child(5) { animation-delay: .9s, 1.9s; }
+.df-sp-wire .anchors rect:nth-child(6) { animation-delay: 1.05s, 1.9s; }
 @keyframes df-anchor-in { to { opacity: 1; } }
 @keyframes df-anchor-out { to { opacity: 0; } }
 .df-sp-wire .handles line { stroke: rgba(191, 217, 255, .55); stroke-width: 1; }
 .df-sp-wire .handles circle { fill: #BFD9FF; }
-.df-sp-wire .handles { opacity: 0; animation: df-anchor-in .3s .3s ease forwards, df-anchor-out .3s ease 1.25s forwards; }
-/* color fill: outer silver, inner blue gradient */
-.df-sp-fill { opacity: 0; animation: df-fill-in .45s ease 1.3s forwards; }
+.df-sp-wire .handles { opacity: 0; animation: df-anchor-in .3s .35s ease forwards, df-anchor-out .3s ease 1.9s forwards; }
+/* color fill lands after the outline completes */
+.df-sp-fill { opacity: 0; animation: df-fill-in .5s ease 1.9s forwards; }
 @keyframes df-fill-in { to { opacity: 1; } }
-/* wordmark: bold sans + serif-italic blue accent; tagline dim */
+/* wordmark rises after the fill, fades just before the swallow */
 .df-sp-word { font-size: 1.6rem; font-weight: 800; color: #F5F7FA; margin: 6px 0 0;
-    opacity: 0; animation: df-rise .45s cubic-bezier(.16, 1, .3, 1) 1.5s backwards; }
+    opacity: 0; animation: df-rise .45s cubic-bezier(.16, 1, .3, 1) 2.3s backwards, df-word-out .3s ease 3s forwards; }
 .df-sp-word em { font-family: var(--serif); font-style: italic; color: #2F7CF6; }
 .df-sp-tag { font-size: 13px; color: #8A93A6; margin: 0;
-    opacity: 0; animation: df-rise .45s cubic-bezier(.16, 1, .3, 1) 1.65s backwards; }
+    opacity: 0; animation: df-rise .45s cubic-bezier(.16, 1, .3, 1) 2.45s backwards, df-word-out .3s ease 3s forwards; }
 @keyframes df-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes df-word-out { to { opacity: 0; transform: translateY(-6px); } }
 
 /* ---- D3. AUTH: electric stage + white bottom sheet, FULL-SCREEN ---- */
 #landing-page { position: relative; overflow: hidden; background: #0B0E14; }
@@ -428,11 +429,20 @@ body { background: #0B0E14 !important; }
 }
 
 /* ---- 11. Boot-only login entrance (body.boot removed after launch: no replay) ---- */
-body.boot #landing-page .login-brand { animation: nova-pop .5s cubic-bezier(.175, .885, .32, 1.1375) 2.55s backwards; }
-body.boot #landing-page .login-form .input-group:nth-of-type(1) { animation: nova-rise .4s ease 2.7s backwards; }
-body.boot #landing-page .login-form .input-group:nth-of-type(2) { animation: nova-rise .4s ease 2.78s backwards; }
-body.boot #landing-page .login-form .btn-primary { animation: nova-rise .4s ease 2.86s backwards; }
-body.boot #landing-page .dev-contact { animation: nova-fade-slide .45s ease 2.98s backwards; }
+body.boot #landing-page .login-brand { animation: nova-pop .5s cubic-bezier(.175, .885, .32, 1.1375) 3.25s backwards; }
+body.boot #landing-page .login-form .input-group:nth-of-type(1) { animation: nova-rise .4s ease 3.4s backwards; }
+body.boot #landing-page .login-form .input-group:nth-of-type(2) { animation: nova-rise .4s ease 3.48s backwards; }
+body.boot #landing-page .login-form .btn-primary { animation: nova-rise .4s ease 3.56s backwards; }
+body.boot #landing-page .dev-contact { animation: nova-fade-slide .45s ease 3.7s backwards; }
+
+/* ---- 14. No visible scrollbars: in an RTL WebView the vertical scrollbar
+   renders on the LEFT edge — the "white line" seen during the splash was
+   the login scroller's bar. Apps don't show them; scrolling still works. ---- */
+html, body { overflow-x: clip; }
+body.boot { overflow: hidden; }
+body::-webkit-scrollbar, .login-scroll::-webkit-scrollbar, .main-content::-webkit-scrollbar,
+#app-main::-webkit-scrollbar { width: 0 !important; height: 0 !important; }
+.login-scroll, .main-content { scrollbar-width: none; -ms-overflow-style: none; }
 
 /* ---- 12. Touch ripple on primary buttons (GPU: transform+opacity) ---- */
 .btn { position: relative; overflow: hidden; }
