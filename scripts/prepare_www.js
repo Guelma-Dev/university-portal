@@ -8,9 +8,18 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const WWW = path.join(ROOT, 'www');
-const VERSION = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
-// JS assets are cache-busted by appending ?v=YYYYMMDD to every script tag.
+// Single source of truth: the release versionName from android/app/build.gradle.
+// (A date stamp here would desync www busters from the release and break OTA freshness checks.)
+function releaseVersion() {
+    const g = fs.readFileSync(path.join(ROOT, 'android', 'app', 'build.gradle'), 'utf8');
+    const m = g.match(/versionName\s+"([^"]+)"/);
+    if (!m) throw new Error('versionName not found in android/app/build.gradle');
+    return m[1];
+}
+const VERSION = releaseVersion();
+
+// JS assets are cache-busted by appending ?v=<versionName> to every script tag.
 const BUST = 'v=' + VERSION;
 
 function rmDir(dir) {

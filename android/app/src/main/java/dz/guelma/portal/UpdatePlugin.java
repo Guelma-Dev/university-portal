@@ -162,6 +162,9 @@ public class UpdatePlugin extends Plugin {
     @PluginMethod
     public void downloadUpdate(PluginCall call) {
         String url = call.getString("url", "");
+        String versionName = call.getString("versionName", "");
+        long expectedSize = 0;
+        expectedSize = numLong(call, "size", expectedSize);
         long versionCode = 0;
         versionCode = numLong(call, "versionCode", versionCode);
         if (url.isEmpty() || versionCode <= 0) {
@@ -210,6 +213,9 @@ public class UpdatePlugin extends Plugin {
                 .putLong("dl_id_" + versionCode, id)
                 .putString("dl_url_" + versionCode, url)
                 .apply();
+            // Foreground host: survive Doze/standby kills + show progress.
+            UpdateForegroundService.start(ctx, versionName, "download");
+            if (expectedSize > 0) UpdateForegroundService.progress(ctx, 0, expectedSize);
             JSObject r = new JSObject();
             r.put("downloadId", id);
             call.resolve(r);
@@ -284,11 +290,101 @@ public class UpdatePlugin extends Plugin {
                 DownloadManager dm = (DownloadManager) getContext().getSystemService(Context.DOWNLOAD_SERVICE);
                 if (dm != null) dm.remove(id);
             }
+            UpdateForegroundService.stop(getContext());
             JSObject r = new JSObject();
             r.put("cancelled", true);
             call.resolve(r);
         } catch (Exception e) {
             call.reject("cancel failed: " + e.getMessage());
+        }
+    }
+
+    // ---------- foreground progress + battery (Morphe-style) ----------
+
+    /** Mirror download progress into the foreground notification. */
+    @PluginMethod
+    public void updateProgress(PluginCall call) {
+        try {
+            long soFar = numLong(call, "soFar", -1);
+            long total = numLong(call, "total", -1);
+            if (soFar >= 0 || total >= 0) UpdateForegroundService.progress(getContext(), soFar, total);
+            JSObject r = new JSObject();
+            r.put("ok", true);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("progress unavailable");
+        }
+    }
+
+    /** Switch the foreground host to the installing phase. */
+    @PluginMethod
+    public void updateInstalling(PluginCall call) {
+        try {
+            String versionName = call.getString("versionName", "");
+            UpdateForegroundService.start(getContext(), versionName, "install");
+            JSObject r = new JSObject();
+            r.put("ok", true);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("state unavailable");
+        }
+    }
+
+    /** Stop the foreground host (complete / failed / cancelled). */
+    @PluginMethod
+    public void updateFinished(PluginCall call) {
+        try {
+            UpdateForegroundService.stop(getContext());
+            JSObject r = new JSObject();
+            r.put("ok", true);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("state unavailable");
+        }
+    }
+
+    /** Doze gate: is the app already exempt from battery optimizations? */
+    @PluginMethod
+    public void getBatteryState(PluginCall call) {
+        JSObject r = new JSObject();
+        try {
+            boolean ignoring = false;
+            if (Build.VERSION.SDK_INT >= 23) {
+                try {
+                    android.os.PowerManager pm =
+                        (android.os.PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+                    if (pm != null) ignoring = pm.isIgnoringBatteryOptimizations(getContext().getPackageName());
+                } catch (Exception ignored) {}
+            } else {
+                ignoring = true;
+            }
+            r.put("ignoringBatteryOptimizations", ignoring);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("state unavailable");
+        }
+    }
+
+    /** Open the system "ignore battery optimizations" prompt for this app. */
+    @PluginMethod
+    public void openBatterySettings(PluginCall call) {
+        try {
+            Context ctx = getContext();
+            android.content.Intent i;
+            if (Build.VERSION.SDK_INT >= 23) {
+                i = new android.content.Intent(
+                    android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:" + ctx.getPackageName()));
+            } else {
+                i = new android.content.Intent(android.provider.Settings.ACTION_SETTINGS);
+            }
+            i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(i);
+            JSObject r = new JSObject();
+            r.put("opened", true);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("settings unavailable");
         }
     }
 
@@ -466,6 +562,7 @@ public class UpdatePlugin extends Plugin {
                 call.reject("install failed: atomic replace failed");
                 return;
             }
+            UpdateForegroundService.holdBriefly(ctx, 120000);
             UpdateInstaller.commit(ctx, apk);
             JSObject r = new JSObject();
             r.put("status", "pending_user_action");
@@ -564,6 +661,7 @@ public class UpdatePlugin extends Plugin {
                 call.reject(problem);
                 return;
             }
+            UpdateForegroundService.holdBriefly(ctx, 120000);
             UpdateInstaller.commit(ctx, apk);
             JSObject r = new JSObject();
             r.put("status", "pending_user_action");

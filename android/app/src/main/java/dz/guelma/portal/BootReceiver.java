@@ -16,6 +16,10 @@ public class BootReceiver extends BroadcastReceiver {
             try {
                 NotifyPlugin.rescheduleIfEnabled(context.getApplicationContext());
             } catch (Exception ignored) {}
+            // Morphe-style periodic check (minimal): one manifest check per boot.
+            try {
+                UpdateBootCheck.check(context.getApplicationContext());
+            } catch (Exception ignored) {}
         }
     }
 }

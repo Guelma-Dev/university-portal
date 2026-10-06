@@ -14,10 +14,11 @@ window.PortalUpdate = (function () {
     var LIVE_ORIGIN = 'https://guelma-dev.github.io/university-portal';
     var LS_DL = 'portal_update_dl';
     var LS_CHECK = 'portal_update_check';
+    var LS_METERED = 'portal_update_metered_ok';
     var CHECK_TTL = 6 * 3600 * 1000;
     var FETCH_TIMEOUT = 30000;
 
-    var state = { name: 'idle', remote: null, progress: null, error: '' };
+    var state = { name: 'idle', remote: null, progress: null, error: '', batt: null };
     var listeners = [];
     var pollTimer = null;
     var bootChecked = false;
@@ -77,10 +78,17 @@ window.PortalUpdate = (function () {
         if (!/^[0-9a-fA-F]{64}$/.test(sha)) return null;
         var size = Number(d.size);
         if (!Number.isInteger(size) || size <= 0) return null;
+        // Optional changelog (Morphe "What's new"): string or list, max 8 lines.
+        var cl = d.changelog;
+        if (typeof cl === 'string') cl = cl.split(/\r?\n/);
+        if (!Array.isArray(cl)) cl = [];
+        cl = cl.map(function (x) { return String(x == null ? '' : x).trim(); })
+            .filter(function (x) { return !!x; }).slice(0, 8);
         return {
             versionName: String(d.versionName || ('v' + vc)),
             versionCode: vc, apkUrl: url, host: urlHost(url),
             sha256: sha.toLowerCase(), size: size, mandatory: d.mandatory === true,
+            changelog: cl,
         };
     }
 
@@ -172,10 +180,12 @@ window.PortalUpdate = (function () {
         try {
             var r = await plugin().validateDownload({ versionCode: versionCode, sha256: sha || '', size: size || 0 });
             if (r && r.valid) {
+                fgFinished();
                 setState({ name: 'downloaded', remote: remote || state.remote, progress: { pct: 100, soFar: 0, total: 0 }, error: '' });
                 return true;
             }
         } catch (e) {}
+        fgFinished();
         saveDl(null);
         try { await plugin().discardPartial({ versionCode: versionCode }); } catch (e) {}
         setState({ name: 'error', error: 'تعذر التحقق من ملف التحديث', progress: null });
@@ -207,6 +217,65 @@ window.PortalUpdate = (function () {
         }
     }
 
+    // Morphe-style metered gate: ask before downloading over mobile data.
+    function isMetered() {
+        try {
+            var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (c && c.type === 'cellular') return true;
+        } catch (e) {}
+        return false;
+    }
+
+    function meterAllowed() {
+        try { return localStorage.getItem(LS_METERED) === '1'; } catch (e) { return false; }
+    }
+
+    function confirmMetered(remember) {
+        try {
+            if (remember) localStorage.setItem(LS_METERED, '1');
+        } catch (e) {}
+        if (state.name === 'metered' && state.remote) {
+            setState({ name: 'update_available' });
+            startDownload();
+        }
+        return state;
+    }
+
+    function dismissLater() {
+        // "Later": quiet for this check cycle (mandatory updates cannot be dismissed).
+        if (state.remote && state.remote.mandatory) return state;
+        try {
+            localStorage.setItem(LS_CHECK, JSON.stringify({ at: Date.now(), available: false }));
+        } catch (e) {}
+        saveDl(null);
+        setState({ name: 'up_to_date', remote: null, progress: null, error: '' });
+        return state;
+    }
+
+    // Foreground-host mirror (best-effort; native owns the notification).
+    function fgProgress(soFar, total) {
+        try {
+            var pl = plugin();
+            if (pl && typeof pl.updateProgress === 'function') pl.updateProgress({ soFar: soFar, total: total });
+        } catch (e) {}
+    }
+
+    function fgInstalling() {
+        try {
+            var pl = plugin();
+            if (pl && typeof pl.updateInstalling === 'function') {
+                pl.updateInstalling({ versionName: (state.remote && state.remote.versionName) || '' });
+            }
+        } catch (e) {}
+    }
+
+    function fgFinished() {
+        try {
+            var pl = plugin();
+            if (pl && typeof pl.updateFinished === 'function') pl.updateFinished({});
+        } catch (e) {}
+    }
+
     async function startDownload() {
         if (state.name === 'downloading' || state.name === 'installing') return state;
         var m = state.remote;
@@ -216,12 +285,17 @@ window.PortalUpdate = (function () {
             toast('التنزيل متاح في تطبيق الأندرويد', 'info');
             return state;
         }
+        // Metered gate (skipped for mandatory updates, like Morphe).
+        if (!m.mandatory && isMetered() && !meterAllowed()) {
+            setState({ name: 'metered', progress: null, error: '' });
+            return state;
+        }
         setState({ name: 'downloading', progress: { pct: null, soFar: 0, total: 0 }, error: '', errorCode: '' });
         if (!(await preflight(m.apkUrl))) {
             return fallbackFetch(m);
         }
         try {
-            var r = await pl.downloadUpdate({ url: m.apkUrl, versionCode: m.versionCode });
+            var r = await pl.downloadUpdate({ url: m.apkUrl, versionCode: m.versionCode, versionName: m.versionName, size: m.size });
             var id = r && (r.downloadId != null ? Number(r.downloadId) : 0);
             if (!id) throw new Error('no-id');
             saveDl({ downloadId: id, versionCode: m.versionCode, sha256: m.sha256, size: m.size, apkUrl: m.apkUrl });
@@ -372,6 +446,7 @@ window.PortalUpdate = (function () {
                     chunks.push(part.value);
                     received += part.value.length;
                     lastBeat = Date.now();
+                    fgProgress(received, total);
                     setState({ name: 'downloading', progress: { pct: total > 0 ? Math.min(99, Math.round((received / total) * 100)) : null, soFar: received, total: total } });
                 }
                 try { reader.cancel(); } catch (e2) {}
@@ -389,7 +464,7 @@ window.PortalUpdate = (function () {
             // compressed Content-Length. The SHA-256 gate below is definitive.
             if (total > 0 && blob.size < total) throw new Error('incomplete');
             saveDl({ downloadId: 0, versionCode: m.versionCode, sha256: m.sha256, size: m.size, apkUrl: m.apkUrl });
-            if (!(await installPrereq()).ok) { unknownSourcesState(); return state; }
+            if (!(await installPrereq()).ok) { fgFinished(); unknownSourcesState(); return state; }
             var begun = await pl.installBegin({ versionCode: m.versionCode });
             if (!begun) throw new Error('bad install spec');
             var off = 0, idx = 0;
@@ -404,16 +479,20 @@ window.PortalUpdate = (function () {
             }
             var r = await pl.installCommit({ versionCode: m.versionCode, sha256: m.sha256 || '', size: m.size || 0 });
             if (r && r.status === 'pending_user_action') {
+                fgInstalling();
                 setState({ name: 'installing', progress: { pct: 100, soFar: 0, total: 0 }, error: '' });
             } else {
+                fgFinished();
                 throw new Error('install-rejected');
             }
         } catch (e) {
             if (e && e.name === 'AbortError' && !stalled) {
+                fgFinished();
                 saveDl(null);
                 setState({ name: 'update_available', progress: null, error: '' });
             } else {
                 try { await plugin().discardPartial({ versionCode: m.versionCode }); } catch (e2) {}
+                fgFinished();
                 saveDl(null);
                 setState({ name: 'error', error: stalled ? 'تعذر تنزيل التحديث' : installErrFriendly(e), progress: null });
             }
@@ -438,14 +517,17 @@ window.PortalUpdate = (function () {
                 if (st === 'downloading') {
                     var soFar = Number((r && r.bytesSoFar) || 0);
                     var total = Number((r && r.bytesTotal) || 0);
+                    fgProgress(soFar, total);
                     setState({ name: 'downloading', progress: { pct: total > 0 ? Math.min(99, Math.round((soFar / total) * 100)) : null, soFar: soFar, total: total } });
                 } else if (st === 'complete') {
                     stopPoll();
                     var rmC = state.remote;
                     if (rmC && rmC.versionCode === versionCode) { confirmDownloaded(versionCode, rmC.sha256, rmC.size, rmC); return; }
+                    fgFinished();
                     setState({ name: 'downloaded', progress: { pct: 100, soFar: 0, total: 0 }, error: '' });
                 } else if (st === 'failed' || st === 'unknown') {
                     stopPoll();
+                    fgFinished();
                     saveDl(null);
                     var rm = state.remote;
                     if (rm && rm.versionCode === versionCode) { fallbackFetch(rm); return; }
@@ -453,6 +535,7 @@ window.PortalUpdate = (function () {
                 }
             } catch (e) {
                 stopPoll();
+                fgFinished();
                 saveDl(null);
                 var rm2 = state.remote;
                 if (rm2 && rm2.versionCode === versionCode) { fallbackFetch(rm2); return; }
@@ -475,6 +558,7 @@ window.PortalUpdate = (function () {
         if (pl && dl && dl.versionCode) {
             try { await pl.discardPartial({ versionCode: dl.versionCode }); } catch (e) {}
         }
+        fgFinished();
         saveDl(null);
         setState({ name: 'update_available', progress: null, error: '' });
     }
@@ -496,6 +580,7 @@ window.PortalUpdate = (function () {
         // session (abandonOrphans) and surface its failure as OUR error.
         if (installBusy) { toast('التثبيت جارٍ — انتظر نافذة النظام', 'info'); return state; }
         installBusy = true;
+        fgInstalling();
         setState({ name: 'installing', error: '', errorCode: '' });
         try {
             var r = await pl.verifyAndInstall({ versionCode: m.versionCode, sha256: m.sha256 || '', size: m.size || 0 });
@@ -504,9 +589,11 @@ window.PortalUpdate = (function () {
                 // Android now shows its own confirmation; outcome arrives via installStatus.
                 return state;
             }
+            fgFinished();
             setState({ name: 'error', error: 'تعذر بدء التثبيت' });
         } catch (e) {
             installBusy = false;
+            fgFinished();
             var msg = String((e && e.message) || '');
             if (/checksum|missing|incomplete/i.test(msg)) saveDl(null);
             var friendly = installErrFriendly(e);
@@ -514,6 +601,29 @@ window.PortalUpdate = (function () {
             setState({ name: 'error', error: withLegacyHint(friendly), errorCode: 'install-failed' });
         }
         return state;
+    }
+
+    // Battery-optimization state for the updater card footer (native only).
+    async function refreshBattery() {
+        state.batt = null;
+        try {
+            var pl = plugin();
+            if (isNative() && pl && typeof pl.getBatteryState === 'function') {
+                var r = await pl.getBatteryState();
+                if (r && typeof r.ignoringBatteryOptimizations === 'boolean') {
+                    state.batt = { ignoring: !!r.ignoringBatteryOptimizations };
+                }
+            }
+        } catch (e) {}
+        return state.batt;
+    }
+
+    function openBatterySettings() {
+        try {
+            var pl = plugin();
+            if (pl && typeof pl.openBatterySettings === 'function') return pl.openBatterySettings();
+        } catch (e) {}
+        toast('افتح إعدادات البطارية واستثنِ التطبيق من التحسين', 'info');
     }
 
     // Legacy PackageInstaller codes (EXTRA_LEGACY_STATUS) with short Arabic hints.
@@ -564,12 +674,15 @@ window.PortalUpdate = (function () {
             pl.addListener('installStatus', function (ev) {
                 var phase = ev && ev.phase;
                 if (phase === 'success') {
+                    fgFinished();
                     toast('تم التثبيت بنجاح', 'success');
                     saveDl(null);
                 } else if (phase === 'cancelled') {
+                    fgFinished();
                     setState({ name: 'downloaded', error: '' });
                     toast('تم إلغاء التثبيت', 'info');
                 } else if (phase === 'failed') {
+                    fgFinished();
                     // Surface the system reason (storage, signature, blocked...)
                     // instead of hiding it behind a generic message.
                     var detail = ev && ev.message ? ' — ' + String(ev.message).slice(0, 200) : '';
@@ -645,6 +758,10 @@ window.PortalUpdate = (function () {
         startDownload: startDownload,
         cancelDownload: cancelDownload,
         installUpdate: installUpdate,
+        confirmMetered: confirmMetered,
+        dismissLater: dismissLater,
+        refreshBattery: refreshBattery,
+        openBatterySettings: openBatterySettings,
         openUnknownSources: openUnknownSources,
         openInBrowser: openInBrowser,
         openDownloadPage: openDownloadPage,
@@ -679,15 +796,55 @@ window.PortalUpdateUI = (function () {
         }
     }
 
-    function bar(pct) {
-        if (pct == null) return '<div class="upd-bar indeterminate"><span></span></div>';
-        return '<div class="upd-bar"><span style="width:' + Math.max(0, Math.min(100, pct)) + '%"></span></div>'
-            + '<p class="upd-pct">' + Math.max(0, Math.min(100, pct)) + '%</p>';
+    /* ---- Morphe-style updater card ----
+       available: header + version chip + "What's new" + size + Download/Later
+       metered: mobile-data confirm (Download / Later)
+       downloading: big % + MB line + bar + Cancel
+       downloaded: "ready to install" + Install now
+       error: reason + Retry (+ browser fallback on install failure) */
+
+    function fmtMb(n) {
+        n = Number(n || 0);
+        if (!(n > 0)) return '—';
+        if (n >= 1048576) return (n / 1048576).toFixed(1) + 'MB';
+        return Math.max(1, Math.round(n / 1024)) + 'KB';
     }
 
-    function srcLine(rm) {
+    function bar(pct) {
+        if (pct == null) return '<div class="mupd-bar indeterminate"><span></span></div>';
+        return '<div class="mupd-bar"><span style="width:' + Math.max(0, Math.min(100, pct)) + '%"></span></div>'
+            + '<p class="mupd-pct">' + Math.max(0, Math.min(100, pct)) + '%</p>';
+    }
+
+    function verChip(rm) {
         if (!rm) return '';
-        return '<p class="upd-src">المصدر ' + esc(rm.host || '') + ' • SHA ' + esc(String(rm.sha256 || '').slice(0, 12)) + '…</p>';
+        return '<span class="mupd-chip">' + esc(rm.versionName) + '</span>';
+    }
+
+    function metaLine(rm) {
+        if (!rm) return '';
+        return '<p class="mupd-meta">الحجم ' + esc(fmtMb(rm.size)) + ' • SHA ' + esc(String(rm.sha256 || '').slice(0, 12)) + '…</p>';
+    }
+
+    function changelogBox(rm) {
+        var cl = (rm && rm.changelog) || [];
+        if (!cl.length) return '<p class="mupd-changelog empty">لا يوجد سجل تغييرات</p>';
+        var h = '<ul class="mupd-changelog">';
+        for (var i = 0; i < cl.length; i++) h += '<li>' + esc(cl[i]) + '</li>';
+        return h + '</ul>';
+    }
+
+    function battFoot(st) {
+        if (!st || !st.batt || st.batt.ignoring) return '';
+        return '<button type="button" class="mupd-batt" onclick="PortalUpdate.openBatterySettings()">'
+            + '<i class="fas fa-battery-quarter"></i> السماح بالعمل في الخلفية (البطارية)</button>';
+    }
+
+    function head(title, icon, rm, badge) {
+        return '<div class="mupd-head"><span class="mupd-ico"><i class="fas ' + icon + '"></i></span>'
+            + '<div class="mupd-titles"><p class="mupd-title">' + title
+            + (badge ? ' <span class="mupd-req">' + badge + '</span>' : '') + '</p>'
+            + verChip(rm) + '</div></div>';
     }
 
     function render(st) {
@@ -695,34 +852,55 @@ window.PortalUpdateUI = (function () {
         if (!box || !window.PortalUpdate) return;
         var h = '';
         if (st.name === 'checking') {
-            h = '<div class="upd-state"><p class="upd-msg"><i class="fas fa-spinner fa-spin"></i> جاري التحقق من وجود تحديث...</p></div>';
+            h = '<div class="mupd-card"><p class="mupd-msg"><i class="fas fa-spinner fa-spin"></i> جاري التحقق من وجود تحديث...</p></div>';
         } else if (st.name === 'up_to_date') {
-            h = '<div class="upd-state"><p class="upd-ok"><i class="fas fa-circle-check"></i> أنت تستخدم أحدث إصدار</p>'
-                + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.checkUpdate({manual:true})">التحقق من وجود تحديث</button></div>';
+            h = '<div class="mupd-card"><div class="mupd-ok"><i class="fas fa-circle-check"></i> لا يوجد تحديث متوفر — أنت تستخدم أحدث إصدار</div>'
+                + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.checkUpdate({manual:true})">التحقق مجدداً</button>'
+                + battFoot(st) + '</div>';
         } else if (st.name === 'update_available' && st.remote) {
-            h = '<div class="upd-state"><p class="upd-avail"><i class="fas fa-arrow-up"></i> تحديث متوفر</p>'
-                + '<p class="upd-ver">الإصدار ' + esc(st.remote.versionName) + '</p>' + srcLine(st.remote)
-                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openDownloadPage()"><i class="fas fa-download"></i> تنزيل التحديث</button></div>';
+            var mand = !!st.remote.mandatory;
+            h = '<div class="mupd-card avail">'
+                + head(mand ? 'تحديث مطلوب' : 'تحديث التطبيق متوفر', 'fa-arrow-up-from-bracket', st.remote, mand ? 'مطلوب' : '')
+                + '<p class="mupd-new">ما الجديد في هذا الإصدار</p>' + changelogBox(st.remote) + metaLine(st.remote)
+                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.startDownload()"><i class="fas fa-download"></i> تنزيل التحديث</button>'
+                + (mand ? '' : '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.dismissLater()">لاحقاً</button>')
+                + battFoot(st) + '</div>';
+        } else if (st.name === 'metered' && st.remote) {
+            h = '<div class="mupd-card avail">'
+                + head('تنزيل عبر بيانات الهاتف؟', 'fa-tower-broadcast', st.remote, '')
+                + '<p class="mupd-warn">أنت متصل عبر بيانات الهاتف وقد تُحتسب رسوم من مزود الخدمة. هل تريد المتابعة؟</p>'
+                + metaLine(st.remote)
+                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.confirmMetered(true)"><i class="fas fa-download"></i> تنزيل</button>'
+                + '<div class="mupd-row"><button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.confirmMetered(false)">مرة واحدة</button>'
+                + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.dismissLater()">لاحقاً</button></div></div>';
         } else if (st.name === 'downloading') {
             var p = st.progress || {};
-            h = '<div class="upd-state"><p class="upd-msg"><i class="fas fa-spinner fa-spin"></i> جاري تنزيل التحديث...</p>'
-                + bar(p.pct)
+            var line = (p.soFar > 0 || p.total > 0)
+                ? '<p class="mupd-meta" dir="ltr">' + esc(fmtMb(p.soFar)) + ' / ' + esc(fmtMb(p.total)) + '</p>' : '';
+            h = '<div class="mupd-card">'
+                + head('جاري تنزيل التحديث…', 'fa-download', st.remote, '')
+                + bar(p.pct) + line
                 + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.cancelDownload()">إلغاء</button></div>';
         } else if (st.name === 'downloaded') {
-            h = '<div class="upd-state"><p class="upd-ok"><i class="fas fa-circle-check"></i> اكتمل تنزيل التحديث</p>' + srcLine(st.remote)
-                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installUpdate()"><i class="fas fa-right-to-bracket"></i> تثبيت التحديث</button></div>';
+            h = '<div class="mupd-card avail">'
+                + head('النسخة الجديدة جاهزة للتثبيت', 'fa-circle-check', st.remote, '')
+                + metaLine(st.remote)
+                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installUpdate()"><i class="fas fa-right-to-bracket"></i> تثبيت الآن</button>'
+                + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.dismissLater()">لاحقاً</button></div>';
         } else if (st.name === 'installing') {
-            h = '<div class="upd-state"><p class="upd-msg"><i class="fas fa-spinner fa-spin"></i> التحديث جاهز — أكّد التثبيت في نافذة النظام</p>'
-                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installUpdate()"><i class="fas fa-rotate"></i> إعادة تشغيل التطبيق</button></div>';
+            h = '<div class="mupd-card"><p class="mupd-msg"><i class="fas fa-spinner fa-spin"></i> التثبيت جاهز — أكّد التثبيت في نافذة النظام</p>'
+                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installUpdate()"><i class="fas fa-rotate"></i> إعادة المحاولة</button></div>';
         } else if (st.name === 'error') {
-            h = '<div class="upd-state"><p class="upd-err"><i class="fas fa-triangle-exclamation"></i> ' + esc(st.error || 'تعذر تحديث التطبيق') + '</p>'
+            var dlFail = /تنزيل/.test(String(st.error || ''));
+            h = '<div class="mupd-card err"><p class="mupd-err"><i class="fas fa-triangle-exclamation"></i> '
+                + esc(st.error || (dlFail ? 'تعذر تنزيل التحديث' : 'تعذر تثبيت التحديث')) + '</p>'
                 + (st.errorCode === 'unknown-sources'
                     ? '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openUnknownSources()"><i class="fas fa-gear"></i> فتح إعدادات التثبيت</button>'
                     : '')
                 + (st.errorCode === 'install-failed' && st.remote && st.remote.apkUrl
                     ? '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openDownloadPage()"><i class="fas fa-globe"></i> تنزيل عبر المتصفح</button>'
                     : '')
-                + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.checkUpdate({manual:true})">إعادة المحاولة</button></div>';
+                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.checkUpdate({manual:true})"><i class="fas fa-rotate"></i> إعادة المحاولة</button></div>';
         }
         box.innerHTML = h;
     }
@@ -732,6 +910,7 @@ window.PortalUpdateUI = (function () {
     async function refresh() {
         await paintVersion();
         try { window.PortalUpdate.bindNativeEvents(); } catch (e) {}
+        try { await window.PortalUpdate.refreshBattery(); } catch (e) {}
         render(window.PortalUpdate.getState());
         try { await window.PortalUpdate.checkUpdate({}); } catch (e) {}
         try { await window.PortalUpdate.resume(); } catch (e) {}
