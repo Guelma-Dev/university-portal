@@ -1,12 +1,13 @@
 {
-  "versionCode": 58,
-  "versionName": "1.4.42",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-58.apk",
-  "sha256": "d4eed4e9bd87a4a7996bafa0079d4f864f216141fe77a66a42a04c9971e422fe",
-  "size": 5555296,
+  "versionCode": 59,
+  "versionName": "1.4.43",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-59.apk",
+  "sha256": "9d126ef49ca92265c78c1b3526612a8e605e3bd19c1553309d49841dfade6a82",
+  "size": 5563094,
   "mandatory": false,
   "changelog": [
-    "تحديث اختبار: التحقق من الإصلاح الجذري للتثبيت",
-    "المفروض تظهر نافذة النظام وتثبت مباشرة"
+    "تصميم جديد كلياً: كحلي داكن زجاجي بلمسة نيلي-بنفسجي",
+    "سبلاش متحرك يرسم الشعار + انتقالات ناعمة + اهتزاز تفاعلي",
+    "حقول إدخال متوهجة مع تنبيه اهتزازي عند الخطأ"
   ]
 }
