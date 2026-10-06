@@ -1,13 +1,13 @@
 {
-  "versionCode": 62,
-  "versionName": "1.4.46",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-62.apk",
-  "sha256": "8b6f501ddb162b9d538ac0379cb30db918b4058704e2f84fdc172070051157f7",
-  "size": 5564942,
+  "versionCode": 63,
+  "versionName": "1.4.47",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-63.apk",
+  "sha256": "13d1c23dfdd019386b892e3681543082ad93c8752d0a2ba9ac3e32627b15f47d",
+  "size": 5864184,
   "mandatory": false,
   "changelog": [
-    "اللوغو يكبر ويلتهم الشاشة ثم يظهر التطبيق",
-    "دخول متدرج لشاشة التسجيل + تموج لمعان على الأزرار",
-    "نبضة على التنقل السفلي + انزلاق التنبيهات"
+    "لغة DailyFlutterUI: سبلاش مخطط بالنقاط والتعبئة وخروج 1-9",
+    "دخول بورقة بيضاء سفلية مع برق كهربائي وتحقق مرئي",
+    "شاشة ترحيب أول تشغيل + رئيسية تحريرية بخط عريض مائل"
   ]
 }
