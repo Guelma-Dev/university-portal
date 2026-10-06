@@ -1,12 +1,13 @@
 {
-  "versionCode": 56,
-  "versionName": "1.4.40",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-56.apk",
-  "sha256": "355eba87845e1498f04bb38e1f30bf4cb76944056ab70da39c0fa57dd7256b39",
-  "size": 5555626,
+  "versionCode": 57,
+  "versionName": "1.4.41",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-57.apk",
+  "sha256": "9c79c7e3aa918e43d7e979904a0cc0edffdc043b8fa06d5769e65d71eb456fd8",
+  "size": 5555299,
   "mandatory": false,
   "changelog": [
-    "تحديث اختبار ثانٍ: التحقق من إصلاح التثبيت على Realme",
-    "إن فشل التثبيت المباشر ستظهر بطاقة بزر التثبيت عبر النظام"
+    "إصلاح جذري للتثبيت: قناة التبليغ صارت قابلة للملء + جلسة مصغرة",
+    "عند أي رفض صامت ينتقل التثبيت تلقائياً لمثبت النظام بلا زر",
+    "زر التثبيت عبر النظام يبقى احتياطياً في بطاقة الخطأ"
   ]
 }
