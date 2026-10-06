@@ -300,6 +300,18 @@ body.native-app .bottom-nav .bn-inner {
 .df-seg-btn { position: relative; z-index: 1; border: none; background: none; padding: 11px 0; font-weight: 800; font-size: .92rem; color: #8A93A6; cursor: pointer; border-radius: 999px; }
 .df-seg-btn.on { color: #fff; }
 #landing-page.guest .login-form .input-group, #landing-page.guest .df-keeprow { display: none; }
+/* guest mode: the short sheet would leave a huge dark hole mid-screen —
+   group the brand WITH the sheet at the bottom and explain the mode */
+#landing-page.guest .login-card { justify-content: flex-end; }
+#landing-page.guest .login-brand { padding-top: clamp(18px, 5vh, 44px); padding-bottom: 8px; }
+.df-guest-note { display: none; }
+#landing-page.guest .df-guest-note {
+    display: flex; align-items: center; gap: 10px;
+    background: #F0F6FF; border: 1px solid #D6E6FF; border-radius: 14px;
+    padding: 12px 14px; margin: -2px 0 2px;
+}
+.df-guest-note i { color: #2F7CF6; flex: 0 0 auto; }
+.df-guest-note span { font-size: .82rem; font-weight: 700; color: #23406b; line-height: 1.5; }
 /* fields on white */
 .df-sheet .input-group label { color: #0B0E14 !important; }
 .df-sheet .input-group input {
