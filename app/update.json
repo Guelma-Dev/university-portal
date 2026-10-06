@@ -1,13 +1,14 @@
 {
-  "versionCode": 63,
-  "versionName": "1.4.47",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-63.apk",
-  "sha256": "13d1c23dfdd019386b892e3681543082ad93c8752d0a2ba9ac3e32627b15f47d",
-  "size": 5864184,
+  "versionCode": 64,
+  "versionName": "1.4.48",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-64.apk",
+  "sha256": "121f3d9204bef660709d40ae91022a1477baeccb22654ebb5a48828d0548259d",
+  "size": 5865256,
   "mandatory": false,
   "changelog": [
-    "لغة DailyFlutterUI: سبلاش مخطط بالنقاط والتعبئة وخروج 1-9",
-    "دخول بورقة بيضاء سفلية مع برق كهربائي وتحقق مرئي",
-    "شاشة ترحيب أول تشغيل + رئيسية تحريرية بخط عريض مائل"
+    "هوية كحلية موحدة: وداعاً للبطاقات البيضاء والنص الخفي وبقايا الذهبي",
+    "شاشة دخول كاملة الشاشة + زر تسجيل المسؤول بدل Google/Apple",
+    "سبلاش أخف وأسرع (~2ث) — انسيابية على كل الهواتف",
+    "أداء: إزالة blur الثقيل وبرق أخف — نهاية التقطيع"
   ]
 }
