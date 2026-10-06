@@ -13,6 +13,10 @@
     try {
         document.documentElement.setAttribute('data-theme', 'dark');
         window.localStorage.setItem('theme', 'dark');
+        document.body.classList.add('boot');
+        setTimeout(function () {
+            try { document.body.classList.remove('boot'); } catch (e) {}
+        }, 5200);
     } catch (e) {}
 
     function isNative() {
@@ -98,6 +102,28 @@
         } catch (e) {}
     }
 
+    // Ripple: expanding glow circle from the touch point (GPU only).
+    function hookRipple() {
+        try {
+            document.addEventListener('pointerdown', function (ev) {
+                var t = null;
+                try { t = ev.target && ev.target.closest ? ev.target.closest('.btn') : null; } catch (e) {}
+                if (!t) return;
+                try {
+                    var r = t.getBoundingClientRect();
+                    var d = Math.max(r.width, r.height) * 2.2;
+                    var s = document.createElement('span');
+                    s.className = 'ripple';
+                    s.style.width = s.style.height = d + 'px';
+                    s.style.left = (ev.clientX - r.left - d / 2) + 'px';
+                    s.style.top = (ev.clientY - r.top - d / 2) + 'px';
+                    t.appendChild(s);
+                    setTimeout(function () { try { s.remove(); } catch (e2) {} }, 600);
+                } catch (e) {}
+            }, { passive: true });
+        } catch (e) {}
+    }
+
     // Success buzz when an install completes (if updater present).
     function hookInstall() {
         try {
@@ -118,7 +144,7 @@
         } catch (e) {}
     }
 
-    // ---- Splash: blueprint timeline ends ~2.2s; fade, min 2300ms, max 3100ms ----
+    // ---- Splash: swallow ends ~2.5s; fade, min 2500ms, max 3300ms ----
     var T0 = Date.now();
     function dismissSplash() {
         try {
@@ -131,9 +157,9 @@
         } catch (e) {}
     }
     function splashSchedule() {
-        var wait = Math.max(0, 2300 - (Date.now() - T0));
+        var wait = Math.max(0, 2500 - (Date.now() - T0));
         setTimeout(dismissSplash, wait);
-        setTimeout(dismissSplash, 3100); // fail-safe
+        setTimeout(dismissSplash, 3300); // fail-safe
         try {
             if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 var el = document.getElementById('nova-splash');
@@ -147,6 +173,7 @@
         hookErrors();
         hookNav();
         hookTaps();
+        hookRipple();
         hookInstall();
         fixStatusBar();
         splashSchedule();
