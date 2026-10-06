@@ -175,71 +175,148 @@ body { background: #090D16 !important; }
     text-shadow: 0 0 18px rgba(96, 165, 250, .65);
 }
 
-/* ---- 9. Blueprint splash: grid -> node-draw + comet -> fill pop -> fade ---- */
+/* ---- 9. DFL splash v3: dot grid -> draw-on w/ anchors -> fill -> wordmark -> 1→9 exit ---- */
 #nova-splash {
     position: fixed; inset: 0; z-index: 9999;
     display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(120% 120% at 50% 20%, #0E1730 0%, #0B101D 60%);
-    transition: opacity .55s ease, visibility .55s;
+    background: radial-gradient(120% 120% at 50% 20%, #101828 0%, #0B0E14 60%);
+    transition: opacity .7s ease, visibility .7s;
 }
 #nova-splash.done { opacity: 0; visibility: hidden; }
-.nova-sp-grid {
+.df-dotgrid {
     position: absolute; inset: 0; opacity: 0;
-    background-image:
-        linear-gradient(rgba(96, 165, 250, .07) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(96, 165, 250, .07) 1px, transparent 1px);
-    background-size: 28px 28px;
+    background-image: radial-gradient(rgba(245, 247, 250, .06) 1px, transparent 1.5px);
+    background-size: 24px 24px;
     -webkit-mask-image: radial-gradient(70% 60% at 50% 45%, #000 30%, transparent 100%);
     mask-image: radial-gradient(70% 60% at 50% 45%, #000 30%, transparent 100%);
-    animation: nova-grid-in .8s .1s ease forwards, nova-fade-out .4s ease 1.9s forwards;
+    animation: df-dots-in .7s .05s ease forwards;
 }
-@keyframes nova-grid-in { to { opacity: 1; } }
-@keyframes nova-fade-out { to { opacity: 0; } }
-.nova-sp-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.nova-sp-stage { position: relative; width: 132px; height: 132px; animation: nova-swallow .55s ease-in 1.95s forwards; }
-@keyframes nova-swallow { to { transform: scale(13); opacity: 0; } }
-.nova-sp-wire, .nova-sp-fill { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-/* wireframe strokes */
-.nova-sp-wire .draw {
-    fill: none; stroke: #7FB2FF; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
-    stroke-dasharray: 100; stroke-dashoffset: 100;
-    animation: nova-draw 1.1s ease forwards, nova-wire-out .35s ease 1.55s forwards;
+@keyframes df-dots-in { to { opacity: 1; } }
+.df-sp-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.df-sp-stage { position: relative; width: 148px; height: 148px; animation: df-exit-zoom .65s cubic-bezier(.4, 0, 1, 1) 1.9s forwards; }
+@keyframes df-exit-zoom { to { transform: scale(9); opacity: 0; } }
+.df-sp-wire, .df-sp-fill { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+/* draw-on: white 2px strokes, pathLength=1, staggered outer->inner */
+.df-sp-wire .draw {
+    fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 1; stroke-dashoffset: 1;
+    animation: df-stroke 1.2s cubic-bezier(.16, 1, .3, 1) forwards, df-wire-out .3s ease 1.35s forwards;
 }
-.nova-sp-wire .draw.d2 { animation-delay: .35s, 1.55s; }
-.nova-sp-wire .draw.d3 { animation-delay: .6s, 1.55s; }
-@keyframes nova-draw { to { stroke-dashoffset: 0; } }
-@keyframes nova-wire-out { to { opacity: 0; } }
-/* comet tip riding the main path */
-.nova-sp-wire .tip { opacity: 0; animation: nova-tip .3s .25s ease forwards, nova-tip-out .3s 1.45s ease forwards; }
-@keyframes nova-tip { to { opacity: 1; } }
-@keyframes nova-tip-out { to { opacity: 0; } }
-/* anchor nodes popping on vertices */
-.nova-sp-stage .nd {
-    position: absolute; width: 7px; height: 7px; margin: -3.5px;
-    background: #0B101D; border: 1.5px solid #93C5FD; border-radius: 2px;
-    opacity: 0; transform: scale(.4);
-    animation: nova-nd .3s cubic-bezier(.34, 1.56, .64, 1) forwards, nova-nd-out .3s ease 1.55s forwards;
+.df-sp-wire .draw.w2 { animation-delay: .35s, 1.35s; }
+@keyframes df-stroke { to { stroke-dashoffset: 0; } }
+@keyframes df-wire-out { to { opacity: 0; } }
+/* blueprint anchors (4px squares) + bezier handles: visible while drawing */
+.df-sp-wire .anchors rect { fill: #0B0E14; stroke: #BFD9FF; stroke-width: 1;
+    opacity: 0; animation: df-anchor-in .25s ease forwards, df-anchor-out .3s ease 1.3s forwards; }
+.df-sp-wire .anchors rect:nth-child(1) { animation-delay: .15s, 1.3s; }
+.df-sp-wire .anchors rect:nth-child(2) { animation-delay: .4s, 1.3s; }
+.df-sp-wire .anchors rect:nth-child(3) { animation-delay: .55s, 1.3s; }
+.df-sp-wire .anchors rect:nth-child(4) { animation-delay: .7s, 1.3s; }
+.df-sp-wire .anchors rect:nth-child(5) { animation-delay: .85s, 1.3s; }
+.df-sp-wire .anchors rect:nth-child(6) { animation-delay: 1s, 1.3s; }
+@keyframes df-anchor-in { to { opacity: 1; } }
+@keyframes df-anchor-out { to { opacity: 0; } }
+.df-sp-wire .handles line { stroke: rgba(191, 217, 255, .55); stroke-width: 1; }
+.df-sp-wire .handles circle { fill: #BFD9FF; }
+.df-sp-wire .handles { opacity: 0; animation: df-anchor-in .3s .3s ease forwards, df-anchor-out .3s ease 1.3s forwards; }
+/* fill phase: outer white gradient, inner blue gradient */
+.df-sp-fill { opacity: 0; animation: df-fill-in .45s ease 1.3s forwards; }
+@keyframes df-fill-in { to { opacity: 1; } }
+/* wordmark: bold sans + serif-italic blue accent; tagline dim */
+.df-sp-word { font-size: 1.6rem; font-weight: 800; color: #F5F7FA; margin: 6px 0 0;
+    opacity: 0; animation: df-rise .45s cubic-bezier(.16, 1, .3, 1) 1.45s backwards; }
+.df-sp-word em { font-family: var(--serif); font-style: italic; color: #2F7CF6; }
+.df-sp-tag { font-size: 13px; color: #8A93A6; margin: 0;
+    opacity: 0; animation: df-rise .45s cubic-bezier(.16, 1, .3, 1) 1.6s backwards; }
+@keyframes df-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---- D3. AUTH: electric stage + white bottom sheet ---- */
+#landing-page { position: relative; overflow: hidden; background: #0B0E14; }
+#df-bolts { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#landing-page .login-scroll { position: relative; z-index: 1; }
+#landing-page .login-brand { text-align: start; }
+#landing-page .login-title { font-family: var(--serif); font-style: italic; font-weight: 800; font-size: 40px; color: #F5F7FA; margin: 0; }
+#landing-page .login-sub { font-size: 14px; color: #8A93A6; }
+/* sheet */
+.df-sheet {
+    background: #fff !important; color: #0B0E14;
+    border-radius: 28px 28px 0 0 !important;
+    padding: 22px 20px calc(20px + env(safe-area-inset-bottom)) !important;
+    box-shadow: 0 -18px 50px rgba(0, 0, 0, .45) !important;
+    border: none !important;
+    animation: df-sheet-up .5s cubic-bezier(.16, 1, .3, 1) backwards;
 }
-@keyframes nova-nd { to { opacity: 1; transform: scale(1); } }
-@keyframes nova-nd-out { to { opacity: 0; transform: scale(.4); } }
-/* solid fill pops in with premium overshoot + glow flash */
-.nova-sp-fill {
-    opacity: 0; transform: scale(.7);
-    filter: drop-shadow(0 0 0 rgba(96, 165, 250, 0));
-    animation: nova-pop .55s cubic-bezier(.175, .885, .32, 1.1375) 1.55s forwards,
-               nova-flash .8s ease 1.6s forwards;
+@keyframes df-sheet-up { from { opacity: 0; transform: translateY(48px); } to { opacity: 1; transform: translateY(0); } }
+.df-sheet.shake { animation: df-sheet-shake .4s ease !important; }
+@keyframes df-sheet-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-9px); }
+    40% { transform: translateX(7px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(3px); }
 }
-@keyframes nova-pop { to { opacity: 1; transform: scale(1); } }
-@keyframes nova-flash {
-    0% { filter: drop-shadow(0 0 0 rgba(96, 165, 250, 0)); }
-    35% { filter: drop-shadow(0 0 26px rgba(96, 165, 250, .95)); }
-    100% { filter: drop-shadow(0 0 10px rgba(96, 165, 250, .45)); }
+/* segmented طالب/ضيف */
+.df-seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; background: #F2F4F7; border-radius: 999px; padding: 4px; margin-bottom: 16px; }
+.df-seg-thumb {
+    position: absolute; top: 4px; bottom: 4px; inset-inline-start: 4px; width: calc(50% - 4px);
+    background: #0B0E14; border-radius: 999px;
+    transition: transform .25s cubic-bezier(.34, 1.56, .64, 1);
 }
-.nova-sp-name { font-size: 1.5rem; font-weight: 800; color: #fff; margin: 0; animation: nova-fade-slide .5s 1.7s ease backwards, nova-fade-out .3s ease 1.9s forwards; }
-.nova-sp-bar { width: 120px; height: 3px; border-radius: 99px; background: rgba(255, 255, 255, .1); overflow: hidden; animation: nova-fade-out .3s ease 1.9s forwards; }
-.nova-sp-bar > span { display: block; height: 100%; width: 40%; border-radius: inherit;
-    background: linear-gradient(90deg, #3B82F6, #2563EB); animation: nova-load 1.1s ease-in-out infinite; }
-@keyframes nova-load { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
+.df-seg.guest .df-seg-thumb { transform: translateX(-100%); }
+[dir="ltr"] .df-seg.guest .df-seg-thumb { transform: translateX(100%); }
+.df-seg-btn { position: relative; z-index: 1; border: none; background: none; padding: 11px 0; font-weight: 800; font-size: .92rem; color: #8A93A6; cursor: pointer; border-radius: 999px; }
+.df-seg-btn.on { color: #fff; }
+#landing-page.guest .login-form .input-group, #landing-page.guest .df-keeprow { display: none; }
+/* fields on white */
+.df-sheet .input-group label { color: #0B0E14 !important; }
+.df-sheet .input-group input {
+    background: #F2F4F7 !important; border: 1px solid transparent !important;
+    color: #0B0E14 !important; height: 52px !important; border-radius: 14px !important;
+    box-shadow: none !important; caret-color: #2F7CF6 !important;
+}
+.df-sheet .input-group input::placeholder { color: #9AA3B5 !important; }
+.df-sheet .input-group input:focus {
+    background: #fff !important; border-color: #2F7CF6 !important;
+    box-shadow: 0 0 0 1.5px #2F7CF6 !important;
+}
+.df-sheet .field-error input { border-color: #E5484D !important; box-shadow: 0 0 0 1.5px #E5484D !important; animation: none !important; }
+.df-sheet .field-error .pw-toggle i, .df-sheet .field-error-ico { color: #E5484D !important; }
+.df-sheet .field-msg { display: block; color: #E5484D !important; font-size: .78rem; font-weight: 700; margin: 6px 2px 0; animation: nova-fade-slide .15s ease; }
+.df-sheet .field-msg[hidden] { display: none; }
+.df-sheet .pw-toggle i { color: #8A93A6; }
+/* keep row */
+.df-keeprow { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 14px; }
+.df-keep { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 700; color: #0B0E14; cursor: pointer; }
+.df-keep input { display: none; }
+.df-check { width: 22px; height: 22px; border-radius: 7px; border: 1.5px solid #C6CDDA; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: .7rem; transition: all .15s ease; }
+.df-check i { opacity: 0; transform: scale(.4); transition: all .15s ease; }
+.df-keep input:checked + .df-check { background: #2F7CF6; border-color: #2F7CF6; }
+.df-keep input:checked + .df-check i { opacity: 1; transform: scale(1); }
+.df-link { background: none; border: none; color: #2F7CF6; font-weight: 800; font-size: .85rem; cursor: pointer; font-family: inherit; }
+/* submit spinner */
+.df-sheet .login-submit { height: 52px; border-radius: 999px !important; position: relative; overflow: hidden; }
+.df-sheet .login-submit .df-label { display: inline-flex; align-items: center; gap: 8px; transition: opacity .15s ease; }
+.df-sheet .login-submit .df-spinner {
+    position: absolute; inset: 0; margin: auto; width: 18px; height: 18px; border-radius: 50%;
+    border: 2.5px solid rgba(255, 255, 255, .35); border-top-color: #fff;
+    opacity: 0; animation: df-spin .8s linear infinite;
+}
+.df-sheet .login-submit.loading .df-label { opacity: 0; }
+.df-sheet .login-submit.loading .df-spinner { opacity: 1; }
+@keyframes df-spin { to { transform: rotate(360deg); } }
+/* OR + social */
+.df-or { display: flex; align-items: center; gap: 10px; margin: 16px 0 12px; font-size: 11px; letter-spacing: .12em; color: #8A93A6; font-weight: 800; }
+.df-or::before, .df-or::after { content: ""; flex: 1; height: 1px; background: #E5E8EF; }
+.df-social { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.df-ghost {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    background: #fff; border: 1px solid #E5E8EF; border-radius: 14px; padding: 12px 0;
+    font-weight: 800; font-size: .9rem; color: #0B0E14; cursor: pointer; font-family: inherit;
+    transition: scale .15s ease;
+}
+.df-ghost:active { scale: .97; }
+.df-ghost b { font-size: 1.05rem; color: #2F7CF6; }
+.df-ghost .fa-apple { font-size: 1.1rem; }
 
 /* ---- 9b. Staggered entrance for home quick-access (Flutter Interval style) ---- */
 #section-home.active .dh-qa-grid > * { animation: nova-rise .45s cubic-bezier(.22, .9, .3, 1) backwards; }
@@ -255,7 +332,60 @@ body { background: #090D16 !important; }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ---- 10. Reduced motion: kill it all ---- */
+/* ============================================================
+   DFL — DailyFlutterUI language (on top of Nova, same file).
+   bg #0B0E14 / surface #11151D / card #FFF / accent #2F7CF6.
+   Editorial serif italics + white sheets + crossfade motion.
+   ============================================================ */
+
+/* ---- D1. Self-hosted display serif (Playfair latin + Amiri arabic) ---- */
+@font-face { font-family: 'DFSerif'; font-style: italic; font-weight: 700; font-display: swap;
+    src: url(../assets/fonts/playfair-italic-78.woff2) format('woff2'); }
+@font-face { font-family: 'DFSerif'; font-style: italic; font-weight: 800; font-display: swap;
+    src: url(../assets/fonts/playfair-italic-78.woff2) format('woff2'); }
+@font-face { font-family: 'DFSerif'; font-style: italic; font-weight: 400; font-display: swap;
+    src: url(../assets/fonts/amiri-italic-400-ar.woff2) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF; }
+@font-face { font-family: 'DFSerif'; font-style: italic; font-weight: 700; font-display: swap;
+    src: url(../assets/fonts/amiri-italic-700-ar.woff2) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF; }
+
+/* ---- D2. Reconciled tokens ---- */
+:root, :root[data-theme="dark"], :root[data-theme="light"] {
+    --bg: #0B0E14;
+    --bg-2: #11151D;
+    --surface: #11151D;
+    --surface-2: #1A2234;
+    --card: #FFFFFF;
+    --brand: #2F7CF6;
+    --brand-dark: #1D5FD6;
+    --brand-light: #67B3FF;
+    --accent: #2F7CF6;
+    --accent-hover: #1D5FD6;
+    --accent-glow: rgba(47, 124, 246, .4);
+    --accent-light: rgba(47, 124, 246, .12);
+    --gold: #2F7CF6;
+    --gold-soft: #67B3FF;
+    --gold-deep: #1D5FD6;
+    --gold-wash: rgba(47, 124, 246, .10);
+    --gold-line: rgba(255, 255, 255, .08);
+    --text: #F5F7FA;
+    --text-2: #8A93A6;
+    --text-primary: #F5F7FA;
+    --text-secondary: #8A93A6;
+    --text-dim: #8A93A6;
+    --bg-primary: #0B0E14;
+    --bg-secondary: #11151D;
+    --bg-tertiary: #1A2234;
+    --bg-card: #FFFFFF;
+    --pill-active: #0B0E14;
+    --danger: #E5484D;
+    --field-fill: #F2F4F7;
+    --serif: 'DFSerif', 'Playfair Display', Georgia, serif;
+}
+body { background: #0B0E14 !important; }
+
+/* Display typography helpers */
+.df-serif { font-family: var(--serif) !important; font-style: italic; }
+.df-h1 { font-family: var(--serif); font-style: italic; font-weight: 800; letter-spacing: 0; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
     #nova-splash { display: none !important; }
@@ -290,3 +420,70 @@ body.boot #landing-page .dev-contact { animation: nova-fade-slide .5s ease 3.05s
     from { opacity: 0; transform: translateY(12px) scale(.97); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* ---- D4. HOME editorial + crossfade router + white bottom nav ---- */
+/* crossfade: entering screen 1.04→1 + fade 400ms (ghost overlap approx) */
+.section.active { animation: df-xfade .4s cubic-bezier(.16, 1, .3, 1) !important; }
+@keyframes df-xfade {
+    from { opacity: 0; transform: scale(1.04); }
+    to { opacity: 1; transform: scale(1); }
+}
+/* wordmark + serif section titles */
+.appbar-titles h1 { font-family: var(--serif); font-style: italic; font-weight: 800; }
+.dh-minihead, .dh-sv-head, .set-head, .sec-title {
+    font-family: var(--serif); font-style: italic; font-weight: 700;
+}
+/* chips → pills, active black */
+.lib-chip, .chip, .pill, .meal-chip, .ds-chip {
+    border-radius: 999px !important;
+    transition: all .25s ease;
+}
+.lib-chip.on, .chip.on, .pill.on, .meal-chip.on, .ds-chip.on {
+    background: #0B0E14 !important; color: #fff !important; border-color: #0B0E14 !important;
+}
+/* white editorial cards r24 */
+.dh-qa-feat, .dh-qa-wide, .dh-qa-cell, .lib-chip, .lib-row {
+    background: #fff !important; color: #0B0E14 !important;
+    border-radius: 24px !important;
+    border: 1px solid rgba(11, 14, 20, .06) !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, .18) !important;
+}
+/* bottom nav: floating white bar */
+.bottom-nav { background: transparent !important; border: none !important; box-shadow: none !important; }
+.bottom-nav .bn-inner {
+    background: #fff !important; border-radius: 20px !important;
+    margin: 0 14px calc(10px + env(safe-area-inset-bottom)) !important;
+    border: 1px solid rgba(11, 14, 20, .06) !important;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .35) !important;
+}
+.bottom-nav .bn-item { color: #8A93A6 !important; }
+.bottom-nav .bn-item.active, .bottom-nav .bn-item.on { color: #2F7CF6 !important; text-shadow: none !important; }
+
+/* ---- D5. ONBOARDING overlay (first run) ---- */
+#df-onboard { position: fixed; inset: 0; z-index: 9000; background: #0B0E14; overflow: hidden; }
+#df-onboard.hidden { display: none; }
+.df-ob-collage {
+    position: absolute; top: -10%; inset-inline: 0; height: 120%;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 0 12px;
+    transform: rotate(-6deg) scale(1.4); transform-origin: center;
+    animation: df-drift 50s ease-in-out infinite alternate;
+}
+@keyframes df-drift {
+    from { transform: rotate(-6deg) scale(1.4) translateY(0); }
+    to { transform: rotate(-6deg) scale(1.4) translateY(-6%); }
+}
+.df-ob-col { display: flex; flex-direction: column; gap: 12px; }
+.df-ob-col:nth-child(2) { margin-top: 34px; }
+.df-ob-col:nth-child(3) { margin-top: -20px; }
+.df-ob-col img { width: 100%; border-radius: 16px; border: 2px solid #fff; box-shadow: 0 14px 30px rgba(0, 0, 0, .4); }
+.df-ob-shade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, #0B0E14 85%); }
+.df-ob-body { position: absolute; bottom: 0; inset-inline: 0; padding: 24px 22px calc(26px + env(safe-area-inset-bottom)); }
+.df-ob-body > * { animation: nova-rise .45s cubic-bezier(.16, 1, .3, 1) backwards; }
+.df-ob-body > *:nth-child(1) { animation-delay: .1s; }
+.df-ob-body > *:nth-child(2) { animation-delay: .16s; }
+.df-ob-body > *:nth-child(3) { animation-delay: .22s; }
+.df-ob-body > *:nth-child(4) { animation-delay: .28s; }
+.df-ob-body h1 { font-size: 2rem; color: #F5F7FA; margin: 0 0 8px; }
+.df-ob-body p { color: #8A93A6; font-size: .92rem; margin: 0 0 16px; }
+.df-ob-body .btn { height: 52px; border-radius: 999px !important; }
+.df-ob-cap { text-align: center; font-size: .75rem !important; margin: 12px 0 0 !important; }

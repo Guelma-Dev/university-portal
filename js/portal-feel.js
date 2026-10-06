@@ -144,9 +144,8 @@
         } catch (e) {}
     }
 
-    // ---- Splash: swallow ends ~2.5s; fade, min 2500ms, max 3300ms ----
-    var T0 = Date.now();
-    function dismissSplash() {
+    // ---- Splash v3: draw ~1.5s, exit zoom ends 2.55s; min 2600ms, max 3400ms ----
+    var T0 = Date.now();    function dismissSplash() {
         try {
             var el = document.getElementById('nova-splash');
             if (!el || el.classList.contains('done')) return;
@@ -157,14 +156,278 @@
         } catch (e) {}
     }
     function splashSchedule() {
-        var wait = Math.max(0, 2500 - (Date.now() - T0));
+        var wait = Math.max(0, 2600 - (Date.now() - T0));
         setTimeout(dismissSplash, wait);
-        setTimeout(dismissSplash, 3300); // fail-safe
+        setTimeout(dismissSplash, 3400); // fail-safe
         try {
             if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 var el = document.getElementById('nova-splash');
                 if (el) el.remove();
             }
+        } catch (e) {}
+    }
+
+    // ================= DFL MOTION =================
+
+    function landingVisible() {
+        try {
+            var l = document.getElementById('landing-page');
+            return !!(l && !l.classList.contains('hidden'));
+        } catch (e) { return false; }
+    }
+
+    /* ---- Electric bolts canvas (midpoint displacement, GPU strokes) ---- */
+    var boltsRAF = 0, bolts = [], boltNext = 0;
+    function boltsStart() {
+        try {
+            var cv = document.getElementById('df-bolts');
+            if (!cv || !cv.getContext) return;
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            var ctx = cv.getContext('2d');
+            var W = 0, H = 0, DPR = 1;
+            function size() {
+                try {
+                    DPR = Math.min(2, window.devicePixelRatio || 1);
+                    W = cv.clientWidth; H = cv.clientHeight;
+                    cv.width = W * DPR; cv.height = H * DPR;
+                    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+                } catch (e) {}
+            }
+            size();
+            window.addEventListener('resize', size);
+            function midBolt(x0, y0, x1, y1, disp) {
+                var pts = [[x0, y0], [x1, y1]];
+                var d = disp;
+                while (d > 4) {
+                    var out = [pts[0]];
+                    for (var i = 0; i < pts.length - 1; i++) {
+                        var mx = (pts[i][0] + pts[i + 1][0]) / 2 + (Math.random() - .5) * d;
+                        var my = (pts[i][1] + pts[i + 1][1]) / 2 + (Math.random() - .5) * d;
+                        out.push([mx, my], pts[i + 1]);
+                    }
+                    pts = out; d /= 2;
+                }
+                // 1-2 thin branches
+                var nb = 1 + ((Math.random() * 2) | 0);
+                for (var b = 0; b < nb; b++) {
+                    var at = pts[(Math.random() * (pts.length - 2) + 1) | 0];
+                    var bl = 20 + Math.random() * 40;
+                    out = [at];
+                    var bx = at[0], by = at[1];
+                    for (var s = 0; s < 3; s++) {
+                        bx += (Math.random() - .5) * bl; by += bl / 3;
+                        out.push([bx, by]);
+                    }
+                    pts.branches = pts.branches || [];
+                    pts.branches.push(out);
+                }
+                return pts;
+            }
+            function spawn() {
+                var x = Math.random() * W;
+                bolts.push({ pts: midBolt(x, -10, x + (Math.random() - .5) * 120, H * (0.5 + Math.random() * 0.4), 46), born: performance.now(), life: 600 });
+            }
+            function frame(now) {
+                boltsRAF = requestAnimationFrame(frame);
+                try {
+                    if (document.hidden || !landingVisible()) { ctx.clearRect(0, 0, W, H); bolts = []; boltNext = now + 800; return; }
+                    ctx.clearRect(0, 0, W, H);
+                    if (now >= boltNext) { spawn(); boltNext = now + 1200 + Math.random() * 800; }
+                    bolts = bolts.filter(function (b) { return now - b.born < b.life; });
+                    for (var i = 0; i < bolts.length; i++) {
+                        var b = bolts[i], k = 1 - (now - b.born) / b.life;
+                        ctx.save();
+                        ctx.globalAlpha = Math.max(0, k) * 0.9;
+                        ctx.strokeStyle = '#BFD9FF';
+                        ctx.lineWidth = 1.4;
+                        ctx.shadowColor = '#2F7CF6';
+                        ctx.shadowBlur = 12;
+                        ctx.beginPath();
+                        ctx.moveTo(b.pts[0][0], b.pts[0][1]);
+                        for (var j = 1; j < b.pts.length; j++) ctx.lineTo(b.pts[j][0], b.pts[j][1]);
+                        ctx.stroke();
+                        var brs = b.pts.branches || [];
+                        for (var q = 0; q < brs.length; q++) {
+                            ctx.beginPath();
+                            ctx.moveTo(brs[q][0][0], brs[q][0][1]);
+                            for (var w = 1; w < brs[q].length; w++) ctx.lineTo(brs[q][w][0], brs[q][w][1]);
+                            ctx.stroke();
+                        }
+                        ctx.restore();
+                    }
+                } catch (e) {}
+            }
+            boltNext = performance.now() + 500;
+            boltsRAF = requestAnimationFrame(frame);
+        } catch (e) {}
+    }
+
+    /* ---- Auth: segmented student/guest + keep-me + spinner + validation ---- */
+    var authMode = 'student', keepChecked = true, submitSpinT = 0;
+    function hookAuth() {
+        try {
+            var form = document.getElementById('login-form');
+            var landing = document.getElementById('landing-page');
+            if (!form || !landing) return;
+            // Segmented
+            var btns = form.querySelectorAll('.df-seg-btn');
+            for (var i = 0; i < btns.length; i++) {
+                (function (b) {
+                    b.addEventListener('click', function () {
+                        try {
+                            authMode = b.getAttribute('data-mode') || 'student';
+                            for (var j = 0; j < btns.length; j++) btns[j].classList.toggle('on', btns[j] === b);
+                            var seg = form.querySelector('.df-seg');
+                            if (seg) seg.classList.toggle('guest', authMode === 'guest');
+                            landing.classList.toggle('guest', authMode === 'guest');
+                            var lbl = form.querySelector('#login-submit .df-label');
+                            if (lbl) lbl.innerHTML = authMode === 'guest'
+                                ? 'الدخول كضيف' : '<i class="fas fa-right-to-bracket"></i> تسجيل الدخول';
+                            if (typeof Feel !== 'undefined') Feel.nav();
+                        } catch (e) {}
+                    });
+                })(btns[i]);
+            }
+            // Submit routing: guest bypasses Progres
+            form.addEventListener('submit', function (ev) {
+                try {
+                    var k = document.getElementById('login-keep');
+                    keepChecked = !k || !!k.checked;
+                    var btn = document.getElementById('login-submit');
+                    if (btn) {
+                        btn.classList.add('loading');
+                        if (submitSpinT) clearTimeout(submitSpinT);
+                        submitSpinT = setTimeout(function () { try { btn.classList.remove('loading'); } catch (e) {} }, 25000);
+                    }
+                    if (authMode === 'guest') {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        if (btn) btn.classList.remove('loading');
+                        if (typeof enterAsStudent === 'function') enterAsStudent();
+                        return false;
+                    }
+                } catch (e) {}
+            }, true);
+            // Landing hides = login success: settle spinner + honor keep-me
+            try {
+                var mo = new MutationObserver(function () {
+                    try {
+                        if (landing.classList.contains('hidden')) {
+                            var btn = document.getElementById('login-submit');
+                            if (btn) btn.classList.remove('loading');
+                            if (!keepChecked) {
+                                var uuid = null;
+                                try {
+                                    var s = JSON.parse(window.localStorage.getItem('progres_session') || 'null');
+                                    uuid = s && s.uuid;
+                                } catch (e2) {}
+                                if (uuid && typeof removeProgresAccount === 'function') removeProgresAccount(uuid);
+                            }
+                        }
+                    } catch (e) {}
+                });
+                mo.observe(landing, { attributes: true, attributeFilter: ['class'] });
+            } catch (e) {}
+            // Clear validation on input
+            form.addEventListener('input', function (ev) {
+                try {
+                    var g = ev.target && ev.target.closest ? ev.target.closest('.input-group') : null;
+                    if (g && g.classList.contains('field-error')) {
+                        g.classList.remove('field-error');
+                        var h = g.querySelector('.field-msg');
+                        if (h) h.hidden = true;
+                    }
+                } catch (e) {}
+            });
+            // Forgot + social (honest toasts: no fake auth providers)
+            var fg = document.getElementById('forgot-link');
+            if (fg) fg.addEventListener('click', function () {
+                try { window.showToast('لتغيير كلمة المرور راجع مصلحة الدراسة', 'info'); } catch (e) {}
+            });
+            var sg = document.getElementById('soc-google'), sa = document.getElementById('soc-apple');
+            function social(ev) { if (ev) ev.preventDefault(); try { window.showToast('الدخول برقم التسجيل الجامعي فقط', 'info'); } catch (e) {} }
+            if (sg) sg.addEventListener('click', social);
+            if (sa) sa.addEventListener('click', social);
+        } catch (e) {}
+    }
+
+    // Validation visuals ride on the existing error-toast path.
+    var _origToastHooked = false;
+    function hookValidation() {
+        if (_origToastHooked) return;
+        _origToastHooked = true;
+        try {
+            var iv = setInterval(function () {
+                try {
+                    if (typeof window.showToast === 'function' && !window.showToast.__dfv) {
+                        var orig = window.showToast;
+                        var wrapped = function (msg, type) {
+                            if (type === 'error' && landingVisible()) dfBadSubmit();
+                            return orig(msg, type);
+                        };
+                        wrapped.__feel = orig.__feel;
+                        wrapped.__dfv = true;
+                        window.showToast = wrapped;
+                        clearInterval(iv);
+                    }
+                } catch (e) {}
+            }, 500);
+        } catch (e) {}
+    }
+
+    function dfBadSubmit() {
+        try {
+            var sheet = document.querySelector('#login-form.df-sheet');
+            if (sheet) {
+                sheet.classList.remove('shake');
+                void sheet.offsetWidth;
+                sheet.classList.add('shake');
+                setTimeout(function () { try { sheet.classList.remove('shake'); } catch (e) {} }, 450);
+            }
+            var groups = document.querySelectorAll('#login-form .input-group');
+            for (var i = 0; i < groups.length; i++) {
+                var inp = groups[i].querySelector('input');
+                if (inp && !String(inp.value || '').trim()) {
+                    groups[i].classList.add('field-error');
+                    var h = groups[i].querySelector('.field-msg');
+                    if (h) h.hidden = false;
+                }
+            }
+        } catch (e) {}
+    }
+
+    /* ---- Onboarding: first entry to main-app ---- */
+    function hookOnboard() {
+        try {
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            var done = false;
+            try { done = window.localStorage.getItem('nova_onboard') === '1'; } catch (e) { done = true; }
+            if (done) return;
+            var main = document.getElementById('main-app');
+            var ob = document.getElementById('df-onboard');
+            if (!main || !ob) return;
+            function maybe() {
+                try {
+                    if (main.classList.contains('hidden')) return;
+                    if (window.localStorage.getItem('nova_onboard') === '1') return;
+                    ob.classList.remove('hidden');
+                    ob.setAttribute('aria-hidden', 'false');
+                } catch (e) {}
+            }
+            var cta = document.getElementById('df-ob-cta');
+            if (cta) cta.addEventListener('click', function () {
+                try {
+                    window.localStorage.setItem('nova_onboard', '1');
+                    ob.classList.add('hidden');
+                    ob.setAttribute('aria-hidden', 'true');
+                    if (typeof Feel !== 'undefined') Feel.success();
+                } catch (e) {}
+            });
+            try {
+                var mo = new MutationObserver(maybe);
+                mo.observe(main, { attributes: true, attributeFilter: ['class'] });
+            } catch (e) {}
+            setTimeout(maybe, 3600);
         } catch (e) {}
     }
 
@@ -175,6 +438,11 @@
         hookTaps();
         hookRipple();
         hookInstall();
+        hookAuth();
+        hookValidation();
+        hookOnboard();
+        boltsStart();
+        fixStatusBar();
         fixStatusBar();
         splashSchedule();
         // native-shell (defer) assigns portalVibrateFunc later — re-own it.

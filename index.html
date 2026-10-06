@@ -9,17 +9,17 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="المنصة الجامعية">
-    <link rel="manifest" href="manifest.json?v=1.4.46">
+    <link rel="manifest" href="manifest.json?v=1.4.47">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css?v=1.4.46">
-    <link rel="stylesheet" href="css/luxury.css?v=1.4.46">
-    <link rel="stylesheet" href="css/auth.css?v=1.4.46">
-    <link rel="stylesheet" href="css/native.css?v=1.4.46">
-    <link rel="stylesheet" href="css/campus.css?v=1.4.46">
-    <link rel="stylesheet" href="css/nova.css?v=1.4.46">
+    <link rel="stylesheet" href="css/styles.css?v=1.4.47">
+    <link rel="stylesheet" href="css/luxury.css?v=1.4.47">
+    <link rel="stylesheet" href="css/auth.css?v=1.4.47">
+    <link rel="stylesheet" href="css/native.css?v=1.4.47">
+    <link rel="stylesheet" href="css/campus.css?v=1.4.47">
+    <link rel="stylesheet" href="css/nova.css?v=1.4.47">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -44,50 +44,51 @@
     </script>
 </head>
 <body>
-    <!-- ===== NOVA blueprint splash: grid -> node-draw + comet -> fill pop -> fade ===== -->
+    <!-- ===== DFL splash: dot grid -> draw-on w/ anchors -> fill -> wordmark -> 1→9 exit ===== -->
     <div id="nova-splash" aria-hidden="true">
-        <div class="nova-sp-grid"></div>
-        <div class="nova-sp-inner">
-            <div class="nova-sp-stage">
-                <svg class="nova-sp-wire" viewBox="0 0 64 64">
-                    <defs>
-                        <linearGradient id="novaGrad" x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0" stop-color="#3B82F6"></stop>
-                            <stop offset="1" stop-color="#2563EB"></stop>
-                        </linearGradient>
-                        <radialGradient id="novaTip" cx=".5" cy=".5" r=".5">
-                            <stop offset="0" stop-color="#fff"></stop>
-                            <stop offset=".4" stop-color="#93C5FD"></stop>
-                            <stop offset="1" stop-color="#3B82F6" stop-opacity="0"></stop>
-                        </radialGradient>
-                    </defs>
-                    <polygon class="draw" pathLength="100" points="32,9 58,21 32,33 6,21"></polygon>
-                    <path class="draw d2" pathLength="100" d="M22 27v7c0 5 20 5 20 0v-7"></path>
-                    <path class="draw d3" pathLength="100" d="M10 43c7-4 15-4 22 0 7-4 15-4 22 0v10c-7-4-15-4-22 0-7-4-15-4-22 0z"></path>
-                    <circle class="tip" r="3" fill="url(#novaTip)">
-                        <animateMotion dur="1.25s" begin="0.25s" fill="freeze" path="M32 9 L58 21 L32 33 L6 21 Z"></animateMotion>
-                    </circle>
+        <div class="df-dotgrid"></div>
+        <div class="df-sp-inner">
+            <div class="df-sp-stage">
+                <svg class="df-sp-wire" viewBox="0 0 64 64">
+                    <path class="draw w1" pathLength="1" d="M32 9 L58 21 L32 33 L6 21 Z"></path>
+                    <path class="draw w2" pathLength="1" d="M10 43c7-4 15-4 22 0 7-4 15-4 22 0v10c-7-4-15-4-22 0-7-4-15-4-22 0z"></path>
+                    <g class="anchors">
+                        <rect x="30" y="7" width="4" height="4"></rect>
+                        <rect x="56" y="19" width="4" height="4"></rect>
+                        <rect x="30" y="31" width="4" height="4"></rect>
+                        <rect x="4" y="19" width="4" height="4"></rect>
+                        <rect x="8" y="41" width="4" height="4"></rect>
+                        <rect x="52" y="41" width="4" height="4"></rect>
+                    </g>
+                    <g class="handles">
+                        <line x1="32" y1="9" x2="44" y2="2"></line><circle cx="44" cy="2" r="1.4"></circle>
+                        <line x1="58" y1="21" x2="62" y2="12"></line><circle cx="62" cy="12" r="1.4"></circle>
+                        <line x1="10" y1="43" x2="2" y2="38"></line><circle cx="2" cy="38" r="1.4"></circle>
+                    </g>
                 </svg>
-                <span class="nd" style="left:50%;top:14%;animation-delay:.25s"></span>
-                <span class="nd" style="left:90.6%;top:32.8%;animation-delay:.55s"></span>
-                <span class="nd" style="left:50%;top:51.5%;animation-delay:.8s"></span>
-                <span class="nd" style="left:9.4%;top:32.8%;animation-delay:1s"></span>
-                <span class="nd" style="left:34.4%;top:42%;animation-delay:1.1s"></span>
-                <span class="nd" style="left:65.6%;top:42%;animation-delay:1.2s"></span>
-                <span class="nd" style="left:15.6%;top:67%;animation-delay:1.3s"></span>
-                <span class="nd" style="left:84.4%;top:67%;animation-delay:1.4s"></span>
-                <svg class="nova-sp-fill" viewBox="0 0 64 64">
-                    <polygon points="32,9 58,21 32,33 6,21" fill="url(#novaGrad)"></polygon>
-                    <path d="M22 27.5v6.8c0 5.2 20 5.2 20 0v-6.8l-10 4.2z" fill="#DBEAFE"></path>
-                    <path d="M10 43.5c7-3.6 15-3.6 22 0 7-3.6 15-3.6 22 0v9.5c-7-3.6-15-3.6-22 0-7-3.6-15-3.6-22 0z" fill="url(#novaGrad)"></path>
+                <svg class="df-sp-fill" viewBox="0 0 64 64">
+                    <defs>
+                        <linearGradient id="dfFillCap" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0" stop-color="#FFFFFF"></stop>
+                            <stop offset="1" stop-color="#D9DEE7"></stop>
+                        </linearGradient>
+                        <linearGradient id="dfFillBook" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0" stop-color="#67B3FF"></stop>
+                            <stop offset="1" stop-color="#1D5FD6"></stop>
+                        </linearGradient>
+                    </defs>
+                    <polygon points="32,9 58,21 32,33 6,21" fill="url(#dfFillCap)"></polygon>
+                    <path d="M22 27.5v6.8c0 5.2 20 5.2 20 0v-6.8l-10 4.2z" fill="#1D5FD6"></path>
+                    <path d="M10 43.5c7-3.6 15-3.6 22 0 7-3.6 15-3.6 22 0v9.5c-7-3.6-15-3.6-22 0-7-3.6-15-3.6-22 0z" fill="url(#dfFillBook)"></path>
                 </svg>
             </div>
-            <p class="nova-sp-name">بوابة الطالب</p>
-            <div class="nova-sp-bar"><span></span></div>
+            <p class="df-sp-word">بوابة <em>الطالب</em></p>
+            <p class="df-sp-tag">حسابك الجامعي في جيبك</p>
         </div>
     </div>
     <!-- ===== LANDING PAGE ===== -->
     <div id="landing-page" class="landing-page">
+        <canvas id="df-bolts" aria-hidden="true"></canvas>
         <button type="button" class="lc-theme" onclick="toggleTheme()" aria-label="التبديل بين الوضع الليلي والنهاري">
             <i class="fas fa-sun"></i><i class="fas fa-moon"></i>
         </button>
@@ -96,13 +97,19 @@
             <div class="login-card" id="login-card">
                 <div class="login-brand">
                     <div class="login-logo"><svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><polygon points="32,9 58,21 32,33 6,21" fill="#D9A93F"/><path d="M22 27.5v6.8c0 5.2 20 5.2 20 0v-6.8l-10 4.2z" fill="currentColor"/><rect x="54.8" y="21" width="2.6" height="14.5" rx="1.3" fill="#A87B22"/><circle cx="56.1" cy="38.2" r="3.1" fill="#A87B22"/><path d="M10 43.5c7-3.6 15-3.6 22 0 7-3.6 15-3.6 22 0v9.5c-7-3.6-15-3.6-22 0-7-3.6-15-3.6-22 0z" fill="currentColor"/><path d="M32 43.5v9.5" stroke="#A87B22" stroke-width="2.1" stroke-linecap="round" fill="none"/></svg></div>
-                    <h1 class="login-title">بوابة الطالب الجامعي</h1>
+                    <h1 class="login-title df-h1">مرحباً بعودتك.</h1>
                     <p class="login-sub">سجّل الدخول للوصول إلى حسابك</p>
                 </div>
-                <form class="login-form" id="login-form" onsubmit="handleProgresLogin(event)">
+                <form class="login-form df-sheet" id="login-form" onsubmit="handleProgresLogin(event)">
+                    <div class="df-seg" role="tablist" aria-label="طريقة الدخول">
+                        <span class="df-seg-thumb"></span>
+                        <button type="button" class="df-seg-btn on" data-mode="student" role="tab">طالب</button>
+                        <button type="button" class="df-seg-btn" data-mode="guest" role="tab">ضيف</button>
+                    </div>
                     <div class="input-group">
                         <label for="login-reg">رقم التسجيل الجامعي</label>
                         <input type="text" id="login-reg" name="progres-username" placeholder="رقم التسجيل الجامعي" autocomplete="username" inputmode="numeric" required>
+                        <p class="field-msg" hidden>أدخل رقم التسجيل</p>
                     </div>
                     <div class="input-group">
                         <label for="login-pass">كلمة المرور</label>
@@ -110,10 +117,21 @@
                             <input type="password" id="login-pass" name="progres-password" placeholder="••••••••" autocomplete="current-password" required>
                             <button type="button" class="pw-toggle" tabindex="-1" aria-label="إظهار كلمة المرور"><i class="fas fa-eye"></i></button>
                         </div>
+                        <p class="field-msg" hidden>أدخل كلمة المرور</p>
+                    </div>
+                    <div class="df-keeprow">
+                        <label class="df-keep"><input type="checkbox" id="login-keep" checked><span class="df-check"><i class="fas fa-check"></i></span> تذكرني</label>
+                        <button type="button" class="df-link" id="forgot-link">نسيت كلمة المرور؟</button>
                     </div>
                     <button type="submit" class="btn btn-primary btn-full login-submit" id="login-submit">
-                        <i class="fas fa-right-to-bracket"></i> تسجيل الدخول
+                        <span class="df-label"><i class="fas fa-right-to-bracket"></i> تسجيل الدخول</span>
+                        <span class="df-spinner" aria-hidden="true"></span>
                     </button>
+                    <div class="df-or"><span>أو تابع عبر</span></div>
+                    <div class="df-social">
+                        <button type="button" class="df-ghost" id="soc-google"><b>G</b> Google</button>
+                        <button type="button" class="df-ghost" id="soc-apple"><i class="fab fa-apple"></i> Apple</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -916,22 +934,39 @@
     </div>
 
     <!-- Toast Container -->
+    <!-- ===== DFL ONBOARDING (first run only, localStorage nova_onboard) ===== -->
+    <div id="df-onboard" class="hidden" aria-hidden="true">
+        <div class="df-ob-collage">
+            <div class="df-ob-col"><img src="assets/shots/shot-home.jpg" alt=""><img src="assets/shots/shot-card.jpg" alt=""></div>
+            <div class="df-ob-col"><img src="assets/shots/shot-library.jpg" alt=""><img src="assets/shots/shot-meals.jpg" alt=""></div>
+            <div class="df-ob-col"><img src="assets/shots/shot-home2.jpg" alt=""><img src="assets/shots/shot-account.jpg" alt=""></div>
+            <div class="df-ob-col"><img src="assets/shots/shot-login.jpg" alt=""><img src="assets/shots/shot-autobook.jpg" alt=""></div>
+        </div>
+        <div class="df-ob-shade"></div>
+        <div class="df-ob-body">
+            <h1 class="df-h1">جامعتك. جاهزة في جيبك.</h1>
+            <p>النتائج، الرزنامة، النقل، الوجبات — كل خدماتك الجامعية في مكان واحد.</p>
+            <button type="button" class="btn btn-primary btn-full" id="df-ob-cta">هيا نبدأ</button>
+            <p class="df-ob-cap">حساب Progres الخاص بك يبقى على جهازك</p>
+        </div>
+    </div>
+
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/native.js?v=1.4.46"></script>
-    <script src="js/app.js?v=1.4.46"></script>
-    <script src="js/sec-loader.js?v=1.4.46"></script>
-    <script src="js/sec-transport.js?v=1.4.46"></script>
-    <script src="js/sec-meals.js?v=1.4.46"></script>
-    <script src="js/sec-profile.js?v=1.4.46"></script>
-    <script src="js/portal-notify.js?v=1.4.46"></script>
-    <script src="js/portal-update.js?v=1.4.46"></script>
-    <script src="js/sec-inscription.js?v=1.4.46"></script>
-    <script src="js/sec-study.js?v=1.4.46"></script>
-    <script src="js/sec-campus.js?v=1.4.46"></script>
-    <script src="js/portal-feel.js?v=1.4.46"></script>
-    <script src="js/native-shell.js?v=1.4.46" defer></script>
-    <script src="js/auth-ui.js?v=1.4.46" defer></script>
+    <script src="js/native.js?v=1.4.47"></script>
+    <script src="js/app.js?v=1.4.47"></script>
+    <script src="js/sec-loader.js?v=1.4.47"></script>
+    <script src="js/sec-transport.js?v=1.4.47"></script>
+    <script src="js/sec-meals.js?v=1.4.47"></script>
+    <script src="js/sec-profile.js?v=1.4.47"></script>
+    <script src="js/portal-notify.js?v=1.4.47"></script>
+    <script src="js/portal-update.js?v=1.4.47"></script>
+    <script src="js/sec-inscription.js?v=1.4.47"></script>
+    <script src="js/sec-study.js?v=1.4.47"></script>
+    <script src="js/sec-campus.js?v=1.4.47"></script>
+    <script src="js/portal-feel.js?v=1.4.47"></script>
+    <script src="js/native-shell.js?v=1.4.47" defer></script>
+    <script src="js/auth-ui.js?v=1.4.47" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});
