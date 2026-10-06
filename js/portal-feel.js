@@ -16,7 +16,7 @@
         document.body.classList.add('boot');
         setTimeout(function () {
             try { document.body.classList.remove('boot'); } catch (e) {}
-        }, 2600);
+        }, 4600);
     } catch (e) {}
 
     function isNative() {
@@ -144,7 +144,8 @@
         } catch (e) {}
     }
 
-    // ---- Splash v4-light: GPU-only, ~1.45s; min 1450ms, max 2050ms ----
+    // ---- Splash v5: full draw-on ~2.9s (user: keep its natural length);
+    // min 2650ms, fail-safe 3350ms ----
     var T0 = Date.now();    function dismissSplash() {
         try {
             var el = document.getElementById('nova-splash');
@@ -152,13 +153,13 @@
             el.classList.add('done');
             setTimeout(function () {
                 try { el.remove(); } catch (e) {}
-            }, 400);
+            }, 500);
         } catch (e) {}
     }
     function splashSchedule() {
-        var wait = Math.max(0, 1450 - (Date.now() - T0));
+        var wait = Math.max(0, 2650 - (Date.now() - T0));
         setTimeout(dismissSplash, wait);
-        setTimeout(dismissSplash, 2050); // fail-safe
+        setTimeout(dismissSplash, 3350); // fail-safe
         try {
             if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 var el = document.getElementById('nova-splash');
@@ -305,26 +306,44 @@
                     });
                 })(btns[i]);
             }
-            // Submit routing: guest bypasses Progres
-            form.addEventListener('submit', function (ev) {
-                try {
-                    var k = document.getElementById('login-keep');
-                    keepChecked = !k || !!k.checked;
-                    var btn = document.getElementById('login-submit');
-                    if (btn) {
-                        btn.classList.add('loading');
-                        if (submitSpinT) clearTimeout(submitSpinT);
-                        submitSpinT = setTimeout(function () { try { btn.classList.remove('loading'); } catch (e) {} }, 25000);
-                    }
-                    if (authMode === 'guest') {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        if (btn) btn.classList.remove('loading');
-                        if (typeof enterAsStudent === 'function') enterAsStudent();
-                        return false;
-                    }
-                } catch (e) {}
-            }, true);
+            // Submit routing rides on a DOCUMENT-CAPTURE listener: it must run
+            // BEFORE the form's inline onsubmit (handleProgresLogin), and the
+            // form is novalidate — hidden required fields in guest mode used
+            // to block the submit event entirely (guest login dead).
+            try {
+                document.addEventListener('submit', function (ev) {
+                    try {
+                        var f = ev.target;
+                        if (!f || f.id !== 'login-form') return;
+                        var k = document.getElementById('login-keep');
+                        keepChecked = !k || !!k.checked;
+                        var btn = document.getElementById('login-submit');
+                        if (btn) {
+                            btn.classList.add('loading');
+                            if (submitSpinT) clearTimeout(submitSpinT);
+                            submitSpinT = setTimeout(function () { try { btn.classList.remove('loading'); } catch (e) {} }, 25000);
+                        }
+                        if (authMode === 'guest') {
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                            if (btn) btn.classList.remove('loading');
+                            if (typeof enterAsStudent === 'function') enterAsStudent();
+                            return;
+                        }
+                        // Student with empty fields: show validation visuals and
+                        // stop the call before the inline handler runs.
+                        var u = document.getElementById('login-reg');
+                        var p = document.getElementById('login-pass');
+                        if (u && p && (!String(u.value || '').trim() || !String(p.value || ''))) {
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                            if (btn) btn.classList.remove('loading');
+                            dfBadSubmit();
+                            try { Feel.error(); } catch (e2) {}
+                        }
+                    } catch (e) {}
+                }, true);
+            } catch (e) {}
             // Landing hides = login success: settle spinner + honor keep-me
             try {
                 var mo = new MutationObserver(function () {

@@ -84,7 +84,7 @@ body { background: #090D16 !important; }
     background: linear-gradient(160deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02)), #131927 !important;
     border: 1px solid rgba(255, 255, 255, .08) !important;
     border-radius: 20px !important;
-    box-shadow: 0 10px 32px rgba(2, 6, 18, .45) !important;
+    box-shadow: 0 10px 32px rgba(2, 6, 18, .45), inset 0 1px 0 rgba(255, 255, 255, .06) !important;
     transition: transform .15s ease, opacity .2s ease, border-color .2s ease;
 }
 .section { transition: opacity .3s ease; }
@@ -185,40 +185,66 @@ body.native-app .bottom-nav .bn-inner {
     filter: none !important;
 }
 
-/* ---- 9. Splash v4-LIGHT: GPU-only (opacity/transform, ~1.5s total).
-   The draw-on version is gone for good: stroke-dashoffset + dot-mask
-   repaint layers every frame and stutter on weak phones. Same look at a
-   glance: logo pops in, one shine sweep, wordmark rises. ---- */
+/* ---- 9. Splash v5: the full draw-on restored (user request) with the jank
+   sources removed. Perf rules: the dot grid is STATIC (an animated opacity
+   on a full-screen layer repaints the whole screen every frame — that was
+   the stutter, not the draw itself); the draw/anchors/fill repaints stay
+   confined to the 148px stage; the exit is a fade + tiny scale, never a
+   full-screen ×9 zoom. Total ~2.9s. ---- */
 #nova-splash {
     position: fixed; inset: 0; z-index: 9999;
     display: flex; align-items: center; justify-content: center;
     background: radial-gradient(120% 120% at 50% 20%, #101828 0%, #0B0E14 60%);
-    transition: opacity .35s ease, visibility .35s;
+    transition: opacity .45s ease, visibility .45s;
 }
 #nova-splash.done { opacity: 0; visibility: hidden; }
+.df-dotgrid {
+    position: absolute; inset: 0; opacity: .55;
+    background-image: radial-gradient(rgba(245, 247, 250, .055) 1px, transparent 1.5px);
+    background-size: 24px 24px;
+    -webkit-mask-image: radial-gradient(70% 60% at 50% 45%, #000 30%, transparent 100%);
+    mask-image: radial-gradient(70% 60% at 50% 45%, #000 30%, transparent 100%);
+}
 .df-sp-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.df-sp-stage { position: relative; width: 148px; height: 148px; overflow: hidden; }
-.df-sp-fill {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    opacity: 0; transform: scale(.9);
-    animation: df-logo-in .45s cubic-bezier(.16, 1, .3, 1) .05s forwards;
+.df-sp-stage {
+    position: relative; width: 148px; height: 148px; overflow: visible;
+    will-change: transform, opacity;
+    animation: df-stage-out .45s ease 2.5s forwards;
 }
-@keyframes df-logo-in { to { opacity: 1; transform: scale(1); } }
-/* single shine sweep across the static logo (transform-only) */
-.df-sp-shine {
-    position: absolute; top: -20%; bottom: -20%; width: 30%;
-    inset-inline-start: -40%;
-    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .38), transparent);
-    transform: translateX(-140%) skewX(-16deg);
-    animation: df-shine .65s ease .55s forwards;
+@keyframes df-stage-out { to { transform: scale(1.12); opacity: 0; } }
+.df-sp-wire, .df-sp-fill { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+/* draw-on: white 2px strokes, pathLength=1, staggered outer->inner */
+.df-sp-wire .draw {
+    fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 1; stroke-dashoffset: 1;
+    animation: df-stroke 1.05s cubic-bezier(.16, 1, .3, 1) forwards, df-wire-out .3s ease 1.3s forwards;
 }
-@keyframes df-shine { to { transform: translateX(560%) skewX(-16deg); } }
+.df-sp-wire .draw.w2 { animation-delay: .3s, 1.3s; }
+@keyframes df-stroke { to { stroke-dashoffset: 0; } }
+@keyframes df-wire-out { to { opacity: 0; } }
+/* blueprint anchors (4px squares) + bezier handles: visible while drawing */
+.df-sp-wire .anchors rect { fill: #0B0E14; stroke: #BFD9FF; stroke-width: 1;
+    opacity: 0; animation: df-anchor-in .25s ease forwards, df-anchor-out .3s ease 1.25s forwards; }
+.df-sp-wire .anchors rect:nth-child(1) { animation-delay: .15s, 1.25s; }
+.df-sp-wire .anchors rect:nth-child(2) { animation-delay: .4s, 1.25s; }
+.df-sp-wire .anchors rect:nth-child(3) { animation-delay: .55s, 1.25s; }
+.df-sp-wire .anchors rect:nth-child(4) { animation-delay: .7s, 1.25s; }
+.df-sp-wire .anchors rect:nth-child(5) { animation-delay: .85s, 1.25s; }
+.df-sp-wire .anchors rect:nth-child(6) { animation-delay: 1s, 1.25s; }
+@keyframes df-anchor-in { to { opacity: 1; } }
+@keyframes df-anchor-out { to { opacity: 0; } }
+.df-sp-wire .handles line { stroke: rgba(191, 217, 255, .55); stroke-width: 1; }
+.df-sp-wire .handles circle { fill: #BFD9FF; }
+.df-sp-wire .handles { opacity: 0; animation: df-anchor-in .3s .3s ease forwards, df-anchor-out .3s ease 1.25s forwards; }
+/* color fill: outer silver, inner blue gradient */
+.df-sp-fill { opacity: 0; animation: df-fill-in .45s ease 1.3s forwards; }
+@keyframes df-fill-in { to { opacity: 1; } }
 /* wordmark: bold sans + serif-italic blue accent; tagline dim */
 .df-sp-word { font-size: 1.6rem; font-weight: 800; color: #F5F7FA; margin: 6px 0 0;
-    opacity: 0; animation: df-rise .4s cubic-bezier(.16, 1, .3, 1) .5s backwards; }
+    opacity: 0; animation: df-rise .45s cubic-bezier(.16, 1, .3, 1) 1.5s backwards; }
 .df-sp-word em { font-family: var(--serif); font-style: italic; color: #2F7CF6; }
 .df-sp-tag { font-size: 13px; color: #8A93A6; margin: 0;
-    opacity: 0; animation: df-rise .4s cubic-bezier(.16, 1, .3, 1) .62s backwards; }
+    opacity: 0; animation: df-rise .45s cubic-bezier(.16, 1, .3, 1) 1.65s backwards; }
 @keyframes df-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ---- D3. AUTH: electric stage + white bottom sheet, FULL-SCREEN ---- */
@@ -402,11 +428,11 @@ body { background: #0B0E14 !important; }
 }
 
 /* ---- 11. Boot-only login entrance (body.boot removed after launch: no replay) ---- */
-body.boot #landing-page .login-brand { animation: nova-pop .5s cubic-bezier(.175, .885, .32, 1.1375) 1.5s backwards; }
-body.boot #landing-page .login-form .input-group:nth-of-type(1) { animation: nova-rise .4s ease 1.62s backwards; }
-body.boot #landing-page .login-form .input-group:nth-of-type(2) { animation: nova-rise .4s ease 1.7s backwards; }
-body.boot #landing-page .login-form .btn-primary { animation: nova-rise .4s ease 1.78s backwards; }
-body.boot #landing-page .dev-contact { animation: nova-fade-slide .45s ease 1.9s backwards; }
+body.boot #landing-page .login-brand { animation: nova-pop .5s cubic-bezier(.175, .885, .32, 1.1375) 2.55s backwards; }
+body.boot #landing-page .login-form .input-group:nth-of-type(1) { animation: nova-rise .4s ease 2.7s backwards; }
+body.boot #landing-page .login-form .input-group:nth-of-type(2) { animation: nova-rise .4s ease 2.78s backwards; }
+body.boot #landing-page .login-form .btn-primary { animation: nova-rise .4s ease 2.86s backwards; }
+body.boot #landing-page .dev-contact { animation: nova-fade-slide .45s ease 2.98s backwards; }
 
 /* ---- 12. Touch ripple on primary buttons (GPU: transform+opacity) ---- */
 .btn { position: relative; overflow: hidden; }
@@ -522,6 +548,102 @@ body.boot #landing-page .dev-contact { animation: nova-fade-slide .45s ease 1.9s
 .set-group, .set-row, .cx-card, .file-card, .calc-module-card, .lib-level-card):nth-child(4) { animation-delay: .12s; }
 .section.active :is(.subject-card, .grade-card, .stat-card, .exam-card, .sched-card,
 .set-group, .set-row, .cx-card, .file-card, .calc-module-card, .lib-level-card):nth-child(n+5) { animation-delay: .16s; }
+
+/* ---- D8. INNER REDESIGN — "global app" pass: fintech numerals, editorial
+   titles, modern tables, polished empties, micro-interactions.
+   CSS-only: JS markup and logic untouched. ---- */
+/* editorial titles everywhere */
+.grades-section-title, .calculator-header h3 {
+    font-family: var(--serif) !important; font-style: italic; font-weight: 700;
+}
+.grades-section-title { font-size: 1.15rem !important; display: flex; align-items: center; gap: 8px; }
+.grades-section-title i { color: #60A5FA !important; }
+.calculator-header h3 { color: #F5F7FA !important; }
+/* hero GPA: gradient numeral */
+.calc-final-val {
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(135deg, #EAF3FF, #67B3FF 55%, #2F7CF6);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent !important;
+}
+/* avg badges: fintech stat chips */
+.avg-badge, .ue-avg, .pb-pass, .pb-fail { font-variant-numeric: tabular-nums; }
+.avg-badge {
+    min-width: 56px !important; padding: 7px 12px !important;
+    border-radius: 12px !important; font-weight: 800 !important; font-size: .95rem !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+.avg-badge.pass { background: rgba(52, 211, 153, .14) !important; color: #34D399 !important; }
+.avg-badge.fail { background: rgba(255, 112, 112, .14) !important; color: #FF7070 !important; }
+/* modern tables */
+.grades-table-wrap { border-color: rgba(255, 255, 255, .08) !important; background: rgba(255, 255, 255, .02) !important; }
+.grades-table-wrap th { color: #8A93A6 !important; font-size: .72rem !important; letter-spacing: .05em; font-weight: 700; }
+.grades-table-wrap tr:nth-child(even) td { background: rgba(255, 255, 255, .025); }
+.grades-table-wrap td { border-color: rgba(255, 255, 255, .06) !important; }
+/* dashed separators → solid hairlines */
+.ue-row { border-top: 1px solid rgba(255, 255, 255, .06) !important; }
+/* empty states: soft blue icon chip + copy */
+.mobile-empty, .lib-empty, .no-results, .sid-res-empty { text-align: center; padding: 44px 20px !important; }
+.mobile-empty i, .lib-empty i, .no-results i, .sid-res-empty i {
+    display: inline-flex !important; align-items: center; justify-content: center;
+    width: 58px; height: 58px; border-radius: 18px; font-size: 1.35rem;
+    background: rgba(59, 130, 246, .12); color: #60A5FA;
+    margin-bottom: 14px; opacity: 1 !important;
+}
+/* micro-interactions */
+.section.active .avg-badge { animation: nova-badge-pop .5s cubic-bezier(.34, 1.56, .64, 1) .25s backwards; }
+@keyframes nova-badge-pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.pressable:active, .dh-qa-feat:active, .dh-qa-cell:active, .dh-qa-wide:active, .dh-sv-row:active {
+    scale: .975;
+    transition: scale .12s ease;
+}
+
+/* ---- D9. last gold sweep: library header olive gradient, campus pm-*,
+   transport/meals dark-gold text, home date chip, focus rings ---- */
+.lib-header {
+    background: linear-gradient(160deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02)), #131927 !important;
+    border: 1px solid rgba(255, 255, 255, .08) !important;
+    box-shadow: 0 10px 32px rgba(2, 6, 18, .45) !important;
+}
+.lib-title { color: #F5F7FA !important; }
+.lib-sub { color: #8A93A6 !important; }
+.lib-back {
+    background: rgba(255, 255, 255, .06) !important;
+    color: #C7D0DE !important;
+    border: 1px solid rgba(255, 255, 255, .1) !important;
+}
+.lib-head-ico {
+    color: #60A5FA !important;
+    background: rgba(59, 130, 246, .12) !important;
+    border-color: rgba(59, 130, 246, .26) !important;
+}
+.lib-btn.view { color: #60A5FA !important; }
+.lib-grid > :nth-child(4n) .ls-ico, .lib-list > :nth-child(4n) .lr-ico {
+    background: rgba(59, 130, 246, .12) !important;
+    border-color: rgba(59, 130, 246, .26) !important;
+    color: #60A5FA !important;
+}
+/* transport/profile/meals: dark-gold text on blue-tinted surfaces → slate */
+.lx-p-head h3, .lx-p-note, .lx-tr-hinfo h2, .lx-m-tksub { color: #C7D0DE !important; }
+.lx-p-setram, .sr-exp { color: #F5F7FA !important; }
+.sr-exp b { color: #C7D0DE !important; }
+/* home date chip (was gold wash) */
+.home-hero { border-color: rgba(255, 255, 255, .1) !important; box-shadow: none !important; }
+.home-hero::before { display: none !important; }
+.hh-name { color: #F5F7FA !important; }
+.hh-date {
+    color: #C7D0DE !important;
+    background: rgba(255, 255, 255, .05) !important;
+    border-color: rgba(255, 255, 255, .1) !important;
+}
+/* campus (جامعتي): tabs/ticker/progress/AR chip → blue */
+.pm-tab.on { color: #60A5FA !important; border-color: rgba(59, 130, 246, .4) !important; background: rgba(59, 130, 246, .12) !important; }
+.pm-ticker .pm-bolt { color: #60A5FA !important; background: rgba(59, 130, 246, .12) !important; }
+.pm-prog .pm-bar i { background: linear-gradient(90deg, #3B82F6, #60A5FA) !important; }
+.pm-ar { color: #60A5FA !important; background: rgba(59, 130, 246, .12) !important; }
+/* keyboard focus rings: blue (was gold) */
+body.native-app button:focus-visible, body.native-app .tile:focus-visible,
+body.native-app .subject-card:focus-visible { outline-color: #60A5FA !important; }
 
 /* ---- D5. ONBOARDING overlay (first run) ---- */
 #df-onboard { position: fixed; inset: 0; z-index: 9000; background: #0B0E14; overflow: hidden; }
