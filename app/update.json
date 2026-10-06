@@ -1,8 +1,14 @@
 {
-  "versionCode": 52,
-  "versionName": "1.4.36",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-52.apk",
-  "sha256": "accaa8d9a9ff9576c2fc05629da389832396d811ded3f5f9d3c7791847b24657",
-  "size": 5548732,
-  "mandatory": false
+  "versionCode": 53,
+  "versionName": "1.4.37",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-53.apk",
+  "sha256": "c069b34efb18aa33f087022d58d424979cb65bfafc1cfcfa431ae2698aeb91f4",
+  "size": 5553959,
+  "mandatory": false,
+  "changelog": [
+    "محدث داخل التطبيق بتصميم جديد: بطاقة التحديث مع سجل ما الجديد وزر لاحقاً",
+    "التنزيل يعمل بخدمة أمامية: الأندرويد لم يعد يقتل العملية في صمت",
+    "تأكيد قبل التنزيل عبر بيانات الهاتف + فحص تلقائي عند إقلاع الهاتف",
+    "زر استثناء البطارية + إشعار تقدم التنزيل في شريط النظام"
+  ]
 }
