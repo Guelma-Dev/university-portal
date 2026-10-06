@@ -16,7 +16,7 @@
         document.body.classList.add('boot');
         setTimeout(function () {
             try { document.body.classList.remove('boot'); } catch (e) {}
-        }, 3100);
+        }, 2600);
     } catch (e) {}
 
     function isNative() {
@@ -144,7 +144,7 @@
         } catch (e) {}
     }
 
-    // ---- Splash v3-light: draw ~1.0s, exit ends 2.1s; min 2050ms, max 2650ms ----
+    // ---- Splash v4-light: GPU-only, ~1.45s; min 1450ms, max 2050ms ----
     var T0 = Date.now();    function dismissSplash() {
         try {
             var el = document.getElementById('nova-splash');
@@ -152,13 +152,13 @@
             el.classList.add('done');
             setTimeout(function () {
                 try { el.remove(); } catch (e) {}
-            }, 600);
+            }, 400);
         } catch (e) {}
     }
     function splashSchedule() {
-        var wait = Math.max(0, 2050 - (Date.now() - T0));
+        var wait = Math.max(0, 1450 - (Date.now() - T0));
         setTimeout(dismissSplash, wait);
-        setTimeout(dismissSplash, 2650); // fail-safe
+        setTimeout(dismissSplash, 2050); // fail-safe
         try {
             if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 var el = document.getElementById('nova-splash');

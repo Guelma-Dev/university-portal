@@ -185,61 +185,40 @@ body.native-app .bottom-nav .bn-inner {
     filter: none !important;
 }
 
-/* ---- 9. DFL splash v3: dot grid -> draw-on w/ anchors -> fill -> wordmark -> 1→9 exit ---- */
+/* ---- 9. Splash v4-LIGHT: GPU-only (opacity/transform, ~1.5s total).
+   The draw-on version is gone for good: stroke-dashoffset + dot-mask
+   repaint layers every frame and stutter on weak phones. Same look at a
+   glance: logo pops in, one shine sweep, wordmark rises. ---- */
 #nova-splash {
     position: fixed; inset: 0; z-index: 9999;
     display: flex; align-items: center; justify-content: center;
     background: radial-gradient(120% 120% at 50% 20%, #101828 0%, #0B0E14 60%);
-    transition: opacity .7s ease, visibility .7s;
+    transition: opacity .35s ease, visibility .35s;
 }
 #nova-splash.done { opacity: 0; visibility: hidden; }
-.df-dotgrid {
-    position: absolute; inset: 0; opacity: 0;
-    background-image: radial-gradient(rgba(245, 247, 250, .06) 1px, transparent 1.5px);
-    background-size: 24px 24px;
-    -webkit-mask-image: radial-gradient(70% 60% at 50% 45%, #000 30%, transparent 100%);
-    mask-image: radial-gradient(70% 60% at 50% 45%, #000 30%, transparent 100%);
-    animation: df-dots-in .7s .05s ease forwards;
-}
-@keyframes df-dots-in { to { opacity: 1; } }
 .df-sp-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-/* LIGHT: total ~2.0s, exit zoom ×4.5 (was ×9 — the giant composite layer
-   was dropped frames on weak phones) */
-.df-sp-stage { position: relative; width: 148px; height: 148px; animation: df-exit-zoom .6s cubic-bezier(.4, 0, 1, 1) 1.5s forwards; }
-@keyframes df-exit-zoom { to { transform: scale(4.5); opacity: 0; } }
-.df-sp-wire, .df-sp-fill { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-/* draw-on: white 2px strokes, pathLength=1, staggered outer->inner */
-.df-sp-wire .draw {
-    fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
-    stroke-dasharray: 1; stroke-dashoffset: 1;
-    animation: df-stroke .9s cubic-bezier(.16, 1, .3, 1) forwards, df-wire-out .25s ease 1.05s forwards;
+.df-sp-stage { position: relative; width: 148px; height: 148px; overflow: hidden; }
+.df-sp-fill {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    opacity: 0; transform: scale(.9);
+    animation: df-logo-in .45s cubic-bezier(.16, 1, .3, 1) .05s forwards;
 }
-.df-sp-wire .draw.w2 { animation-delay: .25s, 1.05s; }
-@keyframes df-stroke { to { stroke-dashoffset: 0; } }
-@keyframes df-wire-out { to { opacity: 0; } }
-/* blueprint anchors (4px squares) + bezier handles: visible while drawing */
-.df-sp-wire .anchors rect { fill: #0B0E14; stroke: #BFD9FF; stroke-width: 1;
-    opacity: 0; animation: df-anchor-in .22s ease forwards, df-anchor-out .25s ease 1s forwards; }
-.df-sp-wire .anchors rect:nth-child(1) { animation-delay: .12s, 1s; }
-.df-sp-wire .anchors rect:nth-child(2) { animation-delay: .3s, 1s; }
-.df-sp-wire .anchors rect:nth-child(3) { animation-delay: .42s, 1s; }
-.df-sp-wire .anchors rect:nth-child(4) { animation-delay: .54s, 1s; }
-.df-sp-wire .anchors rect:nth-child(5) { animation-delay: .66s, 1s; }
-.df-sp-wire .anchors rect:nth-child(6) { animation-delay: .78s, 1s; }
-@keyframes df-anchor-in { to { opacity: 1; } }
-@keyframes df-anchor-out { to { opacity: 0; } }
-.df-sp-wire .handles line { stroke: rgba(191, 217, 255, .55); stroke-width: 1; }
-.df-sp-wire .handles circle { fill: #BFD9FF; }
-.df-sp-wire .handles { opacity: 0; animation: df-anchor-in .25s .22s ease forwards, df-anchor-out .25s ease 1s forwards; }
-/* fill phase: outer white gradient, inner blue gradient */
-.df-sp-fill { opacity: 0; animation: df-fill-in .4s ease 1.02s forwards; }
-@keyframes df-fill-in { to { opacity: 1; } }
+@keyframes df-logo-in { to { opacity: 1; transform: scale(1); } }
+/* single shine sweep across the static logo (transform-only) */
+.df-sp-shine {
+    position: absolute; top: -20%; bottom: -20%; width: 30%;
+    inset-inline-start: -40%;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .38), transparent);
+    transform: translateX(-140%) skewX(-16deg);
+    animation: df-shine .65s ease .55s forwards;
+}
+@keyframes df-shine { to { transform: translateX(560%) skewX(-16deg); } }
 /* wordmark: bold sans + serif-italic blue accent; tagline dim */
 .df-sp-word { font-size: 1.6rem; font-weight: 800; color: #F5F7FA; margin: 6px 0 0;
-    opacity: 0; animation: df-rise .4s cubic-bezier(.16, 1, .3, 1) 1.15s backwards; }
+    opacity: 0; animation: df-rise .4s cubic-bezier(.16, 1, .3, 1) .5s backwards; }
 .df-sp-word em { font-family: var(--serif); font-style: italic; color: #2F7CF6; }
 .df-sp-tag { font-size: 13px; color: #8A93A6; margin: 0;
-    opacity: 0; animation: df-rise .4s cubic-bezier(.16, 1, .3, 1) 1.28s backwards; }
+    opacity: 0; animation: df-rise .4s cubic-bezier(.16, 1, .3, 1) .62s backwards; }
 @keyframes df-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ---- D3. AUTH: electric stage + white bottom sheet, FULL-SCREEN ---- */
@@ -423,11 +402,11 @@ body { background: #0B0E14 !important; }
 }
 
 /* ---- 11. Boot-only login entrance (body.boot removed after launch: no replay) ---- */
-body.boot #landing-page .login-brand { animation: nova-pop .5s cubic-bezier(.175, .885, .32, 1.1375) 1.9s backwards; }
-body.boot #landing-page .login-form .input-group:nth-of-type(1) { animation: nova-rise .4s ease 2.05s backwards; }
-body.boot #landing-page .login-form .input-group:nth-of-type(2) { animation: nova-rise .4s ease 2.13s backwards; }
-body.boot #landing-page .login-form .btn-primary { animation: nova-rise .4s ease 2.21s backwards; }
-body.boot #landing-page .dev-contact { animation: nova-fade-slide .45s ease 2.33s backwards; }
+body.boot #landing-page .login-brand { animation: nova-pop .5s cubic-bezier(.175, .885, .32, 1.1375) 1.5s backwards; }
+body.boot #landing-page .login-form .input-group:nth-of-type(1) { animation: nova-rise .4s ease 1.62s backwards; }
+body.boot #landing-page .login-form .input-group:nth-of-type(2) { animation: nova-rise .4s ease 1.7s backwards; }
+body.boot #landing-page .login-form .btn-primary { animation: nova-rise .4s ease 1.78s backwards; }
+body.boot #landing-page .dev-contact { animation: nova-fade-slide .45s ease 1.9s backwards; }
 
 /* ---- 12. Touch ripple on primary buttons (GPU: transform+opacity) ---- */
 .btn { position: relative; overflow: hidden; }
@@ -504,21 +483,45 @@ body.boot #landing-page .dev-contact { animation: nova-fade-slide .45s ease 2.33
     background: linear-gradient(135deg, #3B82F6, #2563EB) !important;
     box-shadow: 0 4px 14px rgba(59, 130, 246, .45) !important;
 }
-/* bottom nav: floating DARK bar (matches the navy identity) */
-.bottom-nav { background: transparent !important; border: none !important; box-shadow: none !important; }
-.bottom-nav .bn-inner {
-    background: #0D1322 !important;
-    border-radius: 20px !important;
-    margin: 0 14px calc(10px + env(safe-area-inset-bottom)) !important;
-    border: 1px solid rgba(255, 255, 255, .08) !important;
-    box-shadow: 0 14px 34px rgba(0, 0, 0, .4) !important;
-}
-.bottom-nav .bn-btn, .bottom-nav .bn-item { color: #8A93A6 !important; }
-.bottom-nav .bn-btn.active, .bottom-nav .bn-item.active {
-    color: #60A5FA !important;
-    background: transparent !important;
-}
+/* bottom nav: DOCKED full-width bar (user request — the floating pill is gone) */
+.bottom-nav .bn-inner { margin: 0 !important; border-radius: 0 !important; border: none !important; box-shadow: none !important; }
 .bottom-nav .bn-btn.active::after { background: #60A5FA !important; box-shadow: 0 0 8px rgba(96, 165, 250, .5) !important; }
+
+/* ---- D6. INNER SCREENS: literal-gold leftovers → navy/blue system ---- */
+.grades-notice { border-color: rgba(59, 130, 246, .25) !important; background: rgba(59, 130, 246, .08) !important; }
+.ph-tile { border-color: rgba(255, 255, 255, .1) !important; }
+.ph-tile:hover { border-color: rgba(59, 130, 246, .4) !important; box-shadow: 0 8px 24px rgba(0, 0, 0, .3) !important; }
+/* بطاقة الطالب الرسمية */
+.rsc-card { border-color: rgba(255, 255, 255, .1) !important; }
+.rsc-topbar { border-bottom-color: rgba(255, 255, 255, .08) !important; background: rgba(255, 255, 255, .03) !important; }
+.rsc-title, .rsc-state, .rsc-reg-num, .rsc-bus-icon { color: #60A5FA !important; }
+.rsc-title { background: none !important; }
+.rsc-photo-box, .rsc-qr { border-color: rgba(96, 165, 250, .35) !important; }
+.rsc-footer { background: linear-gradient(135deg, #2563EB, #3B82F6) !important; }
+.offline-banner { background: rgba(59, 130, 246, .12) !important; border-color: rgba(59, 130, 246, .3) !important; }
+.calc-module-avg.good { color: #60A5FA !important; }
+/* header chrome */
+.appbar-logo { box-shadow: none !important; }
+.appbar-btn:hover { border-color: rgba(59, 130, 246, .4) !important; background: rgba(59, 130, 246, .09) !important; }
+/* library: the 4n+1 gold icon variant joins the blue family */
+.lib-grid > :nth-child(4n+1) .ls-ico, .lib-list > :nth-child(4n+1) .lr-ico {
+    background: rgba(59, 130, 246, .12) !important;
+    border-color: rgba(59, 130, 246, .26) !important;
+}
+
+/* ---- D7. Entrance stagger on EVERY section's cards (cheap: opacity+transform) ---- */
+.section.active :is(.subject-card, .grade-card, .stat-card, .exam-card, .sched-card,
+.set-group, .set-row, .cx-card, .file-card, .calc-module-card, .lib-level-card) {
+    animation: nova-rise .38s cubic-bezier(.22, .9, .3, 1) backwards;
+}
+.section.active :is(.subject-card, .grade-card, .stat-card, .exam-card, .sched-card,
+.set-group, .set-row, .cx-card, .file-card, .calc-module-card, .lib-level-card):nth-child(2) { animation-delay: .04s; }
+.section.active :is(.subject-card, .grade-card, .stat-card, .exam-card, .sched-card,
+.set-group, .set-row, .cx-card, .file-card, .calc-module-card, .lib-level-card):nth-child(3) { animation-delay: .08s; }
+.section.active :is(.subject-card, .grade-card, .stat-card, .exam-card, .sched-card,
+.set-group, .set-row, .cx-card, .file-card, .calc-module-card, .lib-level-card):nth-child(4) { animation-delay: .12s; }
+.section.active :is(.subject-card, .grade-card, .stat-card, .exam-card, .sched-card,
+.set-group, .set-row, .cx-card, .file-card, .calc-module-card, .lib-level-card):nth-child(n+5) { animation-delay: .16s; }
 
 /* ---- D5. ONBOARDING overlay (first run) ---- */
 #df-onboard { position: fixed; inset: 0; z-index: 9000; background: #0B0E14; overflow: hidden; }

@@ -9,17 +9,17 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="المنصة الجامعية">
-    <link rel="manifest" href="manifest.json?v=1.4.48">
+    <link rel="manifest" href="manifest.json?v=1.4.49">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css?v=1.4.48">
-    <link rel="stylesheet" href="css/luxury.css?v=1.4.48">
-    <link rel="stylesheet" href="css/auth.css?v=1.4.48">
-    <link rel="stylesheet" href="css/native.css?v=1.4.48">
-    <link rel="stylesheet" href="css/campus.css?v=1.4.48">
-    <link rel="stylesheet" href="css/nova.css?v=1.4.48">
+    <link rel="stylesheet" href="css/styles.css?v=1.4.49">
+    <link rel="stylesheet" href="css/luxury.css?v=1.4.49">
+    <link rel="stylesheet" href="css/auth.css?v=1.4.49">
+    <link rel="stylesheet" href="css/native.css?v=1.4.49">
+    <link rel="stylesheet" href="css/campus.css?v=1.4.49">
+    <link rel="stylesheet" href="css/nova.css?v=1.4.49">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -44,28 +44,10 @@
     </script>
 </head>
 <body>
-    <!-- ===== DFL splash: dot grid -> draw-on w/ anchors -> fill -> wordmark -> 1→9 exit ===== -->
+    <!-- ===== DFL splash v4-light: logo pop + shine + wordmark (GPU-only) ===== -->
     <div id="nova-splash" aria-hidden="true">
-        <div class="df-dotgrid"></div>
         <div class="df-sp-inner">
             <div class="df-sp-stage">
-                <svg class="df-sp-wire" viewBox="0 0 64 64">
-                    <path class="draw w1" pathLength="1" d="M32 9 L58 21 L32 33 L6 21 Z"></path>
-                    <path class="draw w2" pathLength="1" d="M10 43c7-4 15-4 22 0 7-4 15-4 22 0v10c-7-4-15-4-22 0-7-4-15-4-22 0z"></path>
-                    <g class="anchors">
-                        <rect x="30" y="7" width="4" height="4"></rect>
-                        <rect x="56" y="19" width="4" height="4"></rect>
-                        <rect x="30" y="31" width="4" height="4"></rect>
-                        <rect x="4" y="19" width="4" height="4"></rect>
-                        <rect x="8" y="41" width="4" height="4"></rect>
-                        <rect x="52" y="41" width="4" height="4"></rect>
-                    </g>
-                    <g class="handles">
-                        <line x1="32" y1="9" x2="44" y2="2"></line><circle cx="44" cy="2" r="1.4"></circle>
-                        <line x1="58" y1="21" x2="62" y2="12"></line><circle cx="62" cy="12" r="1.4"></circle>
-                        <line x1="10" y1="43" x2="2" y2="38"></line><circle cx="2" cy="38" r="1.4"></circle>
-                    </g>
-                </svg>
                 <svg class="df-sp-fill" viewBox="0 0 64 64">
                     <defs>
                         <linearGradient id="dfFillCap" x1="0" y1="0" x2="1" y2="1">
@@ -79,8 +61,9 @@
                     </defs>
                     <polygon points="32,9 58,21 32,33 6,21" fill="url(#dfFillCap)"></polygon>
                     <path d="M22 27.5v6.8c0 5.2 20 5.2 20 0v-6.8l-10 4.2z" fill="#1D5FD6"></path>
-                    <path d="M10 43.5c7-3.6 15-3.6 22 0 7-3.6 15-3.6 22 0v9.5c-7-3.6-15-3.6-22 0-7-3.6-15-3.6-22 0z" fill="url(#dfFillBook)"></path>
+                    <path d="M10 43.5c7-3.6 15-3.6 22 0 7-3.6 15-3.6 22 0v9.5c-7-4-15-3.6-22 0-7-3.6-15-3.6-22 0z" fill="url(#dfFillBook)"></path>
                 </svg>
+                <span class="df-sp-shine"></span>
             </div>
             <p class="df-sp-word">بوابة <em>الطالب</em></p>
             <p class="df-sp-tag">حسابك الجامعي في جيبك</p>
@@ -948,20 +931,20 @@
 
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/native.js?v=1.4.48"></script>
-    <script src="js/app.js?v=1.4.48"></script>
-    <script src="js/sec-loader.js?v=1.4.48"></script>
-    <script src="js/sec-transport.js?v=1.4.48"></script>
-    <script src="js/sec-meals.js?v=1.4.48"></script>
-    <script src="js/sec-profile.js?v=1.4.48"></script>
-    <script src="js/portal-notify.js?v=1.4.48"></script>
-    <script src="js/portal-update.js?v=1.4.48"></script>
-    <script src="js/sec-inscription.js?v=1.4.48"></script>
-    <script src="js/sec-study.js?v=1.4.48"></script>
-    <script src="js/sec-campus.js?v=1.4.48"></script>
-    <script src="js/portal-feel.js?v=1.4.48"></script>
-    <script src="js/native-shell.js?v=1.4.48" defer></script>
-    <script src="js/auth-ui.js?v=1.4.48" defer></script>
+    <script src="js/native.js?v=1.4.49"></script>
+    <script src="js/app.js?v=1.4.49"></script>
+    <script src="js/sec-loader.js?v=1.4.49"></script>
+    <script src="js/sec-transport.js?v=1.4.49"></script>
+    <script src="js/sec-meals.js?v=1.4.49"></script>
+    <script src="js/sec-profile.js?v=1.4.49"></script>
+    <script src="js/portal-notify.js?v=1.4.49"></script>
+    <script src="js/portal-update.js?v=1.4.49"></script>
+    <script src="js/sec-inscription.js?v=1.4.49"></script>
+    <script src="js/sec-study.js?v=1.4.49"></script>
+    <script src="js/sec-campus.js?v=1.4.49"></script>
+    <script src="js/portal-feel.js?v=1.4.49"></script>
+    <script src="js/native-shell.js?v=1.4.49" defer></script>
+    <script src="js/auth-ui.js?v=1.4.49" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});
