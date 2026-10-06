@@ -144,8 +144,8 @@
         } catch (e) {}
     }
 
-    // ---- Splash v6: grid -> slow solo draw -> fill -> swallow-zoom (~3.7s);
-    // min 3150ms, fail-safe 3850ms ----
+    // ---- Splash v7: clip-reveal draw + pen + fill + swallow (~3.6s);
+    // min 3050ms, fail-safe 3750ms ----
     var T0 = Date.now();    function dismissSplash() {
         try {
             var el = document.getElementById('nova-splash');
@@ -157,9 +157,9 @@
         } catch (e) {}
     }
     function splashSchedule() {
-        var wait = Math.max(0, 3150 - (Date.now() - T0));
+        var wait = Math.max(0, 3050 - (Date.now() - T0));
         setTimeout(dismissSplash, wait);
-        setTimeout(dismissSplash, 3850); // fail-safe
+        setTimeout(dismissSplash, 3750); // fail-safe
         try {
             if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 var el = document.getElementById('nova-splash');
