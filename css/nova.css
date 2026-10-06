@@ -711,6 +711,26 @@ body.native-app .subject-card:focus-visible { outline-color: #60A5FA !important;
 .dh-qa-cell { border-radius: 18px !important; }
 /* timeline: blue tabular times */
 .dh-tlrow .dh-time { color: #60A5FA !important; font-weight: 900 !important; }
+/* THE VISIBLE RESTRUCTURE — quick cells become vertical icon tiles */
+.dh-qa-cell {
+    flex-direction: column; text-align: center; gap: 10px; padding: 18px 10px 15px;
+}
+.dh-qa-cell .dh-sv-ico { width: 48px; height: 48px; font-size: 1.1rem; border-radius: 15px; }
+.dh-qa-cell .dh-qa-m { align-items: center; }
+/* services menu → 2-col launcher grid (was stacked rows) */
+.dh-sv { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dh-sv-row {
+    flex-direction: column; text-align: center; gap: 10px;
+    padding: 16px 8px 14px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02)), #131927 !important;
+    border: 1px solid rgba(255, 255, 255, .08) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 10px 32px rgba(2, 6, 18, .45), inset 0 1px 0 rgba(255, 255, 255, .06) !important;
+}
+.dh-sv-row .dh-sv-ico { width: 48px; height: 48px; font-size: 1.1rem; border-radius: 15px; }
+.dh-sv-row .dh-sv-name { font-size: .82rem !important; line-height: 1.35; }
+.dh-sv-row .dh-go { display: none !important; }
+.dh-sv-row:active { scale: .96; }
 
 /* ---- D5. ONBOARDING overlay (first run) ---- */
 #df-onboard { position: fixed; inset: 0; z-index: 9000; background: #0B0E14; overflow: hidden; }
