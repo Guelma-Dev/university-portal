@@ -30,8 +30,9 @@ public class UpdateInstallReceiver extends BroadcastReceiver {
         if (intent == null) return;
         try {
             Context ctx = context.getApplicationContext();
-            int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS,
-                PackageInstaller.STATUS_FAILURE);
+            // Sentinel when the system delivers no status at all: reported
+            // distinctly so a bare "status=1" can never be confused with it.
+            int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, Integer.MIN_VALUE);
             String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
             int legacy = intent.getIntExtra("android.content.pm.extra.LEGACY_STATUS", Integer.MIN_VALUE);
             String pkg = intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME);
@@ -39,6 +40,13 @@ public class UpdateInstallReceiver extends BroadcastReceiver {
             int sess = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1);
             android.util.Log.i(TAG, "install status=" + status + " legacy=" + legacy
                 + " pkg=" + pkg + " other=" + other + " session=" + sess + " msg=" + msg);
+            if (status == Integer.MIN_VALUE) {
+                JSObject r0 = new JSObject();
+                r0.put("phase", "failed");
+                r0.put("message", "no-status-extra");
+                UpdatePlugin.emit("installStatus", r0);
+                return;
+            }
             // Ignore events for superseded sessions (a newer tap abandoned
             // them via abandonOrphans): only the latest commit owns the UI.
             try {
@@ -63,7 +71,16 @@ public class UpdateInstallReceiver extends BroadcastReceiver {
                         confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         ctx.startActivity(confirm);
                     } catch (Exception e) {
+                        // BAL-proof (Morphe parity): a backgrounded app cannot
+                        // start the confirm activity on Android 14/15. Offer it
+                        // as a tap-to-confirm notification instead of failing.
                         android.util.Log.w(TAG, "confirm start blocked: " + errText(e));
+                        if (postConfirmNotification(ctx, confirm)) {
+                            JSObject rc = new JSObject();
+                            rc.put("phase", "confirming");
+                            UpdatePlugin.emit("installStatus", rc);
+                            break;
+                        }
                         JSObject r0 = new JSObject();
                         r0.put("phase", "failed");
                         r0.put("message", "confirm blocked: " + errText(e));
@@ -102,7 +119,8 @@ public class UpdateInstallReceiver extends BroadcastReceiver {
                     JSObject r = new JSObject();
                     r.put("phase", "failed");
                     StringBuilder sb = new StringBuilder();
-                    sb.append("system status=").append(status);
+                    sb.append("system status=").append(status)
+                        .append(" (").append(statusName(status)).append(")");
                     if (legacy != Integer.MIN_VALUE) sb.append(" legacy=").append(legacy);
                     if (msg != null && !msg.isEmpty()) sb.append(": ").append(msg);
                     if (pkg != null && !pkg.isEmpty()) sb.append(" pkg=").append(pkg);
@@ -114,6 +132,51 @@ public class UpdateInstallReceiver extends BroadcastReceiver {
             }
         } catch (Exception e) {
             android.util.Log.w(TAG, "receiver error: " + errText(e));
+        }
+    }
+
+    /** Tap-to-confirm notification for blocked background confirmations. */
+    private static boolean postConfirmNotification(Context ctx, Intent confirm) {
+        try {
+            UpdateForegroundService.ensureChannel(ctx);
+            android.app.PendingIntent tap;
+            try {
+                int fl = android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+                if (android.os.Build.VERSION.SDK_INT >= 23) fl |= android.app.PendingIntent.FLAG_IMMUTABLE;
+                tap = android.app.PendingIntent.getActivity(ctx, 9101, confirm, fl);
+            } catch (Exception e) {
+                return false;
+            }
+            androidx.core.app.NotificationCompat.Builder b =
+                new androidx.core.app.NotificationCompat.Builder(ctx, UpdateForegroundService.CH)
+                    .setContentTitle("اضغط لإتمام تثبيت التحديث")
+                    .setContentText("النظام ينتظر تأكيدك — اضغط هنا لفتح شاشة التثبيت")
+                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setContentIntent(tap)
+                    .setAutoCancel(true);
+            android.app.NotificationManager nm =
+                (android.app.NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return false;
+            nm.notify(4103, b.build());
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static String statusName(int status) {
+        switch (status) {
+            case PackageInstaller.STATUS_PENDING_USER_ACTION: return "بانتظار تأكيدك";
+            case PackageInstaller.STATUS_SUCCESS: return "نجاح";
+            case PackageInstaller.STATUS_FAILURE: return "فشل عام";
+            case PackageInstaller.STATUS_FAILURE_ABORTED: return "أُلغيت الجلسة";
+            case PackageInstaller.STATUS_FAILURE_BLOCKED: return "محظور من النظام";
+            case PackageInstaller.STATUS_FAILURE_CONFLICT: return "تعارض";
+            case PackageInstaller.STATUS_FAILURE_INCOMPATIBLE: return "غير متوافق";
+            case PackageInstaller.STATUS_FAILURE_INVALID: return "حزمة غير صالحة";
+            case PackageInstaller.STATUS_FAILURE_STORAGE: return "تخزين";
+            case PackageInstaller.STATUS_FAILURE_TIMEOUT: return "مهلة";
+            default: return "غير معروف";
         }
     }
 }

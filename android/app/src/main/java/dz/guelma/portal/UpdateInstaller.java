@@ -63,6 +63,22 @@ public final class UpdateInstaller {
         } catch (Exception e) {
             throw new Exception("stage=params: " + msg(e));
         }
+        // Morphe recipe (verified from its bytecode): attribute the session
+        // as store-sourced on API 33+ so strict ROMs treat it like a store
+        // update instead of a hostile sideload. Originating uid is explicit.
+        // NOTE: setRequestUpdateOwnership (API 34) is deliberately NOT set:
+        // it needs UPDATE_PACKAGES_WITHOUT_USER_ACTION (not granted to
+        // sideloaded apps) and could turn a working session into a silent
+        // refusal. The External/FileProvider plan is our ownership-free path.
+        try {
+            params.setOriginatingUid(android.os.Process.myUid());
+        } catch (Exception ignored) {}
+        if (Build.VERSION.SDK_INT >= 31) {
+            try {
+                // PACKAGE_SOURCE_STORE (=1): hidden constant, hence the literal.
+                params.setPackageSource(1);
+            } catch (Exception ignored) {}
+        }
         if (Build.VERSION.SDK_INT >= 31) {
             try {
                 params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED);

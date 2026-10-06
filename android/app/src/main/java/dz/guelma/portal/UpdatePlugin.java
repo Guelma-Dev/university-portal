@@ -677,6 +677,57 @@ public class UpdatePlugin extends Plugin {
         }
     }
 
+    /** External plan (Morphe parity): hand the VERIFIED apk to the system
+     *  installer UI via FileProvider ACTION_VIEW. Same mechanism as a
+     *  browser download — works on ROMs that silently nuke raw sessions.
+     *  The file is NOT re-downloaded; verifyApkFile gates it identically. */
+    @PluginMethod
+    public void installViaSystem(PluginCall call) {
+        long versionCode = 0;
+        versionCode = numLong(call, "versionCode", versionCode);
+        String sha256 = call.getString("sha256", "");
+        long expectedSize = 0;
+        expectedSize = numLong(call, "size", expectedSize);
+        if (versionCode <= 0 || expectedSize <= 0) {
+            call.reject("bad install spec");
+            return;
+        }
+        try {
+            Context ctx = getContext();
+            File apk = destFile(ctx, versionCode);
+            String problem = verifyApkFile(ctx, apk, versionCode, sha256, expectedSize);
+            if (problem != null) {
+                call.reject(problem);
+                return;
+            }
+            android.net.Uri uri;
+            try {
+                uri = androidx.core.content.FileProvider.getUriForFile(
+                    ctx, ctx.getPackageName() + ".fileprovider", apk);
+            } catch (Exception e) {
+                call.reject("install failed: file provider unavailable");
+                return;
+            }
+            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_VIEW);
+            i.setDataAndType(uri, "application/vnd.android.package-archive");
+            i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                | android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            i.putExtra("android.intent.extra.NOT_UNKNOWN_SOURCE", true);
+            i.putExtra("android.intent.extra.INSTALLER_PACKAGE_NAME", ctx.getPackageName());
+            UpdateForegroundService.stop(ctx);
+            ctx.startActivity(i);
+            JSObject r = new JSObject();
+            r.put("status", "system-ui");
+            call.resolve(r);
+        } catch (android.content.ActivityNotFoundException e) {
+            call.reject("install failed: no system installer found");
+        } catch (SecurityException se) {
+            call.reject("installation blocked by Android");
+        } catch (Exception e) {
+            call.reject("install failed: " + e.getMessage());
+        }
+    }
+
     /** @return null when installable, otherwise a user-facing reason key. */
     static String compatibilityProblem(Context ctx, File apk, long expectedVersionCode) {
         try {

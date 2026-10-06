@@ -581,7 +581,7 @@ window.PortalUpdate = (function () {
         if (installBusy) { toast('التثبيت جارٍ — انتظر نافذة النظام', 'info'); return state; }
         installBusy = true;
         fgInstalling();
-        setState({ name: 'installing', error: '', errorCode: '' });
+        setState({ name: 'installing', installingAt: Date.now(), viaSystem: false, error: '', errorCode: '' });
         try {
             var r = await pl.verifyAndInstall({ versionCode: m.versionCode, sha256: m.sha256 || '', size: m.size || 0 });
             installBusy = false;
@@ -603,7 +603,42 @@ window.PortalUpdate = (function () {
         return state;
     }
 
-    // Battery-optimization state for the updater card footer (native only).
+    // External plan (Morphe parity): verified file → system installer UI.
+    // No re-download; the same sha/size gate applies natively.
+    async function installViaSystem() {
+        var m = state.remote;
+        var dl = readDl();
+        if (!m || !dl || dl.versionCode !== m.versionCode) {
+            setState({ name: 'error', error: 'ملف التحديث غير موجود — أعد التنزيل' });
+            return state;
+        }
+        var pl = plugin();
+        if (!isNative() || !pl || typeof pl.installViaSystem !== 'function') {
+            return openDownloadPage();
+        }
+        setState({ name: 'installing', installingAt: Date.now(), viaSystem: true, error: '', errorCode: '' });
+        try {
+            var r = await pl.installViaSystem({ versionCode: m.versionCode, sha256: m.sha256 || '', size: m.size || 0 });
+            if (r && r.status === 'system-ui') return state;
+            throw new Error('install-rejected');
+        } catch (e) {
+            var friendly = installErrFriendly(e);
+            setState({ name: 'error', error: withLegacyHint(friendly), errorCode: 'install-failed' });
+        }
+        return state;
+    }
+
+    // System-UI installs send no completion event: if the user backs out,
+    // settle the stale "installing" back to "downloaded" on next refresh.
+    function settleStaleInstalling() {
+        try {
+            if (state.name === 'installing' && state.installingAt
+                && (Date.now() - state.installingAt) > 90000) {
+                setState({ name: 'downloaded', installingAt: 0, viaSystem: false, error: '' });
+            }
+        } catch (e) {}
+        return state;
+    }
     async function refreshBattery() {
         state.batt = null;
         try {
@@ -679,14 +714,22 @@ window.PortalUpdate = (function () {
                     saveDl(null);
                 } else if (phase === 'cancelled') {
                     fgFinished();
-                    setState({ name: 'downloaded', error: '' });
+                    setState({ name: 'downloaded', installingAt: 0, viaSystem: false, error: '' });
                     toast('تم إلغاء التثبيت', 'info');
+                } else if (phase === 'confirming') {
+                    setState({ name: 'installing', installingAt: Date.now(), viaSystem: false, error: '', errorCode: '' });
                 } else if (phase === 'failed') {
                     fgFinished();
+                    // Bare STATUS_FAILURE with no legacy/message = the ROM
+                    // silently refused the raw session (Realme/ColorOS do
+                    // this). Route to the system-installer plan instead.
+                    var rawMsg = ev && ev.message ? String(ev.message) : '';
+                    var bare = /^system status=1 \(/.test(rawMsg) && rawMsg.indexOf('legacy=') === -1;
+                    var code = bare ? 'install-session-blocked' : 'install-failed';
                     // Surface the system reason (storage, signature, blocked...)
                     // instead of hiding it behind a generic message.
-                    var detail = ev && ev.message ? ' — ' + String(ev.message).slice(0, 200) : '';
-                    setState({ name: 'error', error: withLegacyHint('تعذر تثبيت التحديث' + detail), errorCode: 'install-failed' });
+                    var detail = rawMsg ? ' — ' + rawMsg.slice(0, 200) : '';
+                    setState({ name: 'error', error: withLegacyHint('تعذر تثبيت التحديث' + detail), errorCode: code });
                     attachInstaller();
                 }
             });
@@ -758,6 +801,8 @@ window.PortalUpdate = (function () {
         startDownload: startDownload,
         cancelDownload: cancelDownload,
         installUpdate: installUpdate,
+        installViaSystem: installViaSystem,
+        settleStaleInstalling: settleStaleInstalling,
         confirmMetered: confirmMetered,
         dismissLater: dismissLater,
         refreshBattery: refreshBattery,
@@ -888,9 +933,18 @@ window.PortalUpdateUI = (function () {
                 + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installUpdate()"><i class="fas fa-right-to-bracket"></i> تثبيت الآن</button>'
                 + '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.dismissLater()">لاحقاً</button></div>';
         } else if (st.name === 'installing') {
-            h = '<div class="mupd-card"><p class="mupd-msg"><i class="fas fa-spinner fa-spin"></i> التثبيت جاهز — أكّد التثبيت في نافذة النظام</p>'
-                + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installUpdate()"><i class="fas fa-rotate"></i> إعادة المحاولة</button></div>';
+            var sysHint = st.viaSystem
+                ? 'أكمل التثبيت في شاشة النظام — إن رجعت هنا بلا تثبيت فأعد المحاولة'
+                : 'التثبيت جاهز — أكّد التثبيت في نافذة النظام';
+            h = '<div class="mupd-card"><p class="mupd-msg"><i class="fas fa-spinner fa-spin"></i> ' + sysHint + '</p>'
+                + (st.viaSystem ? '' : '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installUpdate()"><i class="fas fa-rotate"></i> إعادة المحاولة</button>') + '</div>';
         } else if (st.name === 'error') {
+            if (st.errorCode === 'install-session-blocked') {
+                h = '<div class="mupd-card err"><p class="mupd-err"><i class="fas fa-triangle-exclamation"></i> نظام الهاتف رفض التثبيت المباشر — بعض الأجهزة (Realme وأخواتها) تقيد جلسات التثبيت الصامتة. الملف سليم ومفحوص، أكمل عبر مثبت النظام:</p>'
+                    + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.installViaSystem()"><i class="fas fa-right-to-bracket"></i> التثبيت عبر النظام</button>'
+                    + '<div class="mupd-row"><button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.installUpdate()">إعادة المحاولة</button>'
+                    + (st.remote && st.remote.apkUrl ? '<button type="button" class="btn btn-ghost btn-sm" onclick="PortalUpdate.openDownloadPage()">المتصفح</button>' : '') + '</div></div>';
+            } else {
             var dlFail = /تنزيل/.test(String(st.error || ''));
             h = '<div class="mupd-card err"><p class="mupd-err"><i class="fas fa-triangle-exclamation"></i> '
                 + esc(st.error || (dlFail ? 'تعذر تنزيل التحديث' : 'تعذر تثبيت التحديث')) + '</p>'
@@ -901,6 +955,7 @@ window.PortalUpdateUI = (function () {
                     ? '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.openDownloadPage()"><i class="fas fa-globe"></i> تنزيل عبر المتصفح</button>'
                     : '')
                 + '<button type="button" class="btn btn-primary btn-full" onclick="PortalUpdate.checkUpdate({manual:true})"><i class="fas fa-rotate"></i> إعادة المحاولة</button></div>';
+            }
         }
         box.innerHTML = h;
     }
@@ -911,6 +966,7 @@ window.PortalUpdateUI = (function () {
         await paintVersion();
         try { window.PortalUpdate.bindNativeEvents(); } catch (e) {}
         try { await window.PortalUpdate.refreshBattery(); } catch (e) {}
+        try { window.PortalUpdate.settleStaleInstalling(); } catch (e) {}
         render(window.PortalUpdate.getState());
         try { await window.PortalUpdate.checkUpdate({}); } catch (e) {}
         try { await window.PortalUpdate.resume(); } catch (e) {}
