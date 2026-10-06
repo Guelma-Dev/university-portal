@@ -1,12 +1,13 @@
 {
-  "versionCode": 61,
-  "versionName": "1.4.45",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-61.apk",
-  "sha256": "22454943c0c9eff8d888afc7f0a32a2490bc964eb51b39890742c4a49cf980d3",
-  "size": 5564313,
+  "versionCode": 62,
+  "versionName": "1.4.46",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-62.apk",
+  "sha256": "8b6f501ddb162b9d538ac0379cb30db918b4058704e2f84fdc172070051157f7",
+  "size": 5564942,
   "mandatory": false,
   "changelog": [
-    "سبلاش مخطط أزرق: شبكة ثم رسم الشعار بالنقاط المضيئة ثم اكتماله",
-    "بطاقات الرئيسية تدخل متتابعة بتأثير الارتداد الفاخر"
+    "اللوغو يكبر ويلتهم الشاشة ثم يظهر التطبيق",
+    "دخول متدرج لشاشة التسجيل + تموج لمعان على الأزرار",
+    "نبضة على التنقل السفلي + انزلاق التنبيهات"
   ]
 }
