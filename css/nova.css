@@ -73,21 +73,21 @@ body::after {
 }
 body { background: #090D16 !important; }
 
-/* ---- 4. Unified glass cards + smooth transitions ---- */
+/* ---- 4. Unified glass cards — SOLID layers (backdrop-filter removed:
+          it was the main jank source on weak phones; the gradient overlay
+          reads identically over the navy bg) ---- */
 .subject-card, .admin-card, .dh-hero-card, .calc-module-card, .view-card,
 .stat-card, .rsc-card, .mupd-card, .file-card, .transcript-card,
 .set-group, .set-row, .cx-card, .notif-card, .sched-card, .exam-card,
 .grade-card, .lib-level-card, .mod-card, .acc-card, .modal-card,
 .app-menu, .pomo-panel, .guest-card {
     background: linear-gradient(160deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02)), #131927 !important;
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
-    backdrop-filter: blur(16px) saturate(140%);
     border: 1px solid rgba(255, 255, 255, .08) !important;
     border-radius: 20px !important;
     box-shadow: 0 10px 32px rgba(2, 6, 18, .45) !important;
-    transition: all .3s ease;
+    transition: transform .15s ease, opacity .2s ease, border-color .2s ease;
 }
-.section { transition: all .3s ease; }
+.section { transition: opacity .3s ease; }
 .toast {
     background: #1A2234 !important; color: #fff !important;
     border: 1px solid rgba(255, 255, 255, .1) !important;
@@ -97,6 +97,7 @@ body { background: #090D16 !important; }
 .btn-primary {
     background: linear-gradient(135deg, #3B82F6, #2563EB) !important;
     color: #fff !important;
+    border: none !important; /* kills the legacy gold ring from auth.css */
     border-radius: 16px !important;
     box-shadow: 0 8px 26px rgba(59, 130, 246, .38) !important;
     transition: scale .15s ease, opacity .15s ease, box-shadow .2s ease !important;
@@ -158,21 +159,30 @@ body { background: #090D16 !important; }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* ---- 8. Shell: app-bar glass + bottom-nav #0D1322 ---- */
-.app-bar, .appbar, #app-bar {
-    background: rgba(9, 13, 22, .78) !important;
-    -webkit-backdrop-filter: blur(18px) saturate(150%);
-    backdrop-filter: blur(18px) saturate(150%);
+/* ---- 8. Shell: app-bar solid (no blur) + bottom-nav #0D1322 ---- */
+.app-bar, .appbar, #app-bar,
+body.native-app .app-bar {
+    background: rgba(9, 13, 22, .92) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
     border-bottom: 1px solid rgba(255, 255, 255, .07) !important;
 }
-.bottom-nav, .bottom-nav .bn-inner {
+.bottom-nav, .bottom-nav .bn-inner,
+body.native-app .bottom-nav .bn-inner {
     background: #0D1322 !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
     border-top: 1px solid rgba(255, 255, 255, .10) !important;
     box-shadow: 0 -8px 28px rgba(2, 6, 18, .5) !important;
 }
-.bn-item.active, .bn-item.on {
+.bn-btn.active, .bn-item.active, .bn-item.on {
     color: #60A5FA !important;
-    text-shadow: 0 0 18px rgba(96, 165, 250, .65);
+    background: transparent !important; /* kill any legacy pill/square highlight */
+    text-shadow: none !important;
+}
+.bn-btn.active i, .bn-item.active i, .bn-item.on i {
+    color: #60A5FA !important;
+    filter: none !important;
 }
 
 /* ---- 9. DFL splash v3: dot grid -> draw-on w/ anchors -> fill -> wordmark -> 1→9 exit ---- */
@@ -193,48 +203,55 @@ body { background: #090D16 !important; }
 }
 @keyframes df-dots-in { to { opacity: 1; } }
 .df-sp-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.df-sp-stage { position: relative; width: 148px; height: 148px; animation: df-exit-zoom .65s cubic-bezier(.4, 0, 1, 1) 1.9s forwards; }
-@keyframes df-exit-zoom { to { transform: scale(9); opacity: 0; } }
+/* LIGHT: total ~2.0s, exit zoom ×4.5 (was ×9 — the giant composite layer
+   was dropped frames on weak phones) */
+.df-sp-stage { position: relative; width: 148px; height: 148px; animation: df-exit-zoom .6s cubic-bezier(.4, 0, 1, 1) 1.5s forwards; }
+@keyframes df-exit-zoom { to { transform: scale(4.5); opacity: 0; } }
 .df-sp-wire, .df-sp-fill { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 /* draw-on: white 2px strokes, pathLength=1, staggered outer->inner */
 .df-sp-wire .draw {
     fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
     stroke-dasharray: 1; stroke-dashoffset: 1;
-    animation: df-stroke 1.2s cubic-bezier(.16, 1, .3, 1) forwards, df-wire-out .3s ease 1.35s forwards;
+    animation: df-stroke .9s cubic-bezier(.16, 1, .3, 1) forwards, df-wire-out .25s ease 1.05s forwards;
 }
-.df-sp-wire .draw.w2 { animation-delay: .35s, 1.35s; }
+.df-sp-wire .draw.w2 { animation-delay: .25s, 1.05s; }
 @keyframes df-stroke { to { stroke-dashoffset: 0; } }
 @keyframes df-wire-out { to { opacity: 0; } }
 /* blueprint anchors (4px squares) + bezier handles: visible while drawing */
 .df-sp-wire .anchors rect { fill: #0B0E14; stroke: #BFD9FF; stroke-width: 1;
-    opacity: 0; animation: df-anchor-in .25s ease forwards, df-anchor-out .3s ease 1.3s forwards; }
-.df-sp-wire .anchors rect:nth-child(1) { animation-delay: .15s, 1.3s; }
-.df-sp-wire .anchors rect:nth-child(2) { animation-delay: .4s, 1.3s; }
-.df-sp-wire .anchors rect:nth-child(3) { animation-delay: .55s, 1.3s; }
-.df-sp-wire .anchors rect:nth-child(4) { animation-delay: .7s, 1.3s; }
-.df-sp-wire .anchors rect:nth-child(5) { animation-delay: .85s, 1.3s; }
-.df-sp-wire .anchors rect:nth-child(6) { animation-delay: 1s, 1.3s; }
+    opacity: 0; animation: df-anchor-in .22s ease forwards, df-anchor-out .25s ease 1s forwards; }
+.df-sp-wire .anchors rect:nth-child(1) { animation-delay: .12s, 1s; }
+.df-sp-wire .anchors rect:nth-child(2) { animation-delay: .3s, 1s; }
+.df-sp-wire .anchors rect:nth-child(3) { animation-delay: .42s, 1s; }
+.df-sp-wire .anchors rect:nth-child(4) { animation-delay: .54s, 1s; }
+.df-sp-wire .anchors rect:nth-child(5) { animation-delay: .66s, 1s; }
+.df-sp-wire .anchors rect:nth-child(6) { animation-delay: .78s, 1s; }
 @keyframes df-anchor-in { to { opacity: 1; } }
 @keyframes df-anchor-out { to { opacity: 0; } }
 .df-sp-wire .handles line { stroke: rgba(191, 217, 255, .55); stroke-width: 1; }
 .df-sp-wire .handles circle { fill: #BFD9FF; }
-.df-sp-wire .handles { opacity: 0; animation: df-anchor-in .3s .3s ease forwards, df-anchor-out .3s ease 1.3s forwards; }
+.df-sp-wire .handles { opacity: 0; animation: df-anchor-in .25s .22s ease forwards, df-anchor-out .25s ease 1s forwards; }
 /* fill phase: outer white gradient, inner blue gradient */
-.df-sp-fill { opacity: 0; animation: df-fill-in .45s ease 1.3s forwards; }
+.df-sp-fill { opacity: 0; animation: df-fill-in .4s ease 1.02s forwards; }
 @keyframes df-fill-in { to { opacity: 1; } }
 /* wordmark: bold sans + serif-italic blue accent; tagline dim */
 .df-sp-word { font-size: 1.6rem; font-weight: 800; color: #F5F7FA; margin: 6px 0 0;
-    opacity: 0; animation: df-rise .45s cubic-bezier(.16, 1, .3, 1) 1.45s backwards; }
+    opacity: 0; animation: df-rise .4s cubic-bezier(.16, 1, .3, 1) 1.15s backwards; }
 .df-sp-word em { font-family: var(--serif); font-style: italic; color: #2F7CF6; }
 .df-sp-tag { font-size: 13px; color: #8A93A6; margin: 0;
-    opacity: 0; animation: df-rise .45s cubic-bezier(.16, 1, .3, 1) 1.6s backwards; }
+    opacity: 0; animation: df-rise .4s cubic-bezier(.16, 1, .3, 1) 1.28s backwards; }
 @keyframes df-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
-/* ---- D3. AUTH: electric stage + white bottom sheet ---- */
+/* ---- D3. AUTH: electric stage + white bottom sheet, FULL-SCREEN ---- */
 #landing-page { position: relative; overflow: hidden; background: #0B0E14; }
 #df-bolts { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-#landing-page .login-scroll { position: relative; z-index: 1; }
-#landing-page .login-brand { text-align: start; }
+/* full-screen: brand pinned top, sheet flush to the bottom edge */
+#landing-page .login-scroll { position: relative; z-index: 1; align-items: stretch; }
+#landing-page .login-card {
+    margin: 0 auto; width: 100%; max-width: 560px; flex: 1;
+    justify-content: space-between; padding: 0;
+}
+#landing-page .login-brand { text-align: start; padding: clamp(22px, 6vh, 48px) 22px 16px; }
 #landing-page .login-title { font-family: var(--serif); font-style: italic; font-weight: 800; font-size: 40px; color: #F5F7FA; margin: 0; }
 #landing-page .login-sub { font-size: 14px; color: #8A93A6; }
 /* sheet */
@@ -304,19 +321,31 @@ body { background: #090D16 !important; }
 .df-sheet .login-submit.loading .df-label { opacity: 0; }
 .df-sheet .login-submit.loading .df-spinner { opacity: 1; }
 @keyframes df-spin { to { transform: rotate(360deg); } }
-/* OR + social */
+/* divider + single staff-login button (replaces the Google/Apple pair) */
 .df-or { display: flex; align-items: center; gap: 10px; margin: 16px 0 12px; font-size: 11px; letter-spacing: .12em; color: #8A93A6; font-weight: 800; }
 .df-or::before, .df-or::after { content: ""; flex: 1; height: 1px; background: #E5E8EF; }
-.df-social { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.df-ghost {
-    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    background: #fff; border: 1px solid #E5E8EF; border-radius: 14px; padding: 12px 0;
-    font-weight: 800; font-size: .9rem; color: #0B0E14; cursor: pointer; font-family: inherit;
-    transition: scale .15s ease;
+.df-admin {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    width: 100%; background: #fff; border: 1px solid #E5E8EF; border-radius: 14px;
+    padding: 13px 0; font-weight: 800; font-size: .9rem; color: #0B0E14;
+    cursor: pointer; font-family: inherit; transition: scale .15s ease;
 }
-.df-ghost:active { scale: .97; }
-.df-ghost b { font-size: 1.05rem; color: #2F7CF6; }
-.df-ghost .fa-apple { font-size: 1.1rem; }
+.df-admin i { color: #2F7CF6; font-size: .95rem; }
+.df-admin:active { scale: .97; }
+
+/* ghost buttons + modal header icons: cool slate/blue (auth.css gold legacy) */
+.btn-ghost {
+    color: #C7D0DE !important;
+    background: rgba(255, 255, 255, .04) !important;
+    border: 1px solid rgba(255, 255, 255, .12) !important;
+}
+.btn-ghost:hover { color: #fff !important; border-color: rgba(255, 255, 255, .25) !important; }
+.modal-header i {
+    color: #60A5FA !important;
+    background: rgba(59, 130, 246, .12) !important;
+    border: 1px solid rgba(59, 130, 246, .26) !important;
+    box-shadow: none !important;
+}
 
 /* ---- 9b. Staggered entrance for home quick-access (Flutter Interval style) ---- */
 #section-home.active .dh-qa-grid > * { animation: nova-rise .45s cubic-bezier(.22, .9, .3, 1) backwards; }
@@ -375,7 +404,9 @@ body { background: #090D16 !important; }
     --bg-primary: #0B0E14;
     --bg-secondary: #11151D;
     --bg-tertiary: #1A2234;
-    --bg-card: #FFFFFF;
+    /* was #FFFFFF and broke every component pairing bg-card with light text */
+    --bg-card: #131927;
+    --card: #131927;
     --pill-active: #0B0E14;
     --danger: #E5484D;
     --field-fill: #F2F4F7;
@@ -392,11 +423,11 @@ body { background: #0B0E14 !important; }
 }
 
 /* ---- 11. Boot-only login entrance (body.boot removed after launch: no replay) ---- */
-body.boot #landing-page .login-brand { animation: nova-pop .6s cubic-bezier(.175, .885, .32, 1.1375) 2.55s backwards; }
-body.boot #landing-page .login-form .input-group:nth-of-type(1) { animation: nova-rise .45s ease 2.7s backwards; }
-body.boot #landing-page .login-form .input-group:nth-of-type(2) { animation: nova-rise .45s ease 2.8s backwards; }
-body.boot #landing-page .login-form .btn-primary { animation: nova-rise .45s ease 2.9s backwards; }
-body.boot #landing-page .dev-contact { animation: nova-fade-slide .5s ease 3.05s backwards; }
+body.boot #landing-page .login-brand { animation: nova-pop .5s cubic-bezier(.175, .885, .32, 1.1375) 1.9s backwards; }
+body.boot #landing-page .login-form .input-group:nth-of-type(1) { animation: nova-rise .4s ease 2.05s backwards; }
+body.boot #landing-page .login-form .input-group:nth-of-type(2) { animation: nova-rise .4s ease 2.13s backwards; }
+body.boot #landing-page .login-form .btn-primary { animation: nova-rise .4s ease 2.21s backwards; }
+body.boot #landing-page .dev-contact { animation: nova-fade-slide .45s ease 2.33s backwards; }
 
 /* ---- 12. Touch ripple on primary buttons (GPU: transform+opacity) ---- */
 .btn { position: relative; overflow: hidden; }
@@ -421,7 +452,7 @@ body.boot #landing-page .dev-contact { animation: nova-fade-slide .5s ease 3.05s
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ---- D4. HOME editorial + crossfade router + white bottom nav ---- */
+/* ---- D4. HOME editorial + crossfade router + dark bottom nav ---- */
 /* crossfade: entering screen 1.04→1 + fade 400ms (ghost overlap approx) */
 .section.active { animation: df-xfade .4s cubic-bezier(.16, 1, .3, 1) !important; }
 @keyframes df-xfade {
@@ -436,28 +467,58 @@ body.boot #landing-page .dev-contact { animation: nova-fade-slide .5s ease 3.05s
 /* chips → pills, active black */
 .lib-chip, .chip, .pill, .meal-chip, .ds-chip {
     border-radius: 999px !important;
-    transition: all .25s ease;
+    transition: transform .25s ease, background .25s ease, border-color .25s ease;
 }
 .lib-chip.on, .chip.on, .pill.on, .meal-chip.on, .ds-chip.on {
     background: #0B0E14 !important; color: #fff !important; border-color: #0B0E14 !important;
 }
-/* white editorial cards r24 */
-.dh-qa-feat, .dh-qa-wide, .dh-qa-cell, .lib-chip, .lib-row {
-    background: #fff !important; color: #0B0E14 !important;
-    border-radius: 24px !important;
-    border: 1px solid rgba(11, 14, 20, .06) !important;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, .18) !important;
+/* quick-access + account rows: SAME dark glass as the rest of the app.
+   (The white-card experiment is gone: white bg + var(--s-txt) white text
+   rendered labels invisible.) */
+.dh-qa-feat, .dh-qa-wide, .dh-qa-cell, .account-card, .account-list button {
+    background: linear-gradient(160deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02)), #131927 !important;
+    color: #F5F7FA !important;
+    border: 1px solid rgba(255, 255, 255, .08) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 10px 32px rgba(2, 6, 18, .45) !important;
 }
-/* bottom nav: floating white bar */
+.dh-qa-feat, .dh-qa-wide { border-radius: 20px !important; }
+.dh-qa-feat .dh-sv-ico, .dh-qa-cell .dh-sv-ico, .dh-qa-wide .dh-sv-ico { color: #60A5FA; }
+.account-list button:active { background: rgba(255, 255, 255, .06) !important; }
+/* ONE blue icon chip everywhere — the gold/green/amber rainbow ends here.
+   Last-loaded so it also beats styles.css literal-gold gradients. */
+.dh-sv-ico, .dh-sv-ico.sx-gold, .dh-sv-ico.sx-blue, .dh-sv-ico.sx-green,
+.dh-sv-ico.sx-amber, .dh-sv-ico.sx-neutral,
+#section-home .dh-qa-feat .dh-sv-ico.sx-gold, [data-theme="light"] .dh-sv-ico.sx-gold {
+    color: #60A5FA !important;
+    background: rgba(59, 130, 246, .12) !important;
+    border-color: rgba(59, 130, 246, .26) !important;
+    box-shadow: none !important;
+}
+/* student photo ring: blue, not gold */
+.account-avatar .acc-photo { border-color: rgba(96, 165, 250, .55) !important; }
+/* toggles: blue knob (was #D4AF37 gold) — cool gray when off */
+.switch .knob { background: #94A3B8 !important; }
+.switch.on { background: rgba(59, 130, 246, .15) !important; border-color: rgba(59, 130, 246, .35) !important; }
+.switch.on .knob {
+    background: linear-gradient(135deg, #3B82F6, #2563EB) !important;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, .45) !important;
+}
+/* bottom nav: floating DARK bar (matches the navy identity) */
 .bottom-nav { background: transparent !important; border: none !important; box-shadow: none !important; }
 .bottom-nav .bn-inner {
-    background: #fff !important; border-radius: 20px !important;
+    background: #0D1322 !important;
+    border-radius: 20px !important;
     margin: 0 14px calc(10px + env(safe-area-inset-bottom)) !important;
-    border: 1px solid rgba(11, 14, 20, .06) !important;
-    box-shadow: 0 14px 34px rgba(0, 0, 0, .35) !important;
+    border: 1px solid rgba(255, 255, 255, .08) !important;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .4) !important;
 }
-.bottom-nav .bn-item { color: #8A93A6 !important; }
-.bottom-nav .bn-item.active, .bottom-nav .bn-item.on { color: #2F7CF6 !important; text-shadow: none !important; }
+.bottom-nav .bn-btn, .bottom-nav .bn-item { color: #8A93A6 !important; }
+.bottom-nav .bn-btn.active, .bottom-nav .bn-item.active {
+    color: #60A5FA !important;
+    background: transparent !important;
+}
+.bottom-nav .bn-btn.active::after { background: #60A5FA !important; box-shadow: 0 0 8px rgba(96, 165, 250, .5) !important; }
 
 /* ---- D5. ONBOARDING overlay (first run) ---- */
 #df-onboard { position: fixed; inset: 0; z-index: 9000; background: #0B0E14; overflow: hidden; }

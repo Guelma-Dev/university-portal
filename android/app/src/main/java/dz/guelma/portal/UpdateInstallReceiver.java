@@ -55,7 +55,9 @@ public class UpdateInstallReceiver extends BroadcastReceiver {
                     android.util.Log.i(TAG, "ignoring stale session " + sess + " (latest=" + last + ")");
                     return;
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                android.util.Log.w(TAG, "stale-session guard failed: " + e);
+            }
             switch (status) {
                 case PackageInstaller.STATUS_PENDING_USER_ACTION: {
                     Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);

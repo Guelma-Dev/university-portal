@@ -16,7 +16,7 @@
         document.body.classList.add('boot');
         setTimeout(function () {
             try { document.body.classList.remove('boot'); } catch (e) {}
-        }, 5200);
+        }, 3100);
     } catch (e) {}
 
     function isNative() {
@@ -144,7 +144,7 @@
         } catch (e) {}
     }
 
-    // ---- Splash v3: draw ~1.5s, exit zoom ends 2.55s; min 2600ms, max 3400ms ----
+    // ---- Splash v3-light: draw ~1.0s, exit ends 2.1s; min 2050ms, max 2650ms ----
     var T0 = Date.now();    function dismissSplash() {
         try {
             var el = document.getElementById('nova-splash');
@@ -152,13 +152,13 @@
             el.classList.add('done');
             setTimeout(function () {
                 try { el.remove(); } catch (e) {}
-            }, 650);
+            }, 600);
         } catch (e) {}
     }
     function splashSchedule() {
-        var wait = Math.max(0, 2600 - (Date.now() - T0));
+        var wait = Math.max(0, 2050 - (Date.now() - T0));
         setTimeout(dismissSplash, wait);
-        setTimeout(dismissSplash, 3400); // fail-safe
+        setTimeout(dismissSplash, 2650); // fail-safe
         try {
             if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 var el = document.getElementById('nova-splash');
@@ -187,7 +187,8 @@
             var W = 0, H = 0, DPR = 1;
             function size() {
                 try {
-                    DPR = Math.min(2, window.devicePixelRatio || 1);
+                    // cap 1.5: DPR 2 doubles the stroke raster cost on weak phones
+                    DPR = Math.min(1.5, window.devicePixelRatio || 1);
                     W = cv.clientWidth; H = cv.clientHeight;
                     cv.width = W * DPR; cv.height = H * DPR;
                     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -228,34 +229,50 @@
                 bolts.push({ pts: midBolt(x, -10, x + (Math.random() - .5) * 120, H * (0.5 + Math.random() * 0.4), 46), born: performance.now(), life: 600 });
             }
             function frame(now) {
-                boltsRAF = requestAnimationFrame(frame);
                 try {
-                    if (document.hidden || !landingVisible()) { ctx.clearRect(0, 0, W, H); bolts = []; boltNext = now + 800; return; }
+                    // Park the loop while the login screen is hidden: no RAF
+                    // churn, a cheap 600ms timer wakes it back up.
+                    if (document.hidden || !landingVisible()) {
+                        ctx.clearRect(0, 0, W, H);
+                        bolts = []; boltNext = now + 800;
+                        boltsRAF = 0;
+                        setTimeout(function () {
+                            if (!boltsRAF) boltsRAF = requestAnimationFrame(frame);
+                        }, 600);
+                        return;
+                    }
+                    boltsRAF = requestAnimationFrame(frame);
                     ctx.clearRect(0, 0, W, H);
-                    if (now >= boltNext) { spawn(); boltNext = now + 1200 + Math.random() * 800; }
+                    if (now >= boltNext) { spawn(); boltNext = now + 1800 + Math.random() * 1200; }
                     bolts = bolts.filter(function (b) { return now - b.born < b.life; });
                     for (var i = 0; i < bolts.length; i++) {
                         var b = bolts[i], k = 1 - (now - b.born) / b.life;
                         ctx.save();
                         ctx.globalAlpha = Math.max(0, k) * 0.9;
+                        // Fake glow = two strokes (shadowBlur is a per-frame
+                        // raster cost weak phones can't afford).
+                        ctx.strokeStyle = 'rgba(47, 124, 246, .30)';
+                        ctx.lineWidth = 3.5;
+                        strokeBolt(b.pts);
                         ctx.strokeStyle = '#BFD9FF';
-                        ctx.lineWidth = 1.4;
-                        ctx.shadowColor = '#2F7CF6';
-                        ctx.shadowBlur = 12;
-                        ctx.beginPath();
-                        ctx.moveTo(b.pts[0][0], b.pts[0][1]);
-                        for (var j = 1; j < b.pts.length; j++) ctx.lineTo(b.pts[j][0], b.pts[j][1]);
-                        ctx.stroke();
-                        var brs = b.pts.branches || [];
-                        for (var q = 0; q < brs.length; q++) {
-                            ctx.beginPath();
-                            ctx.moveTo(brs[q][0][0], brs[q][0][1]);
-                            for (var w = 1; w < brs[q].length; w++) ctx.lineTo(brs[q][w][0], brs[q][w][1]);
-                            ctx.stroke();
-                        }
+                        ctx.lineWidth = 1.2;
+                        strokeBolt(b.pts);
                         ctx.restore();
                     }
                 } catch (e) {}
+            }
+            function strokeBolt(pts) {
+                ctx.beginPath();
+                ctx.moveTo(pts[0][0], pts[0][1]);
+                for (var j = 1; j < pts.length; j++) ctx.lineTo(pts[j][0], pts[j][1]);
+                ctx.stroke();
+                var brs = pts.branches || [];
+                for (var q = 0; q < brs.length; q++) {
+                    ctx.beginPath();
+                    ctx.moveTo(brs[q][0][0], brs[q][0][1]);
+                    for (var w = 1; w < brs[q].length; w++) ctx.lineTo(brs[q][w][0], brs[q][w][1]);
+                    ctx.stroke();
+                }
             }
             boltNext = performance.now() + 500;
             boltsRAF = requestAnimationFrame(frame);
@@ -339,15 +356,11 @@
                     }
                 } catch (e) {}
             });
-            // Forgot + social (honest toasts: no fake auth providers)
+            // Forgot link (honest toast) — staff login is an inline button now.
             var fg = document.getElementById('forgot-link');
             if (fg) fg.addEventListener('click', function () {
                 try { window.showToast('لتغيير كلمة المرور راجع مصلحة الدراسة', 'info'); } catch (e) {}
             });
-            var sg = document.getElementById('soc-google'), sa = document.getElementById('soc-apple');
-            function social(ev) { if (ev) ev.preventDefault(); try { window.showToast('الدخول برقم التسجيل الجامعي فقط', 'info'); } catch (e) {} }
-            if (sg) sg.addEventListener('click', social);
-            if (sa) sa.addEventListener('click', social);
         } catch (e) {}
     }
 

@@ -441,7 +441,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
         check(!h.includes('student-login-modal'), tag + 'no intermediate login screen');
         check(!h.includes('شاملة لطلبة جميع الجامعات') && !h.includes('lc-trust') && !h.includes('lc-footer'), tag + 'no marketing/clutter blocks');
         check(h.includes('سجّل الدخول للوصول إلى حسابك'), tag + 'short subtitle');
-        check(h.includes('class="admin-fab"') && h.includes('showAdminLogin()'), tag + 'admin is small floating action');
+        check(h.includes('class="df-admin"') && h.includes('showAdminLogin()'), tag + 'staff login is an inline sheet button');
+        check(!h.includes('admin-fab'), tag + 'floating admin fab removed');
+        check(!h.includes('soc-google') && !h.includes('soc-apple'), tag + 'no fake social providers');
         check(!h.includes('btn-admin'), tag + 'no large admin button');
     }
     check(appJs.includes('async function greetStudent'), 'real-name greeting helper');
