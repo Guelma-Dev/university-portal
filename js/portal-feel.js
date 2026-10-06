@@ -118,26 +118,22 @@
         } catch (e) {}
     }
 
-    // ---- Splash: min 1500ms, max 2600ms, GPU-only fade ----
+    // ---- Splash: blueprint timeline ends ~2.2s; fade, min 2300ms, max 3100ms ----
     var T0 = Date.now();
     function dismissSplash() {
         try {
             var el = document.getElementById('nova-splash');
             if (!el || el.classList.contains('done')) return;
-            var logo = document.getElementById('nova-sp-logo');
-            if (logo) logo.classList.add('flash');
+            el.classList.add('done');
             setTimeout(function () {
-                el.classList.add('done');
-                setTimeout(function () {
-                    try { el.remove(); } catch (e) {}
-                }, 650);
-            }, 350);
+                try { el.remove(); } catch (e) {}
+            }, 650);
         } catch (e) {}
     }
     function splashSchedule() {
-        var wait = Math.max(0, 1500 - (Date.now() - T0));
+        var wait = Math.max(0, 2300 - (Date.now() - T0));
         setTimeout(dismissSplash, wait);
-        setTimeout(dismissSplash, 2600); // fail-safe
+        setTimeout(dismissSplash, 3100); // fail-safe
         try {
             if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 var el = document.getElementById('nova-splash');
