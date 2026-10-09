@@ -32,6 +32,14 @@ DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///university.db')
 # Render/Neon sometimes gives postgres:// instead of postgresql://
 if DATABASE_URL.startswith('postgres://'):
     DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+if DATABASE_URL.startswith('postgresql://'):
+    # Prefer psycopg v3 (SQLAlchemy 2 default); fall back to psycopg2 when
+    # the v3 wheel didn't make it into the build — never crash on driver.
+    try:
+        import psycopg  # noqa: F401
+        DATABASE_URL = DATABASE_URL.replace('postgresql://', 'postgresql+psycopg://', 1)
+    except ImportError:
+        DATABASE_URL = DATABASE_URL.replace('postgresql://', 'postgresql+psycopg2://', 1)
 
 JWT_SECRET = os.environ.get('JWT_SECRET', 'change-me-in-production')
 ADMIN_USER = os.environ.get('ADMIN_USER', 'admin')
