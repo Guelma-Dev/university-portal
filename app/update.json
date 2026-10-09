@@ -1,14 +1,13 @@
 {
-  "versionCode": 67,
-  "versionName": "1.4.51",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-67.apk",
-  "sha256": "950ceda06affe655e61d461e696b4ebe64a069e0b21f55d3823bea6ed2cd0ae9",
-  "size": 5867983,
+  "versionCode": 70,
+  "versionName": "1.4.54",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-70.apk",
+  "sha256": "e650d8254901151b0ee900e078e95a3f439d50d340923c0dae7242f5411af1ba",
+  "size": 5870911,
   "mandatory": false,
   "changelog": [
-    "سبلاش سينمائي جديد: شبكة هندسية + رسم بطيء بقلم متوهج + تعبئة بالألوان + ابتلاع الشاشة",
-    "طريقة رسم GPU خالص — سلس حتى على الهواتف الضعيفة",
-    "دخول الضيف اشتغل (كان معطلاً) + شاشة ضيف متناسقة بلا فراغ",
-    "إخفاء شريط التمرير الأبيض الجانبي (RTL)"
+    "إصلاح تعليق جامعتي: مهلة شبكة + زر لا يعلق + رسائل واضحة",
+    "التفويض يعمل عبر الخادم على أي هاتف",
+    "دخول جامعتي بهوية التطبيق + ألوان موحدة + بحث بارز بالمكتبة"
   ]
 }
