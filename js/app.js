@@ -3712,6 +3712,7 @@ window.LibraryView = (function () {
     }
     function go(step) {
         hideAllLibSteps();
+        clearStepSearch();
         const el = $('lib-step-' + step);
         if (el) el.classList.add('active');
     }
@@ -4416,10 +4417,45 @@ window.LibraryView = (function () {
         init();
     }
 
+    // بحث فوري داخل قوائم المكتبة (خطوات 2/3/4): إخفاء غير المطابق فقط.
+    function filterStep(input, boxId) {
+        const box = document.getElementById(boxId);
+        if (!box) return;
+        const q = normText(input && input.value);
+        const kids = box.children;
+        let shown = 0;
+        for (let i = 0; i < kids.length; i++) {
+            const hit = !q || normText(kids[i].textContent).indexOf(q) !== -1;
+            kids[i].style.display = hit ? '' : 'none';
+            if (hit) shown++;
+        }
+        let empty = box.querySelector('[data-lib-empty]');
+        if (!shown) {
+            if (!empty) {
+                empty = document.createElement('div');
+                empty.setAttribute('data-lib-empty', '1');
+                empty.className = 'lib-empty';
+                empty.innerHTML = '<i class="fas fa-search"></i><p>لا نتائج مطابقة</p>';
+                box.appendChild(empty);
+            }
+            empty.style.display = '';
+        } else if (empty) {
+            empty.style.display = 'none';
+        }
+    }
+
+    function clearStepSearch() {
+        ['lib-q-2', 'lib-q-3', 'lib-q-4'].forEach(function (id) {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+    }
+
     return {
         init: init,
         open: open,
         back: back,
+        filterStep: filterStep,
         selectLevel: selectLevel,
         selectBranch: selectBranch,
         selectBranchYear: selectBranchYear,

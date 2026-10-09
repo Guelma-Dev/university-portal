@@ -226,7 +226,17 @@
     function _httpFallback(method, url, headers, bodyText) {
         const head = Object.assign({}, headers);
         if (bodyText != null && bodyText !== '') head['Content-Length'] = String(PENV.enc.encode(bodyText).length);
-        return fetch(url, { method: method, headers: head, body: bodyText || null }).then(function (r) {
+        // Bounded: an unbounded fetch hangs the UI forever on a stalled
+        // connection (the campus skeleton/login-button freeze). 25s max.
+        let ctrl = null, timer = null;
+        try {
+            if (typeof AbortController !== 'undefined') {
+                ctrl = new AbortController();
+                timer = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 25000);
+            }
+        } catch (e) { ctrl = null; }
+        return fetch(url, { method: method, headers: head, body: bodyText || null, signal: ctrl ? ctrl.signal : undefined }).then(function (r) {
+            try { if (timer) clearTimeout(timer); } catch (e) {}
             return r.arrayBuffer().then(function (buf) {
                 const bytes = new Uint8Array(buf);
                 const mime = _mq(bytes);
@@ -247,6 +257,7 @@
                 };
             });
         }).catch(function (err) {
+            try { if (timer) clearTimeout(timer); } catch (e) {}
             PN.log({ kind: 'http-error', url: _hostOnly(url), method: method, status: null, error: _errMsg(err) });
             throw err;
         });

@@ -1790,6 +1790,7 @@ _acad = _reg('academic', lambda: __import__('services.academic_service', fromlis
 _onou = _reg('onou', lambda: __import__('services.onou_service', fromlist=['bp']))
 _reg('inscription', lambda: __import__('services.inscription_service', fromlist=['bp']))
 _reg('pms', lambda: __import__('services.pms_service', fromlist=['bp']))
+_reg('campus', lambda: __import__('services.campus_service', fromlist=['bp']))
 try:
     if _onou and hasattr(_onou, 'start_autobook'):
         _onou.start_autobook()

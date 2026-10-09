@@ -760,3 +760,21 @@ body.native-app .subject-card:focus-visible { outline-color: #60A5FA !important;
 .df-ob-body p { color: #8A93A6; font-size: .92rem; margin: 0 0 16px; }
 .df-ob-body .btn { height: 52px; border-radius: 999px !important; }
 .df-ob-cap { text-align: center; font-size: .75rem !important; margin: 12px 0 0 !important; }
+
+/* ---- D11. Library: prominent step search + organized headers ---- */
+.lib-searchbar {
+    display: flex; align-items: center; gap: 10px;
+    background: #1A2234; border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 999px; margin: 12px 14px; padding: 4px 18px 4px 6px;
+    box-shadow: 0 6px 20px rgba(2, 6, 18, .4);
+}
+.lib-searchbar:focus-within { border-color: rgba(59, 130, 246, .6); box-shadow: 0 0 0 4px rgba(59, 130, 246, .14); }
+.lib-searchbar i { color: #60A5FA; }
+.lib-searchbar input {
+    flex: 1; border: none; outline: none; background: none;
+    color: #fff; font-family: inherit; font-size: .95rem; min-height: 46px;
+}
+.lib-searchbar input::placeholder { color: #5D6880; }
+.lib-searchbar input::-webkit-search-cancel-button { filter: invert(.7); }
+.lib-section-label { color: #8A93A6 !important; font-weight: 800; font-size: .8rem; }
+.lib-empty p { color: #F5F7FA !important; }

@@ -47,6 +47,54 @@
     }
     function saveDelegates(a) { try { localStorage.setItem(DEL_KEY, JSON.stringify(a)); } catch (e) {} }
 
+    const CAMPUS_API = window.location.origin + '/api/campus';
+
+    function ownerToken() {
+        try {
+            const s = JSON.parse(localStorage.getItem('progres_session') || 'null');
+            return (s && s.token) || '';
+        } catch (e) { return ''; }
+    }
+
+    // Server is truth, localStorage is cache (works offline + cross-device).
+    async function syncDelegatesFromServer() {
+        try {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 20000);
+            const res = await fetch(CAMPUS_API + '/delegates', { signal: ctrl.signal, cache: 'no-store' });
+            clearTimeout(t);
+            if (!res.ok) return false;
+            const d = await res.json();
+            if (d && Array.isArray(d.delegates)) {
+                saveDelegates(d.delegates.filter(x => /^\d{8,20}$/.test(String(x))));
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    async function serverWriteDelegate(method, matricule) {
+        const token = ownerToken();
+        if (!token) { toast('سجل دخول المالك بـ Progres أولاً', 'error'); return false; }
+        try {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 25000);
+            const res = await fetch(CAMPUS_API + '/delegates', {
+                method, signal: ctrl.signal,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ owner_token: token, matricule }),
+            });
+            clearTimeout(t);
+            const d = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error((d && d.error) || ('خطأ ' + res.status));
+            if (d && Array.isArray(d.delegates)) saveDelegates(d.delegates);
+            return true;
+        } catch (e) {
+            toast(e.message || 'تعذر المزامنة مع الخادم', 'error');
+            return false;
+        }
+    }
+
     window.CampusAccess = {
         owner: OWNER_MAT,
         delegates: getDelegates,
@@ -76,9 +124,17 @@
             syncTile();
             renderDelegates();
             try { if (window.CampusAccess.level()) prefetchCampus(); } catch (e) {}
+            // Delegates live on the server: refresh the local cache on every
+            // Progres login so any phone learns its access immediately.
+            try { syncDelegatesFromServer().then(ok => { if (ok) { renderDelegates(); syncTile(); } }); } catch (e) {}
         },
         restoreBoot() {
-            if (this.level() !== 'full') return;
+            if (this.level() !== 'full') {
+                // Non-owner sessions still refresh the delegates cache so a
+                // newly-added delegate unlocks without re-login.
+                try { syncDelegatesFromServer().then(ok => { if (ok) syncTile(); }); } catch (e) {}
+                return;
+            }
             try {
                 APP_STATE.role = 'admin';
                 localStorage.setItem('user_role', 'admin');
@@ -108,7 +164,15 @@
                 <span class="set-lbl"><i class="fas fa-user-check"></i><bdi>${esc(m)}</bdi></span>
                 <button type="button" class="btn btn-ghost btn-sm" data-delaction="del" data-m="${esc(m)}"><i class="fas fa-trash"></i></button>
             </div>`).join('')}
-            <p class="set-note">المطابق يُفعَّل له قسم «جامعتي» فقط عند دخوله Progres — بلا لوحة تحكم.</p>`;
+            <p class="set-note">تُحفظ في الخادم وتعمل على أي هاتف: المفوض يدخل Progres برقمه في جهازه.</p>`;
+        // Refresh from server in background (single-flight).
+        if (!renderDelegates._busy) {
+            renderDelegates._busy = true;
+            syncDelegatesFromServer().then(ok => {
+                renderDelegates._busy = false;
+                if (ok) renderDelegates();
+            }).catch(() => { renderDelegates._busy = false; });
+        }
     }
 
     if (!window.__cxDelListener) {
@@ -120,13 +184,17 @@
                 const inp = document.getElementById('cx-del-input');
                 const m = String((inp && inp.value) || '').trim();
                 if (!/^\d{8,20}$/.test(m)) { toast('أدخل رقم تسجيل صحيح', 'error'); return; }
-                const list = getDelegates();
-                if (list.indexOf(m) === -1) { list.push(m); saveDelegates(list); }
-                renderDelegates();
-                toast('تمت الإضافة', 'success');
+                b.disabled = true;
+                serverWriteDelegate('POST', m).then(ok => {
+                    b.disabled = false;
+                    if (ok) { renderDelegates(); syncTile(); toast('تمت الإضافة وتعمل على كل الأجهزة', 'success'); }
+                });
             } else if (b.dataset.delaction === 'del') {
-                saveDelegates(getDelegates().filter(x => x !== String(b.dataset.m)));
-                renderDelegates();
+                b.disabled = true;
+                serverWriteDelegate('DELETE', String(b.dataset.m)).then(ok => {
+                    b.disabled = false;
+                    if (ok) { renderDelegates(); syncTile(); toast('تم الحذف', 'success'); }
+                });
             }
         });
         window.__cxDelListener = true;
@@ -171,13 +239,15 @@
     }
 
     function loginHTML() {
-        return `<div class="pm-card" style="margin-top:14px">
-            <h3><i class="fas fa-building-columns" style="color:#1d4ed8"></i> جامعتي</h3>
-            <p class="pm-muted">سجل دخولك الجامعي (PMS) مرة واحدة — تبقى جلستك على هذا الجهاز.</p>
-            ${S.loginErr ? `<p style="color:#dc2626">${esc(S.loginErr)}</p>` : ''}
-            <div class="pm-search"><input id="pms-user" inputmode="numeric" placeholder="رقم التسجيل الجامعي" autocomplete="username" /></div>
-            <div class="pm-search"><input id="pms-pass" type="password" placeholder="كلمة المرور" autocomplete="current-password" /></div>
-            <button type="button" class="pm-goldbtn" data-action="pms-login"><i class="fas fa-right-to-bracket"></i> دخول</button>
+        return `<div class="cx-login">
+            <div class="cx-login-mark"><i class="fas fa-building-columns"></i></div>
+            <h3 class="df-serif">جامعتي</h3>
+            <p class="cx-muted">سجل دخولك الجامعي (PMS) مرة واحدة — تبقى جلستك على هذا الجهاز.</p>
+            ${S.loginErr ? `<p class="cx-login-err"><i class="fas fa-circle-exclamation"></i> ${esc(S.loginErr)}</p>` : ''}
+            <div class="cx-field"><i class="fas fa-id-card"></i><input id="pms-user" inputmode="numeric" placeholder="رقم التسجيل الجامعي" autocomplete="username" /></div>
+            <div class="cx-field"><i class="fas fa-lock"></i><input id="pms-pass" type="password" placeholder="كلمة المرور" autocomplete="current-password" /></div>
+            <button type="button" class="pm-btn" data-action="pms-login"${S.logging ? ' disabled' : ''}>${S.logging ? '<i class="fas fa-spinner fa-spin"></i> جاري الدخول...' : '<i class="fas fa-right-to-bracket"></i> دخول'}</button>
+            <p class="cx-muted small">قانون 18-07: بياناتك لا تغادر جهازك وسيرفر الجامعة.</p>
         </div>`;
     }
 
@@ -188,17 +258,34 @@
     function cxSave(db) { try { localStorage.setItem(SCHED_KEY, JSON.stringify(db)); } catch (e) {} }
 
     async function api(path, body) {
-        const res = await fetch(API + path, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body || {}),
-        });
-        if (!res.ok) {
-            let msg = 'خطأ ' + res.status;
-            try { msg = (await res.json()).error || msg; } catch (e) {}
-            throw new Error(msg);
+        let ctrl = null, timer = null;
+        try {
+            if (typeof AbortController !== 'undefined') {
+                ctrl = new AbortController();
+                timer = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 25000);
+            }
+        } catch (e) { ctrl = null; }
+        try {
+            const res = await fetch(API + path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body || {}),
+                signal: ctrl ? ctrl.signal : undefined,
+            });
+            if (!res.ok) {
+                let msg = 'خطأ ' + res.status;
+                try { msg = (await res.json()).error || msg; } catch (e) {}
+                throw new Error(msg);
+            }
+            return res.json();
+        } catch (e) {
+            if (e && (e.name === 'AbortError' || e.name === 'TimeoutError')) {
+                throw new Error('انتهت المهلة — تحقق من الاتصال وحاول مجدداً');
+            }
+            throw e;
+        } finally {
+            try { if (timer) clearTimeout(timer); } catch (e) {}
         }
-        return res.json();
     }
 
     async function pms(endpoint, extra) {
@@ -633,7 +720,7 @@
         const teacher = syl.eNameAr || syl.eName || '';
         const goals = syl.contenu_json || syl.plan_json || '';
         return `
-        <div style="margin:12px 14px"><button type="button" class="pm-goldbtn" data-action="pms-open" data-tab="modules"><i class="fas fa-arrow-right"></i> العودة للمواد</button></div>
+        <div style="margin:12px 14px"><button type="button" class="pm-btn" data-action="pms-open" data-tab="modules"><i class="fas fa-arrow-right"></i> العودة للمواد</button></div>
         <div class="pm-blue">
             <span class="pm-ar">AR</span>
             <h2 style="margin:10px 0 4px;font-size:1.5rem">${esc(m.nameAr || m.name || '')}</h2>
@@ -870,21 +957,22 @@
         if (a === 'pms-open') { openSection(el.dataset.tab); return; }
         if (a === 'pms-refresh') { S.cache = {}; openSection('profile'); return; }
         if (a === 'pms-login') {
+            if (S.logging) return;
             const u = ((document.getElementById('pms-user') || {}).value || '').trim();
             const p = (document.getElementById('pms-pass') || {}).value || '';
             if (!u || !p) { S.loginErr = 'أدخل رقم التسجيل وكلمة المرور'; render(); return; }
             S.loginErr = '';
-            el.disabled = true;
+            S.logging = true; render();
             try {
                 const d = await api('/login', { username: u, password: p });
                 if (d.status !== 'success' || !d.data || !(d.data.Id || d.data.student_id)) throw new Error(d.message || 'فشل الدخول');
                 S.sess = { student_id: d.data.Id || d.data.student_id, profile: d.data };
                 saveSess(S.sess);
-                S.cache = {}; S.view = 'menu'; S.loginErr = '';
+                S.cache = {}; S.view = 'menu'; S.loginErr = ''; S.logging = false;
                 toast('مرحباً ' + (d.data.NomAr || d.data.Nom || ''), 'success');
                 render();
                 prefetchCampus();
-            } catch (e) { S.loginErr = e.message; render(); }
+            } catch (e) { S.loginErr = e.message; S.logging = false; render(); }
             return;
         }
         if (a === 'pms-editmode') { S.cxEdit = !S.cxEdit; openSection('schedule'); return; }

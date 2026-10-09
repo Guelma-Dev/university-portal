@@ -9,17 +9,17 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="المنصة الجامعية">
-    <link rel="manifest" href="manifest.json?v=1.4.53">
+    <link rel="manifest" href="manifest.json?v=1.4.54">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css?v=1.4.53">
-    <link rel="stylesheet" href="css/luxury.css?v=1.4.53">
-    <link rel="stylesheet" href="css/auth.css?v=1.4.53">
-    <link rel="stylesheet" href="css/native.css?v=1.4.53">
-    <link rel="stylesheet" href="css/campus.css?v=1.4.53">
-    <link rel="stylesheet" href="css/nova.css?v=1.4.53">
+    <link rel="stylesheet" href="css/styles.css?v=1.4.54">
+    <link rel="stylesheet" href="css/luxury.css?v=1.4.54">
+    <link rel="stylesheet" href="css/auth.css?v=1.4.54">
+    <link rel="stylesheet" href="css/native.css?v=1.4.54">
+    <link rel="stylesheet" href="css/campus.css?v=1.4.54">
+    <link rel="stylesheet" href="css/nova.css?v=1.4.54">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -434,6 +434,7 @@
                             <button class="lib-back pressable" onclick="LibraryView.back()"><i class="fas fa-arrow-right"></i></button>
                             <div class="lib-title" id="lib-title-2">اختر السنة</div>
                         </div>
+                        <div class="lib-searchbar"><i class="fas fa-search"></i><input type="search" id="lib-q-2" placeholder="ابحث في القائمة..." autocomplete="off" oninput="LibraryView.filterStep(this,'lib-years')"></div>
                         <div class="lib-chips" id="lib-years"><!-- injected --></div>
                     </div>
 
@@ -443,6 +444,7 @@
                             <button class="lib-back pressable" onclick="LibraryView.back()"><i class="fas fa-arrow-right"></i></button>
                             <div class="lib-title" id="lib-title-3">اختر السداسي</div>
                         </div>
+                        <div class="lib-searchbar"><i class="fas fa-search"></i><input type="search" id="lib-q-3" placeholder="ابحث في القائمة..." autocomplete="off" oninput="LibraryView.filterStep(this,'lib-semesters')"></div>
                         <div class="lib-chips" id="lib-semesters"><!-- injected --></div>
                     </div>
 
@@ -452,6 +454,7 @@
                             <button class="lib-back pressable" onclick="LibraryView.back()"><i class="fas fa-arrow-right"></i></button>
                             <div class="lib-title" id="lib-title-4">المواد الدراسية</div>
                         </div>
+                        <div class="lib-searchbar"><i class="fas fa-search"></i><input type="search" id="lib-q-4" placeholder="ابحث عن مادة..." autocomplete="off" oninput="LibraryView.filterStep(this,'lib-subjects')"></div>
                         <div class="lib-list" id="lib-subjects"><!-- injected --></div>
                     </div>
 
@@ -957,20 +960,20 @@
 
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="js/native.js?v=1.4.53"></script>
-    <script src="js/app.js?v=1.4.53"></script>
-    <script src="js/sec-loader.js?v=1.4.53"></script>
-    <script src="js/sec-transport.js?v=1.4.53"></script>
-    <script src="js/sec-meals.js?v=1.4.53"></script>
-    <script src="js/sec-profile.js?v=1.4.53"></script>
-    <script src="js/portal-notify.js?v=1.4.53"></script>
-    <script src="js/portal-update.js?v=1.4.53"></script>
-    <script src="js/sec-inscription.js?v=1.4.53"></script>
-    <script src="js/sec-study.js?v=1.4.53"></script>
-    <script src="js/sec-campus.js?v=1.4.53"></script>
-    <script src="js/portal-feel.js?v=1.4.53"></script>
-    <script src="js/native-shell.js?v=1.4.53" defer></script>
-    <script src="js/auth-ui.js?v=1.4.53" defer></script>
+    <script src="js/native.js?v=1.4.54"></script>
+    <script src="js/app.js?v=1.4.54"></script>
+    <script src="js/sec-loader.js?v=1.4.54"></script>
+    <script src="js/sec-transport.js?v=1.4.54"></script>
+    <script src="js/sec-meals.js?v=1.4.54"></script>
+    <script src="js/sec-profile.js?v=1.4.54"></script>
+    <script src="js/portal-notify.js?v=1.4.54"></script>
+    <script src="js/portal-update.js?v=1.4.54"></script>
+    <script src="js/sec-inscription.js?v=1.4.54"></script>
+    <script src="js/sec-study.js?v=1.4.54"></script>
+    <script src="js/sec-campus.js?v=1.4.54"></script>
+    <script src="js/portal-feel.js?v=1.4.54"></script>
+    <script src="js/native-shell.js?v=1.4.54" defer></script>
+    <script src="js/auth-ui.js?v=1.4.54" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').catch(() => {});
