@@ -239,15 +239,13 @@
     }
 
     function loginHTML() {
-        return `<div class="cx-login">
-            <div class="cx-login-mark"><i class="fas fa-building-columns"></i></div>
-            <h3 class="df-serif">جامعتي</h3>
-            <p class="cx-muted">سجل دخولك الجامعي (PMS) مرة واحدة — تبقى جلستك على هذا الجهاز.</p>
-            ${S.loginErr ? `<p class="cx-login-err"><i class="fas fa-circle-exclamation"></i> ${esc(S.loginErr)}</p>` : ''}
-            <div class="cx-field"><i class="fas fa-id-card"></i><input id="pms-user" inputmode="numeric" placeholder="رقم التسجيل الجامعي" autocomplete="username" /></div>
-            <div class="cx-field"><i class="fas fa-lock"></i><input id="pms-pass" type="password" placeholder="كلمة المرور" autocomplete="current-password" /></div>
-            <button type="button" class="pm-btn" data-action="pms-login"${S.logging ? ' disabled' : ''}>${S.logging ? '<i class="fas fa-spinner fa-spin"></i> جاري الدخول...' : '<i class="fas fa-right-to-bracket"></i> دخول'}</button>
-            <p class="cx-muted small">قانون 18-07: بياناتك لا تغادر جهازك وسيرفر الجامعة.</p>
+        return `<div class="pm-card" style="margin-top:14px">
+            <h3><i class="fas fa-building-columns" style="color:#1d4ed8"></i> جامعتي</h3>
+            <p class="pm-muted">سجل دخولك الجامعي (PMS) مرة واحدة — تبقى جلستك على هذا الجهاز.</p>
+            ${S.loginErr ? `<p style="color:#dc2626">${esc(S.loginErr)}</p>` : ''}
+            <div class="pm-search"><input id="pms-user" inputmode="numeric" placeholder="رقم التسجيل الجامعي" autocomplete="username" /></div>
+            <div class="pm-search"><input id="pms-pass" type="password" placeholder="كلمة المرور" autocomplete="current-password" /></div>
+            <button type="button" class="pm-goldbtn" data-action="pms-login"${S.logging ? ' disabled' : ''}>${S.logging ? '<i class="fas fa-spinner fa-spin"></i> جاري الدخول...' : '<i class="fas fa-right-to-bracket"></i> دخول'}</button>
         </div>`;
     }
 
@@ -720,7 +718,7 @@
         const teacher = syl.eNameAr || syl.eName || '';
         const goals = syl.contenu_json || syl.plan_json || '';
         return `
-        <div style="margin:12px 14px"><button type="button" class="pm-btn" data-action="pms-open" data-tab="modules"><i class="fas fa-arrow-right"></i> العودة للمواد</button></div>
+        <div style="margin:12px 14px"><button type="button" class="pm-goldbtn" data-action="pms-open" data-tab="modules"><i class="fas fa-arrow-right"></i> العودة للمواد</button></div>
         <div class="pm-blue">
             <span class="pm-ar">AR</span>
             <h2 style="margin:10px 0 4px;font-size:1.5rem">${esc(m.nameAr || m.name || '')}</h2>

@@ -263,6 +263,18 @@
         });
     }
 
+    // Hard ceiling: no network path may hang the UI forever. The native
+    // HTTP plugin honors its own timeouts most of the time, but a stalled
+    // socket (dead host on mobile data) can outlive them — race every
+    // native call against a JS timer and fall through to the next path.
+    const HTTP_CEIL_MS = 25000;
+    function _withTimeout(promise, ms) {
+        return Promise.race([
+            promise,
+            _sleep(ms || HTTP_CEIL_MS).then(function () { throw new Error('timeout'); }),
+        ]);
+    }
+
     function _http(method, url, headers, bodyText) {
         const isOnou = String(url).indexOf('gs-api.onou.dz') !== -1;
         const isElearning = String(url).indexOf('elearning.univ-guelma.dz') !== -1;
@@ -295,7 +307,7 @@
                 readTimeout: 45000,
             };
             if (bodyText != null && bodyText !== '') opt.data = bodyText;
-            return cap.request(opt).then(function (r) {
+            return _withTimeout(cap.request(opt), HTTP_CEIL_MS).then(function (r) {
                 const status = (r && r.status) || 0;
                 PN.log({ kind: 'http', url: _hostOnly(url), method: method, status: status });
                 if (!status) {
@@ -347,7 +359,7 @@
                 readTimeout: 45000,
             };
             if (bodyText != null && bodyText !== '') opt.data = bodyText;
-            return cap.request(opt).then(function (r) {
+            return _withTimeout(cap.request(opt), HTTP_CEIL_MS).then(function (r) {
                 const status = (r && r.status) || 0;
                 PN.log({ kind: 'http', url: _hostOnly(url), method: method, status: status });
                 if (!status) return null;
@@ -1486,7 +1498,7 @@
                 try { cap.Plugins.SplashScreen.hide(); } catch (e) {}
             }
             : null;
-        await ping();
+        await Promise.race([ping(), _sleep(25000)]);
         if (okFn) okFn();
         _finish(true);
     }
@@ -1501,13 +1513,13 @@
             let success = false;
             try {
                 if (cap && typeof cap.request === 'function') {
-                    const r = await cap.request({
+                    const r = await _withTimeout(cap.request({
                         method: 'GET',
                         url: A + '/api/infos/image/null',
                         headers: { authorization: String(session.token), 'User-Agent': GENERIC_UA },
                         connectTimeout: 8000,
                         readTimeout: 8000,
-                    });
+                    }), 12000);
                     success = ok(r);
                 } else {
                     const r = await fetch(A + '/api/infos/image/null', { headers: { authorization: String(session.token) } });
@@ -1556,7 +1568,7 @@
             try { p = new URL(urlText).pathname; } catch (e) {
                 return originalFetch(input, init);
             }
-            if (!/^\/api\/(progres|academic|onou|bus)\//.test(p)) {
+            if (!/^\/api\/(progres|academic|onou|bus|pms)\//.test(p)) {
                 if (/^\/api\//.test(p)) {
                     return _proxyApi(p, urlText, init || {});
                 }

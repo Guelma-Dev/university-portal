@@ -523,14 +523,13 @@ body::-webkit-scrollbar, .login-scroll::-webkit-scrollbar, .main-content::-webki
 .dh-qa-feat .dh-sv-ico, .dh-qa-cell .dh-sv-ico, .dh-qa-wide .dh-sv-ico { color: #60A5FA; }
 .account-list button:active { background: rgba(255, 255, 255, .06) !important; }
 /* ONE blue icon chip everywhere — the gold/green/amber rainbow ends here.
-   Last-loaded so it also beats styles.css literal-gold gradients.
-   (merged design: chips got the aurora blue→violet wash) */
+   Last-loaded so it also beats styles.css literal-gold gradients. */
 .dh-sv-ico, .dh-sv-ico.sx-gold, .dh-sv-ico.sx-blue, .dh-sv-ico.sx-green,
 .dh-sv-ico.sx-amber, .dh-sv-ico.sx-neutral,
 #section-home .dh-qa-feat .dh-sv-ico.sx-gold, [data-theme="light"] .dh-sv-ico.sx-gold {
-    color: #93C5FD !important;
-    background: linear-gradient(135deg, rgba(59, 130, 246, .22), rgba(124, 58, 237, .18)) !important;
-    border-color: rgba(96, 165, 250, .30) !important;
+    color: #60A5FA !important;
+    background: rgba(59, 130, 246, .12) !important;
+    border-color: rgba(59, 130, 246, .26) !important;
     box-shadow: none !important;
 }
 /* student photo ring: blue, not gold */
@@ -678,60 +677,6 @@ body::-webkit-scrollbar, .login-scroll::-webkit-scrollbar, .main-content::-webki
 body.native-app button:focus-visible, body.native-app .tile:focus-visible,
 body.native-app .subject-card:focus-visible { outline-color: #60A5FA !important; }
 
-/* ---- D10. MERGED DESIGN (user pick): A's bento structure & big numerals
-   + B's editorial serif and aurora accents. Navy stays the base; violet
-   appears only inside gradients. ---- */
-/* editorial greeting */
-.dh-who {
-    font-family: var(--serif) !important; font-style: italic; font-weight: 800;
-    font-size: 1.45rem !important; letter-spacing: 0;
-}
-/* hero card: aurora hairline border + huge gradient time numeral */
-.dh-hero-card { overflow: hidden; }
-.dh-hero-card::after {
-    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
-    pointer-events: none;
-    background: linear-gradient(140deg, rgba(96, 165, 250, .55), rgba(124, 58, 237, .38) 50%, rgba(255, 255, 255, .05));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor; mask-composite: exclude;
-}
-.dh-bigtime {
-    font-size: 2.7rem !important; font-weight: 900; line-height: 1.12;
-    font-variant-numeric: tabular-nums;
-    background: linear-gradient(135deg, #EAF3FF, #67B3FF 55%, #3B82F6);
-    -webkit-background-clip: text; background-clip: text; color: transparent !important;
-}
-.dh-subject { font-size: 1.18rem !important; letter-spacing: 0; }
-.dh-eyebrow { letter-spacing: .08em; }
-.dh-count { color: #93C5FD !important; }
-.dh-hero-card.live .dh-count { color: #93C5FD !important; }
-.dh-rule { border-top: 1px solid rgba(255, 255, 255, .07) !important; }
-/* bento polish: unified radii */
-.dh-qa-feat, .dh-qa-wide { border-radius: 20px !important; }
-.dh-qa-cell { border-radius: 18px !important; }
-/* timeline: blue tabular times */
-.dh-tlrow .dh-time { color: #60A5FA !important; font-weight: 900 !important; }
-/* THE VISIBLE RESTRUCTURE — quick cells become vertical icon tiles */
-.dh-qa-cell {
-    flex-direction: column; text-align: center; gap: 10px; padding: 18px 10px 15px;
-}
-.dh-qa-cell .dh-sv-ico { width: 48px; height: 48px; font-size: 1.1rem; border-radius: 15px; }
-.dh-qa-cell .dh-qa-m { align-items: center; }
-/* services menu → 2-col launcher grid (was stacked rows) */
-.dh-sv { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.dh-sv-row {
-    flex-direction: column; text-align: center; gap: 10px;
-    padding: 16px 8px 14px;
-    background: linear-gradient(160deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02)), #131927 !important;
-    border: 1px solid rgba(255, 255, 255, .08) !important;
-    border-radius: 18px !important;
-    box-shadow: 0 10px 32px rgba(2, 6, 18, .45), inset 0 1px 0 rgba(255, 255, 255, .06) !important;
-}
-.dh-sv-row .dh-sv-ico { width: 48px; height: 48px; font-size: 1.1rem; border-radius: 15px; }
-.dh-sv-row .dh-sv-name { font-size: .82rem !important; line-height: 1.35; }
-.dh-sv-row .dh-go { display: none !important; }
-.dh-sv-row:active { scale: .96; }
-
 /* ---- D5. ONBOARDING overlay (first run) ---- */
 #df-onboard { position: fixed; inset: 0; z-index: 9000; background: #0B0E14; overflow: hidden; }
 #df-onboard.hidden { display: none; }
@@ -760,21 +705,3 @@ body.native-app .subject-card:focus-visible { outline-color: #60A5FA !important;
 .df-ob-body p { color: #8A93A6; font-size: .92rem; margin: 0 0 16px; }
 .df-ob-body .btn { height: 52px; border-radius: 999px !important; }
 .df-ob-cap { text-align: center; font-size: .75rem !important; margin: 12px 0 0 !important; }
-
-/* ---- D11. Library: prominent step search + organized headers ---- */
-.lib-searchbar {
-    display: flex; align-items: center; gap: 10px;
-    background: #1A2234; border: 1px solid rgba(255, 255, 255, .12);
-    border-radius: 999px; margin: 12px 14px; padding: 4px 18px 4px 6px;
-    box-shadow: 0 6px 20px rgba(2, 6, 18, .4);
-}
-.lib-searchbar:focus-within { border-color: rgba(59, 130, 246, .6); box-shadow: 0 0 0 4px rgba(59, 130, 246, .14); }
-.lib-searchbar i { color: #60A5FA; }
-.lib-searchbar input {
-    flex: 1; border: none; outline: none; background: none;
-    color: #fff; font-family: inherit; font-size: .95rem; min-height: 46px;
-}
-.lib-searchbar input::placeholder { color: #5D6880; }
-.lib-searchbar input::-webkit-search-cancel-button { filter: invert(.7); }
-.lib-section-label { color: #8A93A6 !important; font-weight: 800; font-size: .8rem; }
-.lib-empty p { color: #F5F7FA !important; }
