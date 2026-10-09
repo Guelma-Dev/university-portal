@@ -958,6 +958,20 @@ function updateBnActive() {
     let navKey = { home: 'home', grades: 'grades', account: 'account', library: 'library' }[APP_STATE.currentSection] || '';
     if (APP_STATE.currentSection === 'grades' && progresCurrentView === 'card') navKey = 'card';
     document.querySelectorAll('.bn-btn').forEach((b) => b.classList.toggle('active', b.dataset.nav === navKey));
+    // McGill sliding pill: follows the active tab (transform-only, GPU).
+    try {
+        const btns = Array.prototype.slice.call(document.querySelectorAll('.bn-btn'));
+        const pill = document.getElementById('bn-pill');
+        const on = btns.filter((b) => b.classList.contains('active'))[0];
+        if (pill && on && on.offsetWidth) {
+            pill.style.width = on.offsetWidth + 'px';
+            pill.style.transform = 'translateX(' + (on.offsetLeft - 8) + 'px)';
+        }
+    } catch (e) {}
+    if (!window.__bnPillBound) {
+        window.__bnPillBound = true;
+        window.addEventListener('resize', function () { try { updateBnActive(); } catch (e) {} });
+    }
 }
 
 function setGradesCardView(cardMode) {
@@ -1840,9 +1854,28 @@ function renderDhIdentity() {
     const first = progresFirstName();
     who.textContent = first ? ('أهلًا، ' + first) : 'أهلًا بك';
 }
+// McGill stats strip: calculator GPA (if the user ever used it) + today's live count.
+function homeGpa() {
+    try {
+        const s1 = getSemesterAvg('sem1'), s2 = getSemesterAvg('sem2');
+        if (s1 !== null && s2 !== null) return ((s1 + s2) / 2).toFixed(2);
+        if (s1 !== null) return s1.toFixed(2);
+        if (s2 !== null) return s2.toFixed(2);
+    } catch (e) {}
+    return null;
+}
+function renderMgStats(avg, today) {
+    try {
+        const a = document.getElementById('mg-avg');
+        if (a) a.textContent = avg != null ? avg : (homeGpa() || '--');
+        const t = document.getElementById('mg-today');
+        if (t && today !== null && today !== undefined) t.textContent = today;
+    } catch (e) {}
+}
 function renderHomeDashboard() {
     renderDhIdentity();
     renderDiaSwitch();
+    renderMgStats(null, null);
     const nextEl = document.getElementById('dh-next');
     const todayEl = document.getElementById('dh-today');
     const cntEl = document.getElementById('dh-cnt');
@@ -1858,6 +1891,7 @@ function renderHomeDashboard() {
     };
     if (weekend) {
         if (cntEl) cntEl.textContent = '';
+        renderMgStats(null, 'عطلة');
         if (tlwrap) tlwrap.style.display = 'none';
         todayEl.innerHTML = '';
         hero(false, '<p class="dh-eyebrow"><span class="dh-eyedot"></span>عطلة نهاية الأسبوع</p>'
@@ -1866,8 +1900,10 @@ function renderHomeDashboard() {
         return;
     }
     if (cntEl) cntEl.textContent = items.length ? (items.length + ' حصص') : 'اليوم بدون حصص';
+    renderMgStats(null, String(items.length));
     if (tlwrap) tlwrap.style.display = '';
     if (!items.length) {
+        renderMgStats(null, '0');
         hero(false, '<p class="dh-eyebrow"><span class="dh-eyedot"></span>اليوم</p>'
             + '<p class="dh-none">لا توجد حصص مجدولة اليوم</p>'
             + tlink);
