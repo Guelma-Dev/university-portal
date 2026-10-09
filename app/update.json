@@ -1,13 +1,13 @@
 {
-  "versionCode": 70,
-  "versionName": "1.4.54",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-70.apk",
-  "sha256": "e650d8254901151b0ee900e078e95a3f439d50d340923c0dae7242f5411af1ba",
-  "size": 5870911,
+  "versionCode": 71,
+  "versionName": "1.4.55",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-71.apk",
+  "sha256": "c152acbb64cfcc4e5f5ea94977eb4f3f9632a3060a1919ce81fb293b35f05ae5",
+  "size": 5869388,
   "mandatory": false,
   "changelog": [
-    "إصلاح تعليق جامعتي: مهلة شبكة + زر لا يعلق + رسائل واضحة",
-    "التفويض يعمل عبر الخادم على أي هاتف",
-    "دخول جامعتي بهوية التطبيق + ألوان موحدة + بحث بارز بالمكتبة"
+    "عودة شكل 1.4.51 للرئيسية والمكتبة وجامعتي",
+    "دخول جامعتي مباشر من الهاتف + استحالة التعليق الأبدي",
+    "إصلاح تشغيل سيرفر جامعتي (التفويض العابر للأجهزة)"
   ]
 }
