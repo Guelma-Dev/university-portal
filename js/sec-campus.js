@@ -56,11 +56,21 @@
         } catch (e) { return ''; }
     }
 
-    // Server is truth, localStorage is cache (works offline + cross-device).
-    async function syncDelegatesFromServer() {
+    // Render free tier sleeps: first touch wakes it (15-60s). Fire a
+    // no-wait warmup whenever campus opens so the real sync lands warm.
+    function wakeCampusServer() {
         try {
             const ctrl = new AbortController();
-            const t = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 20000);
+            const t = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 8000);
+            fetch(CAMPUS_API + '/delegates', { signal: ctrl.signal, cache: 'no-store' })
+                .catch(() => {}).finally(() => clearTimeout(t));
+        } catch (e) {}
+    }
+
+    async function fetchDelegatesOnce(ms) {
+        try {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, ms);
             const res = await fetch(CAMPUS_API + '/delegates', { signal: ctrl.signal, cache: 'no-store' });
             clearTimeout(t);
             if (!res.ok) return false;
@@ -73,26 +83,49 @@
         return false;
     }
 
+    // Server is truth, localStorage is cache (works offline + cross-device).
+    // One retry with a longer budget: covers a cold Render waking up.
+    async function syncDelegatesFromServer() {
+        if (await fetchDelegatesOnce(20000)) return true;
+        wakeCampusServer();
+        await new Promise(r => setTimeout(r, 3000));
+        return fetchDelegatesOnce(45000);
+    }
+
     async function serverWriteDelegate(method, matricule) {
         const token = ownerToken();
         if (!token) { toast('سجل دخول المالك بـ Progres أولاً', 'error'); return false; }
-        try {
-            const ctrl = new AbortController();
-            const t = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 25000);
-            const res = await fetch(CAMPUS_API + '/delegates', {
-                method, signal: ctrl.signal,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ owner_token: token, matricule }),
-            });
-            clearTimeout(t);
-            const d = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error((d && d.error) || ('خطأ ' + res.status));
-            if (d && Array.isArray(d.delegates)) saveDelegates(d.delegates);
-            return true;
-        } catch (e) {
-            toast(e.message || 'تعذر المزامنة مع الخادم', 'error');
-            return false;
+        // Two attempts (25s + 45s): the second covers a cold Render waking up.
+        const budgets = [25000, 45000];
+        for (let a = 0; a < budgets.length; a++) {
+            try {
+                const ctrl = new AbortController();
+                const t = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, budgets[a]);
+                const res = await fetch(CAMPUS_API + '/delegates', {
+                    method, signal: ctrl.signal,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ owner_token: token, matricule }),
+                });
+                clearTimeout(t);
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const he = new Error((d && d.error) || ('خطأ ' + res.status));
+                    he.__http = true;
+                    throw he;
+                }
+                if (d && Array.isArray(d.delegates)) saveDelegates(d.delegates);
+                return true;
+            } catch (e) {
+                // Server answered (4xx/5xx): no retry, it is already awake.
+                if ((e && e.__http) || a === budgets.length - 1) {
+                    toast(e.message || 'تعذر المزامنة مع الخادم', 'error');
+                    return false;
+                }
+                wakeCampusServer();
+                await new Promise(r => setTimeout(r, 3000));
+            }
         }
+        return false;
     }
 
     window.CampusAccess = {
@@ -1031,6 +1064,7 @@
         S.sess = loadSess();
         S.view = 'menu';
         render();
+        wakeCampusServer();
         prefetchCampus();
         pms('get_dashboard_data').then(d => { S.dash = d; if (S.view === 'menu') render(); }).catch(() => {});
         pms('get_all_notifications').then(n => {
