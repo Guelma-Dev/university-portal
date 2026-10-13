@@ -1,12 +1,13 @@
 {
-  "versionCode": 73,
-  "versionName": "1.4.57",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-73.apk",
-  "sha256": "88102a2e009ef570eef6af37c087a7168411a663bd44648071f6571354ee20be",
-  "size": 5869819,
+  "versionCode": 74,
+  "versionName": "1.4.58",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-74.apk",
+  "sha256": "63e0593cdc198bb880d3f997f6f8b5833d493493d9052c03b90976b6b191b3e3",
+  "size": 5870696,
   "mandatory": false,
   "changelog": [
-    "إصلاح توقف جامعتي: إيقاظ تلقائي للسيرفر + محاولة ثانية",
-    "عودة الرئيسية لتصميم النسخة السابقة"
+    "واجهة جامعتي بهوية التطبيق الداكنة",
+    "الغيابات صحيحة: تفصيل محاضرة/موجهة/تطبيقية + التواريخ + العتبة الحقيقية",
+    "الاسم بالعربية وإصلاح مشرف غير معين"
   ]
 }
