@@ -1,13 +1,12 @@
 {
-  "versionCode": 72,
-  "versionName": "1.4.56",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-72.apk",
-  "sha256": "17aa4dc850849040ad6b65f79dcdf3fc8766a3af0932e02c1d04a0c9a146f9fd",
-  "size": 5870781,
+  "versionCode": 73,
+  "versionName": "1.4.57",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-73.apk",
+  "sha256": "88102a2e009ef570eef6af37c087a7168411a663bd44648071f6571354ee20be",
+  "size": 5869819,
   "mandatory": false,
   "changelog": [
-    "تصميم الرئيسية الجديد: زجاج كحلي McGill",
-    "بطاقة الحصة + إحصائيات سريعة + شريط تنقل منزلق",
-    "دخول متدرج للبطاقات بدون ثقل"
+    "إصلاح توقف جامعتي: إيقاظ تلقائي للسيرفر + محاولة ثانية",
+    "عودة الرئيسية لتصميم النسخة السابقة"
   ]
 }
