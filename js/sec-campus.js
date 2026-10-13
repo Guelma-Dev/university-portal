@@ -30,6 +30,16 @@
     }[c]));
 
     const toast = (m, t) => { if (typeof window.showToast === 'function') window.showToast(m, t); };
+    // None-safe text: PMS sometimes returns the literal strings "None"/"null".
+    const nn = (v) => {
+        const s = String(v ?? '').trim();
+        return (s && s !== 'None' && s !== 'null' && s !== 'undefined') ? s : '';
+    };
+    const ABS_TYPE_AR = { cours: 'محاضرة', td: 'أعمال موجهة', tp: 'أعمال تطبيقية' };
+    const absDate = (dstr) => {
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dstr || ''));
+        return m ? `${m[3]}/${m[2]}/${m[1]}` : String(dstr || '');
+    };
     const isAdmin = () => { try { return localStorage.getItem('user_role') === 'admin'; } catch (e) { return false; } };
     const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
 
@@ -346,10 +356,10 @@
     function dashHeadHTML() {
         const p = (S.sess && S.sess.profile) || {};
         const d = S.dash || {};
-        const tutor = d.tutorNameAr || d.tutorName || 'غير معين';
+        const tutor = nn(d.tutorNameAr) || nn(d.tutorName) || 'غير معين';
         const lvl = String(d.lvlYearStr || '').replace(/[^0-9]/g, '') || '—';
         return `
-        <div class="pm-card" style="margin-top:14px"><h3>مرحباً بعودتك، ${esc(p.Nom || '')}</h3></div>
+        <div class="pm-card" style="margin-top:14px"><h3>مرحباً بعودتك، ${esc(nn(p.NomAr) || p.Nom || '')}</h3></div>
         <div class="pm-blue">
             <div style="display:flex;align-items:center;gap:12px">
                 <span style="font-size:2rem;opacity:.9"><i class="fas fa-graduation-cap"></i></span>
@@ -790,16 +800,39 @@
 
     async function vAbsences() {
         const d = await pms('get_student_absences');
-        const tot = Number(d.total_all || 0), unjust = Number(d.total_unjustified || 0);
-        const mods = (d.modules || []).map(m => {
-            const a = Number(m.total_abs ?? m.abs ?? 0);
-            return `<div class="cx-room"><span><i class="fas fa-book"></i></span><span style="flex:1"><strong>${esc(m.module_name || m.name || '')}</strong>
-                <div class="cx-meter"><i style="width:${Math.min(100, a * 20)}%"></i></div></span><strong>${a}</strong></div>`;
+        const tot = num(d.total_all), just = num(d.total_justified), unjust = num(d.total_unjustified);
+        const mods = Array.isArray(d.modules) ? d.modules : [];
+        const maxThr = mods.reduce((m, x) => Math.max(m, num(x.max_unjustified)), 0);
+        const sumBar = maxThr > 0 ? Math.min(100, Math.round(unjust / maxThr * 100)) : (tot ? 100 : 0);
+        const cards = mods.map(m => {
+            const t = num(m.total), ju = num(m.justified), un = Math.max(0, t - ju);
+            const thr = num(m.max_unjustified);
+            const risk = thr > 0 && un >= thr;
+            const near = !risk && thr > 0 && un === thr - 1;
+            const pill = risk
+                ? `<span class="cx-pill bad">تجاوز العتبة (${un}/${thr})</span>`
+                : near
+                    ? `<span class="cx-pill warn">على بعد غياب واحد (${un}/${thr})</span>`
+                    : `<span class="cx-pill info">${un} غير مبررة${thr > 0 ? ` / ${thr}` : ''}</span>`;
+            const det = (Array.isArray(m.details) ? m.details : []).map(x => {
+                const j = Number(x.is_justified) === 1;
+                return `<div class="cx-room"><span><i class="fas ${j ? 'fa-circle-check' : 'fa-circle-xmark'}" style="color:${j ? '#34D399' : '#FF7070'}"></i></span>`
+                    + `<span style="flex:1"><strong>${absDate(x.date)}</strong><br><span class="cx-muted">${esc(ABS_TYPE_AR[x.type] || x.type || '')}</span></span>`
+                    + `<span class="cx-pill ${j ? 'ok' : 'bad'}">${j ? 'مبررة' : 'غير مبررة'}</span></div>`;
+            }).join('');
+            return `<div class="cx-card"><h4><i class="fas fa-book" style="color:var(--accent)"></i> ${esc(nn(m.module_name_ar) || m.module_name || m.name || '')}</h4>`
+                + (nn(m.module_name_ar) && m.module_name ? `<p class="cx-muted">${esc(m.module_name)}${m.semester ? ` · سداسي ${esc(m.semester)}` : ''}</p>` : (m.semester ? `<p class="cx-muted">سداسي ${esc(m.semester)}</p>` : ''))
+                + `<div class="pm-mstat">
+                    <div><i class="fas fa-chalkboard-user pm-c-blue"></i><b>${num(m.abs_cours)}</b><span>محاضرة</span></div>
+                    <div><i class="fas fa-pen-to-square pm-c-teal"></i><b>${num(m.abs_td)}</b><span>أعمال موجهة</span></div>
+                    <div><i class="fas fa-flask pm-c-purple"></i><b>${num(m.abs_tp)}</b><span>أعمال تطبيقية</span></div>
+                </div><hr class="pm-hr"><p>المجموع <strong>${t}</strong> — مبررة <strong>${ju}</strong> ${pill}</p>`
+                + (det || '') + `</div>`;
         }).join('');
         return `<div class="cx-card"><h4><i class="fas fa-user-xmark" style="color:var(--accent)"></i> الغيابات</h4>
-            <p class="cx-muted">المجموع <strong>${tot}</strong> — مبررة <strong>${esc(d.total_justified ?? 0)}</strong> — غير مبررة <strong>${unjust}</strong> (عتبة الإقصاء: 5)</p>
-            <div class="cx-meter"><i style="width:${Math.min(100, unjust * 20)}%"></i></div></div>
-        <div class="cx-card"><h4>حسب المقياس</h4>${mods || '<p class="cx-muted">سجل نظيف.</p>'}</div>`;
+            <p class="cx-muted">المجموع <strong>${tot}</strong> — مبررة <strong>${just}</strong> — غير مبررة <strong>${unjust}</strong>${maxThr > 0 ? ` (العتبة القصوى: ${maxThr} غير مبررة للمقياس)` : ''}</p>
+            <div class="cx-meter"><i style="width:${sumBar}%"></i></div></div>
+        ${cards || '<div class="cx-card"><p class="cx-muted">سجل نظيف.</p></div>'}`;
     }
 
     // ---------- شغور القاعات (جدول PMS) ----------
@@ -859,8 +892,8 @@
         const t = await pms('get_tutoring');
         const tu = t.tutor || {};
         const hist = (t.history || []).map(h => `<p>• ${esc(h.title || h.subject || '')}</p>`).join('');
-        return `<div class="cx-card"><h4><i class="fas fa-user-tie" style="color:var(--accent)"></i> مشرفي</h4>` + (t.tutor
-            ? `<p style="font-size:1.15rem;font-weight:800">${esc(tu.tutorNameAr || tu.tutorName || '')}</p><p class="cx-muted">${esc(tu.tutorName || '')}</p>`
+        return `<div class="cx-card"><h4><i class="fas fa-user-tie" style="color:var(--accent)"></i> مشرفي</h4>` + (nn(tu.tutorNameAr) || nn(tu.tutorName)
+            ? `<p style="font-size:1.15rem;font-weight:800">${esc(nn(tu.tutorNameAr) || nn(tu.tutorName))}</p>${nn(tu.tutorName) && nn(tu.tutorNameAr) ? `<p class="cx-muted">${esc(tu.tutorName)}</p>` : ''}`
             : `<p class="cx-muted">لا مشرف مسند حالياً.</p>`) + `</div>
         <div class="cx-card"><h4>السجل</h4>${hist || '<p class="cx-muted">لا عناصر.</p>'}</div>`;
     }

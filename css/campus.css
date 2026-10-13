@@ -176,19 +176,20 @@ table.cx-table td:last-child { border-inline-end: 1px solid var(--glass-line); b
     #section-campus .cx-sk { animation: none !important; }
 }
 
-/* ==== عدة PMS (ورق فاتح + كحلي، بلمسة ذهبية) ==== */
+/* ==== عدة PMS (زجاج كحلي داكن — هوية التطبيق) ==== */
 .pm-card {
-    background: #ffffff;
-    border: 1px solid #e4e9f2;
+    background: linear-gradient(165deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .025)), #131927;
+    border: 1px solid rgba(255, 255, 255, .09);
+    border-top-color: rgba(255, 255, 255, .15);
     border-radius: 20px;
-    box-shadow: 0 8px 24px rgba(27, 42, 107, 0.08);
+    box-shadow: 0 12px 32px rgba(2, 6, 18, .45), inset 0 1px 0 rgba(255, 255, 255, .06);
     padding: 18px;
     margin: 12px 14px;
-    color: #16213b;
+    color: #F5F7FA;
 }
-.pm-card h3, .pm-card h4 { margin: 0 0 8px; color: #16213b; }
+.pm-card h3, .pm-card h4 { margin: 0 0 8px; color: #F5F7FA; }
 .pm-card p { margin: 6px 0; line-height: 1.8; }
-.pm-muted { color: #8a94a6; font-size: 0.85rem; }
+.pm-muted { color: #8A93A6; font-size: 0.85rem; }
 .pm-navy {
     background: linear-gradient(135deg, #1b2360, #2b3a9e);
     color: #fff;
@@ -228,62 +229,67 @@ table.cx-table td:last-child { border-inline-end: 1px solid var(--glass-line); b
 .pm-tile b { display: block; font-size: 1.35rem; font-variant-numeric: tabular-nums; }
 .pm-tile span { font-size: 0.72rem; opacity: 0.85; }
 /* تبويبات بخط سفلي */
-.pm-tabs { display: flex; background: #fff; border-bottom: 1px solid #e4e9f2; margin: 0 0 12px; }
+.pm-tabs { display: flex; background: #131927; border-bottom: 1px solid rgba(255, 255, 255, .08); margin: 0 0 12px; }
 .pm-tab {
     flex: 1; padding: 14px 4px; background: none; border: none;
-    font-family: inherit; font-size: 0.95rem; font-weight: 700; color: #9aa3b5;
+    font-family: inherit; font-size: 0.95rem; font-weight: 700; color: #8A93A6;
     cursor: pointer; border-bottom: 3px solid transparent; min-height: 44px;
 }
-.pm-tab.on { color: #9a711f; border-bottom-color: #d4af37; }
+.pm-tab.on { color: #7FB3FF; border-bottom-color: #3B82F6; }
 /* صف مادة بشريط جانبي */
 .pm-mod {
     display: flex; align-items: center; gap: 10px;
-    background: #fff; border: 1px solid #e4e9f2; border-radius: 16px;
-    border-inline-end: 5px solid #2b3a9e;
-    box-shadow: 0 6px 18px rgba(27, 42, 107, 0.07);
+    background: linear-gradient(165deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02)), #131927;
+    border: 1px solid rgba(255, 255, 255, .09);
+    border-radius: 16px;
+    border-inline-end: 5px solid #3B82F6;
+    box-shadow: 0 10px 26px rgba(2, 6, 18, .45);
     padding: 14px 16px; margin: 0 14px 10px;
     width: auto; box-sizing: border-box;
     font-family: inherit; cursor: pointer; text-align: right;
     transition: transform 100ms ease-out;
-    color: #16213b;
+    color: #F5F7FA;
 }
 .pm-mod:active { transform: scale(0.98); }
 .pm-mod .pm-mname { flex: 1; font-weight: 800; font-size: 0.98rem; }
-.pm-mod .pm-mname small { display: block; font-weight: 400; color: #8a94a6; font-size: 0.78rem; }
-.pm-mod > i { color: #b6bdd0; }
+.pm-mod .pm-mname small { display: block; font-weight: 400; color: #8A93A6; font-size: 0.78rem; }
+.pm-mod > i { color: #5D6880; }
 /* بطاقة مقياس بإحصائيات */
 .pm-mstat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0 4px; text-align: center; }
 .pm-mstat i { font-size: 1.05rem; }
-.pm-mstat b { display: block; font-size: 1.15rem; font-variant-numeric: tabular-nums; color: #16213b; }
-.pm-mstat span { font-size: 0.72rem; color: #8a94a6; }
+.pm-mstat b { display: block; font-size: 1.15rem; font-variant-numeric: tabular-nums; color: #F5F7FA; }
+.pm-mstat span { font-size: 0.72rem; color: #8A93A6; }
 .pm-c-blue { color: #2563eb; } .pm-c-orange { color: #d97706; } .pm-c-teal { color: #0d9488; } .pm-c-purple { color: #7c3aed; }
-.pm-hr { border: 0; border-top: 1px solid #edf0f6; margin: 10px 0; }
-/* بلاطات إحصائية بيضاء */
+.pm-hr { border: 0; border-top: 1px solid rgba(255, 255, 255, .08); margin: 10px 0; }
+/* بلاطات إحصائية داكنة */
 .pm-stat4 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 14px; }
 .pm-stat {
-    background: #fff; border: 1px solid #e4e9f2; border-radius: 18px;
-    box-shadow: 0 6px 18px rgba(27, 42, 107, 0.07);
-    padding: 16px 8px; text-align: center; color: #16213b;
+    background: linear-gradient(165deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .025)), #131927;
+    border: 1px solid rgba(255, 255, 255, .09);
+    border-top-color: rgba(255, 255, 255, .15);
+    border-radius: 18px;
+    box-shadow: 0 12px 32px rgba(2, 6, 18, .45), inset 0 1px 0 rgba(255, 255, 255, .06);
+    padding: 16px 8px; text-align: center; color: #F5F7FA;
 }
 .pm-stat i { font-size: 1.2rem; margin-bottom: 6px; }
-.pm-stat b { display: block; font-size: 1.15rem; }
-.pm-stat span { font-size: 0.75rem; color: #8a94a6; }
+.pm-stat b { display: block; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.pm-stat span { font-size: 0.75rem; color: #8A93A6; }
 /* خط زمني */
 .pm-tl { position: relative; padding-inline-end: 22px; }
-.pm-tl::before { content: ""; position: absolute; top: 8px; bottom: 8px; inset-inline-end: 7px; width: 2px; background: #e4e9f2; }
-.pm-tlrow { position: relative; padding: 10px 12px; background: #f6f8fc; border: 1px solid #e9edf4; border-radius: 14px; margin-bottom: 10px; }
+.pm-tl::before { content: ""; position: absolute; top: 8px; bottom: 8px; inset-inline-end: 7px; width: 2px; background: rgba(255, 255, 255, .1); }
+.pm-tlrow { position: relative; padding: 10px 12px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .08); border-radius: 14px; margin-bottom: 10px; }
 .pm-tlrow::after {
     content: ""; position: absolute; top: 16px; inset-inline-end: -20px;
-    width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 3px solid #c4ccdd;
+    width: 12px; height: 12px; border-radius: 50%; background: #1A2234; border: 3px solid #5D6880;
 }
 .pm-tlrow.now::after { border-color: #22c55e; background: #22c55e; box-shadow: 0 0 10px #22c55e; }
-.pm-tlrow .pm-t { font-variant-numeric: tabular-nums; color: #8a94a6; font-size: 0.8rem; font-weight: 700; }
-.pm-tlrow.now .pm-t { color: #16a34a; }
+.pm-tlrow .pm-t { font-variant-numeric: tabular-nums; color: #8A93A6; font-size: 0.8rem; font-weight: 700; }
+.pm-tlrow.now .pm-t { color: #34D399; }
 /* شريط أخبار متحرك */
 .pm-ticker {
     display: flex; align-items: center; gap: 10px;
-    background: #fff; border: 1px solid #e4e9f2; border-radius: 999px;
-    margin: 12px 14px; overflow: hidden; color: #16213b;
+    background: #131927; border: 1px solid rgba(255, 255, 255, .09); border-radius: 999px;
+    margin: 12px 14px; overflow: hidden; color: #F5F7FA;
 }
 .pm-ticker .pm-bolt {
     flex: 0 0 auto; background: linear-gradient(135deg, #d4af37, #9a711f); color: #fff;
@@ -296,11 +302,12 @@ table.cx-table td:last-child { border-inline-end: 1px solid var(--glass-line); b
 /* بحث */
 .pm-search {
     display: flex; align-items: center; gap: 10px;
-    background: #fff; border: 1px solid #e4e9f2; border-radius: 999px;
-    margin: 12px 14px; padding: 4px 18px 4px 6px; color: #16213b;
+    background: #1A2234; border: 1px solid rgba(255, 255, 255, .1); border-radius: 999px;
+    margin: 12px 14px; padding: 4px 18px 4px 6px; color: #F5F7FA;
 }
-.pm-search input { flex: 1; border: none; outline: none; background: none; font-family: inherit; font-size: 0.92rem; color: #16213b; min-height: 44px; }
-.pm-search i { color: #2563eb; }
+.pm-search input { flex: 1; border: none; outline: none; background: none; font-family: inherit; font-size: 0.92rem; color: #fff; min-height: 44px; }
+.pm-search input::placeholder { color: #5D6880; }
+.pm-search i { color: #60A5FA; }
 /* بطاقة خبر */
 .pm-news .pm-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .pm-date { color: #9aa3b5; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
