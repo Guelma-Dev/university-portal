@@ -1,0 +1,176 @@
+/* ============================================================
+   MATERIAL YOU — طبقة تصميم Material Design 3 لتطبيق «بوابة الطالب»
+   فرع: redesign-2026-10 — تُحمَّل أخيراً بعد nova.css
+   CSS فقط: لا تغيير في أي id/class أو منطق. التراجع = حذف سطر <link>.
+   الأدوار اللونية: لوحة M3 الأساسية (بذرة #6750A4).
+   الوضع الفعلي داخل التطبيق داكن (يفرضه سكربت التهيئة) — والأدوار
+   الفاتحة معرّفة كاملة تحت [data-theme="light"] لأي تفعيل مستقبلي.
+   ============================================================ */
+
+/* === STAGE 1: TOKENS === */
+
+/* ---- 1أ. أدوار M3 الداكنة + إعادة ربط توكنات التطبيق بها ---- */
+:root, :root[data-theme="dark"] {
+    /* Material You — dark roles */
+    --md-primary: #D0BCFF;
+    --md-on-primary: #381E72;
+    --md-primary-container: #4F378B;
+    --md-on-primary-container: #EADDFF;
+    --md-secondary: #CCC2DC;
+    --md-on-secondary: #332D41;
+    --md-secondary-container: #4A4458;
+    --md-on-secondary-container: #E8DEF8;
+    --md-tertiary: #EFB8C8;
+    --md-on-tertiary: #492532;
+    --md-tertiary-container: #633B48;
+    --md-on-tertiary-container: #FFD8E4;
+    --md-error: #F2B8B5;
+    --md-on-error: #601410;
+    --md-error-container: #8C1D18;
+    --md-on-error-container: #F9DEDC;
+    --md-success: #A5D6A7;
+    --md-success-container: #1F3A24;
+    --md-on-success-container: #C8E6C9;
+    --md-warning: #FFD8A8;
+    --md-surface: #141218;
+    --md-surface-dim: #141218;
+    --md-surface-bright: #3B383E;
+    --md-surface-container-lowest: #0F0D13;
+    --md-surface-container-low: #1D1B20;
+    --md-surface-container: #211F26;
+    --md-surface-container-high: #2B2930;
+    --md-surface-container-highest: #35333B;
+    --md-on-surface: #E6E0E9;
+    --md-on-surface-variant: #CAC4D0;
+    --md-outline: #938F99;
+    --md-outline-variant: #49454F;
+    --md-inverse-surface: #E6E0E9;
+    --md-inverse-on-surface: #322F35;
+    --md-inverse-primary: #6750A4;
+    --md-scrim: #000000;
+
+    /* إعادة ربط توكنات التطبيق الحالية بأدوار M3 */
+    --bg: #141218;
+    --bg-2: #1D1B20;
+    --bg-primary: #141218;
+    --bg-secondary: #1D1B20;
+    --bg-tertiary: #211F26;
+    --bg-card: #211F26;
+    --surface: #211F26;
+    --surface-2: #2B2930;
+    --brand: #D0BCFF;
+    --brand-dark: #4F378B;
+    --brand-light: #EADDFF;
+    --accent: #D0BCFF;
+    --accent-hover: #EADDFF;
+    --accent-glow: rgba(208, 188, 255, .35);
+    --accent-light: rgba(208, 188, 255, .14);
+    --gold: #D0BCFF;
+    --gold-soft: #EADDFF;
+    --gold-deep: #4F378B;
+    --gold-wash: rgba(208, 188, 255, .12);
+    --gold-line: rgba(208, 188, 255, .28);
+    --glass-line: #49454F;
+    --input-bg: #35333B;
+    --text: #E6E0E9;
+    --text-primary: #E6E0E9;
+    --text-2: #CAC4D0;
+    --text-secondary: #CAC4D0;
+    --danger: #F2B8B5;
+    --success: #A5D6A7;
+    --warning: #FFD8A8;
+    --info: #A8C7FA;
+}
+
+/* ---- 1ب. أدوار M3 الفاتحة (المعتمدة في المعاينة) — جاهزة عند تفعيل الوضع الفاتح ---- */
+:root[data-theme="light"] {
+    --md-primary: #6750A4;
+    --md-on-primary: #FFFFFF;
+    --md-primary-container: #EADDFF;
+    --md-on-primary-container: #21005D;
+    --md-secondary: #625B71;
+    --md-on-secondary: #FFFFFF;
+    --md-secondary-container: #E8DEF8;
+    --md-on-secondary-container: #1D192B;
+    --md-tertiary: #7D5260;
+    --md-on-tertiary: #FFFFFF;
+    --md-tertiary-container: #FFD8E4;
+    --md-on-tertiary-container: #31111D;
+    --md-error: #B3261E;
+    --md-on-error: #FFFFFF;
+    --md-error-container: #F9DEDC;
+    --md-on-error-container: #410E0B;
+    --md-success: #2E7D32;
+    --md-success-container: #C8E6C9;
+    --md-on-success-container: #1B3A1E;
+    --md-warning: #8F6B00;
+    --md-surface: #FEF7FF;
+    --md-surface-dim: #DED8E1;
+    --md-surface-bright: #FEF7FF;
+    --md-surface-container-lowest: #FFFFFF;
+    --md-surface-container-low: #F7F2FA;
+    --md-surface-container: #F3EDF7;
+    --md-surface-container-high: #ECE6F0;
+    --md-surface-container-highest: #E6E0E9;
+    --md-on-surface: #1D1B20;
+    --md-on-surface-variant: #49454F;
+    --md-outline: #79747E;
+    --md-outline-variant: #CAC4D0;
+    --md-inverse-surface: #322F35;
+    --md-inverse-on-surface: #F5EFF7;
+    --md-inverse-primary: #D0BCFF;
+
+    --bg: #FEF7FF;
+    --bg-2: #F7F2FA;
+    --bg-primary: #FEF7FF;
+    --bg-secondary: #F7F2FA;
+    --bg-tertiary: #F3EDF7;
+    --bg-card: #F3EDF7;
+    --surface: #F3EDF7;
+    --surface-2: #ECE6F0;
+    --brand: #6750A4;
+    --brand-dark: #21005D;
+    --brand-light: #EADDFF;
+    --accent: #6750A4;
+    --accent-hover: #4F378B;
+    --accent-glow: rgba(103, 80, 164, .30);
+    --accent-light: rgba(103, 80, 164, .12);
+    --gold: #6750A4;
+    --gold-soft: #4F378B;
+    --gold-deep: #EADDFF;
+    --gold-wash: rgba(103, 80, 164, .10);
+    --gold-line: rgba(103, 80, 164, .25);
+    --glass-line: #CAC4D0;
+    --input-bg: #E6E0E9;
+    --text: #1D1B20;
+    --text-primary: #1D1B20;
+    --text-2: #49454F;
+    --text-secondary: #49454F;
+    --danger: #B3261E;
+    --success: #2E7D32;
+    --warning: #8F6B00;
+    --info: #1D5FD6;
+}
+
+/* ---- 1ج. نطاق الرئيسية: إعادة ربط متغيرات dh-* ---- */
+#section-home, [data-theme="light"] #section-home {
+    --s-bg: var(--md-surface);
+    --s-bg-soft: var(--md-surface-container-low);
+    --s-card: var(--md-surface-container);
+    --s-card2: var(--md-surface-container-high);
+    --s-card3: var(--md-surface-container-highest);
+    --s-edge: var(--md-outline-variant);
+    --s-edge-hi: var(--md-outline);
+    --s-txt: var(--md-on-surface);
+    --s-txt2: var(--md-on-surface-variant);
+    --s-txt3: var(--md-outline);
+    --s-gold: var(--md-primary);
+    --s-gold-soft: var(--md-on-primary-container);
+}
+
+/* ---- 1د. أساسيات ---- */
+body { background: var(--md-surface) !important; color: var(--md-on-surface); }
+body::before, body::after { background: none; }
+::selection { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+::-webkit-scrollbar-thumb { background: var(--md-outline-variant); border-radius: 999px; }
+:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
