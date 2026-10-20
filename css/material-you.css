@@ -174,3 +174,118 @@ body::before, body::after { background: none; }
 ::selection { background: var(--md-primary-container); color: var(--md-on-primary-container); }
 ::-webkit-scrollbar-thumb { background: var(--md-outline-variant); border-radius: 999px; }
 :focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
+
+/* === STAGE 2: SHELL === */
+
+/* ---- 2أ. الشريط العلوي: سطح M3 بلا ظل ---- */
+.app-bar, .appbar, #app-bar,
+body.native-app .app-bar {
+    background: var(--md-surface-container) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    border-bottom: 1px solid var(--md-outline-variant) !important;
+}
+.appbar-btn { color: var(--md-on-surface-variant); }
+.appbar-btn:active { background: var(--md-surface-container-highest); }
+
+/* ---- 2ب. التنقل السفلي: NavigationBar بمؤشر حبة ---- */
+.bottom-nav, .bottom-nav .bn-inner,
+body.native-app .bottom-nav .bn-inner {
+    background: var(--md-surface-container) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    border-top: 1px solid var(--md-outline-variant) !important;
+    box-shadow: none !important;
+}
+.bottom-nav .bn-inner { min-height: 80px; }
+.bn-btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; background: transparent; border: none;
+    color: var(--md-on-surface-variant);
+}
+.bn-btn i {
+    width: 64px; height: 32px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem; line-height: 1;
+    transition: background-color .2s ease, color .2s ease;
+}
+.bn-btn span { font-size: .72rem; font-weight: 500; line-height: 1.1; }
+.bn-btn.active, .bn-item.active, .bn-item.on {
+    color: var(--md-on-surface) !important;
+    background: transparent !important;
+    text-shadow: none !important;
+}
+.bn-btn.active i, .bn-item.active i, .bn-item.on i {
+    background: var(--md-secondary-container);
+    color: var(--md-on-secondary-container) !important;
+    filter: none !important;
+}
+.bn-btn:active i { background: var(--md-surface-container-highest); }
+
+/* ---- 2ج. شاشة البداية: إعادة تلوين بأدوار M3 (البنية والرسم كما هما) ---- */
+#nova-splash { background: var(--md-surface); }
+.df-sp-wire .draw { stroke: var(--md-on-surface); }
+.df-sp-wire .anchors rect { fill: var(--md-surface); stroke: var(--md-primary); }
+.df-sp-wire .handles line { stroke: rgba(208, 188, 255, .55); }
+.df-sp-wire .handles circle { fill: var(--md-primary); }
+#dfFillCap stop:first-child { stop-color: #EADDFF; }
+#dfFillCap stop:last-child { stop-color: #D0BCFF; }
+#dfFillBook stop:first-child { stop-color: #6750A4; }
+#dfFillBook stop:last-child { stop-color: #4F378B; }
+.df-sp-word { color: var(--md-on-surface); }
+.df-sp-word em { color: var(--md-primary); }
+.df-sp-tag { color: var(--md-on-surface-variant); }
+
+/* ---- 2د. صفحة الهبوط وورقة الدخول: ورقة سفلية M3 ---- */
+#landing-page { background: var(--md-surface); }
+#landing-page .login-title { color: var(--md-on-surface); }
+#landing-page .login-sub { color: var(--md-on-surface-variant); }
+.df-sheet {
+    background: var(--md-surface-container-low) !important;
+    color: var(--md-on-surface);
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, .35) !important;
+}
+.df-seg { background: var(--md-surface-container-highest); }
+.df-seg-thumb { background: var(--md-primary); }
+.df-seg-btn { color: var(--md-on-surface-variant); }
+.df-seg-btn.on { color: var(--md-on-primary); }
+.df-sheet .input-group label { color: var(--md-on-surface) !important; }
+.df-sheet .input-group input {
+    background: var(--md-surface-container-highest) !important;
+    border: 1px solid transparent !important;
+    color: var(--md-on-surface) !important;
+    border-radius: 16px !important;
+    box-shadow: none !important;
+    caret-color: var(--md-primary) !important;
+}
+.df-sheet .input-group input::placeholder { color: var(--md-on-surface-variant) !important; }
+.df-sheet .input-group input:focus {
+    background: var(--md-surface-container-highest) !important;
+    border-color: var(--md-primary) !important;
+    box-shadow: 0 0 0 1.5px var(--md-primary) !important;
+}
+.df-sheet .field-error input {
+    border-color: var(--md-error) !important;
+    box-shadow: 0 0 0 1.5px var(--md-error) !important;
+}
+.df-sheet .field-error .pw-toggle i, .df-sheet .field-error-ico { color: var(--md-error) !important; }
+.df-sheet .field-msg { color: var(--md-error) !important; }
+.df-sheet .pw-toggle i { color: var(--md-on-surface-variant); }
+.df-keep { color: var(--md-on-surface); }
+.df-check { border-color: var(--md-outline); color: var(--md-on-primary); }
+.df-keep input:checked + .df-check { background: var(--md-primary); border-color: var(--md-primary); }
+.df-link { color: var(--md-primary); }
+.df-or { color: var(--md-on-surface-variant); }
+.df-or::before, .df-or::after { background: var(--md-outline-variant); }
+.df-admin {
+    background: transparent; border-color: var(--md-outline);
+    color: var(--md-on-surface); border-radius: 999px;
+}
+.df-admin i { color: var(--md-primary); }
+.df-guest-note { background: var(--md-primary-container); border-color: transparent; }
+.df-guest-note i { color: var(--md-on-primary-container); }
+.df-guest-note span { color: var(--md-on-primary-container); }
+.df-sheet .login-submit .df-spinner {
+    border-color: rgba(56, 30, 114, .30);
+    border-top-color: var(--md-on-primary);
+}
