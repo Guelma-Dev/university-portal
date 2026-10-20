@@ -289,3 +289,147 @@ body.native-app .bottom-nav .bn-inner {
     border-color: rgba(56, 30, 114, .30);
     border-top-color: var(--md-on-primary);
 }
+
+/* === STAGE 3: COMPONENTS === */
+
+/* ---- 3أ. البطاقات: حاويات تونالية بلا ظلال ثقيلة ---- */
+.subject-card, .admin-card, .dh-hero-card, .calc-module-card, .view-card,
+.stat-card, .rsc-card, .mupd-card, .file-card, .transcript-card,
+.set-group, .set-row, .cx-card, .notif-card, .sched-card, .exam-card,
+.grade-card, .lib-level-card, .mod-card, .acc-card, .modal-card,
+.app-menu, .pomo-panel, .guest-card {
+    background: var(--md-surface-container) !important;
+    border: 1px solid var(--md-outline-variant) !important;
+    border-radius: 24px !important;
+    box-shadow: none !important;
+}
+
+/* ---- 3ب. الأزرار: filled / outlined بأسلوب M3 ---- */
+.btn-primary {
+    background: var(--md-primary) !important;
+    color: var(--md-on-primary) !important;
+    border: none !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+}
+.btn-primary:hover { filter: brightness(1.06); }
+.btn-ghost {
+    border-radius: 999px !important;
+    border: 1px solid var(--md-outline) !important;
+    color: var(--md-primary) !important;
+    background: transparent !important;
+}
+.btn-ghost:hover { color: var(--md-primary) !important; border-color: var(--md-primary) !important; }
+
+/* ---- 3ج. الحقول: filled text fields ---- */
+.input-group input, .input-group select, .input-group textarea,
+.lux-input input, input[type="text"], input[type="password"], input[type="number"], input[type="email"] {
+    background: var(--md-surface-container-highest) !important;
+    border: 1px solid transparent !important;
+    border-radius: 16px !important;
+    color: var(--md-on-surface) !important;
+}
+.input-group input::placeholder, .input-group textarea::placeholder { color: var(--md-on-surface-variant) !important; }
+.input-group input:focus, .input-group select:focus, .input-group textarea:focus,
+.input-group input:focus-visible {
+    outline: none !important;
+    border-color: var(--md-primary) !important;
+    box-shadow: 0 0 0 3px rgba(208, 188, 255, .25) !important;
+    background: var(--md-surface-container-highest) !important;
+}
+.field-error input, .input-error {
+    border-color: var(--md-error) !important;
+    box-shadow: 0 0 0 3px rgba(242, 184, 181, .25) !important;
+}
+
+/* ---- 3د. البحث على شكل حبة (قائمة التطبيق) ---- */
+.app-menu-search {
+    background: var(--md-surface-container-high);
+    border-radius: 999px;
+}
+.app-menu-search i { color: var(--md-on-surface-variant); }
+.app-menu-search input { background: transparent !important; border: none !important; box-shadow: none !important; }
+
+/* ---- 3هـ. مفاتيح التبديل: M3 switch (ألوان فقط — حركة المقبض كما هي) ---- */
+.switch { background: var(--md-surface-container-highest); border: 2px solid var(--md-outline); }
+.switch .knob { background: var(--md-outline); }
+.switch[aria-checked="true"], .switch.on { background: var(--md-primary); border-color: var(--md-primary); }
+.switch[aria-checked="true"] .knob, .switch.on .knob { background: var(--md-on-primary); }
+
+/* ---- 3و. أزرار الأيام والرقائق ---- */
+.day-btn {
+    background: var(--md-surface-container-high);
+    color: var(--md-on-surface-variant);
+    border: 1px solid var(--md-outline-variant);
+    border-radius: 999px;
+}
+.day-btn.active {
+    background: var(--md-primary);
+    color: var(--md-on-primary);
+    border-color: transparent;
+}
+.lx-p-chip { background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); }
+.lx-p-chip.active, .lx-p-chip.on {
+    background: var(--md-primary-container);
+    color: var(--md-on-primary-container);
+}
+
+/* ---- 3ز. أيقونات خدمات الرئيسية: حاويات تونالية ---- */
+.dh-sv-ico { background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); }
+.dh-sv-ico.sx-gold { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
+.dh-sv-ico.sx-blue { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.dh-sv-ico.sx-green { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+
+/* ---- 3ح. بطاقة «التالي» في الرئيسية: حاوية primary ---- */
+#dh-next {
+    background: var(--md-primary-container) !important;
+    color: var(--md-on-primary-container);
+    border-radius: 28px;
+}
+
+/* ---- 3ط. الإحصاءات والنوافذ والتوست ---- */
+.stat-icon {
+    background: var(--md-primary-container);
+    color: var(--md-on-primary-container);
+    border-radius: 16px;
+}
+.modal-header i {
+    color: var(--md-on-primary-container) !important;
+    background: var(--md-primary-container) !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+.modal-overlay { background: rgba(10, 8, 14, .55) !important; }
+.toast {
+    background: var(--md-inverse-surface) !important;
+    color: var(--md-inverse-on-surface) !important;
+    border: none !important;
+    border-radius: 12px !important;
+}
+
+/* ---- 3ي. حالات دلالية: عدم الاتصال، الحلقات، الهياكل ---- */
+#offline-banner, .offline-banner {
+    background: var(--md-error-container) !important;
+    color: var(--md-on-error-container) !important;
+}
+#gauge-circle { stroke: var(--md-primary); }
+#pomo-ring { stroke: var(--md-primary); }
+.skel { background: var(--md-surface-container-high); }
+
+/* ---- 3ك. جداول النقاط والامتحانات ---- */
+.grades-container table th, #section-exams th {
+    background: var(--md-surface-container-high);
+    color: var(--md-on-surface);
+}
+.grades-container table td, #section-exams td { border-color: var(--md-outline-variant); }
+
+/* ---- 3ل. حركة الأقسام: Shared Axis ‏(300ms، emphasized) + احترام تقليل الحركة ---- */
+.section.active { animation: my-shared-axis .3s cubic-bezier(.2, 0, 0, 1) !important; }
+@keyframes my-shared-axis {
+    from { opacity: 0; transform: translateX(-24px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .section.active { animation: none !important; }
+    .bn-btn i { transition: none; }
+}
