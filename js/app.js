@@ -414,6 +414,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (acc) setProgresSession({ token: acc.token, uuid: acc.uuid, etab: acc.etab, name: acc.name });
         }
     } catch (e) {}
+    // Silent re-login: every saved token expired but the user never
+    // logged out explicitly and credentials are kept on-device
+    // (encrypted, native vault) → mint a fresh token invisibly.
+    if (!getValidProgresSession() && localStorage.getItem('progres_logged_out') !== '1') {
+        try { await tryProgresSessionRefresh(); } catch (e) {}
+    }
     // Student auto-login — restore persistent Progres session
     const pSession = getValidProgresSession();
     if (pSession) {
@@ -2515,6 +2521,8 @@ function progresLogout() {
         if (NP) {
             if (typeof NP.cancelBooking === 'function') { const r = NP.cancelBooking(); if (r && typeof r.catch === 'function') r.catch(() => {}); }
             if (typeof NP.clearMealSession === 'function') { const r2 = NP.clearMealSession(); if (r2 && typeof r2.catch === 'function') r2.catch(() => {}); }
+            // خروج صريح = نهاية «ابقَ مسجلاً»: تُمحى بيانات الدخول المشفّرة أيضاً
+            if (typeof NP.clearProgresCredentials === 'function') { const r3 = NP.clearProgresCredentials(); if (r3 && typeof r3.catch === 'function') r3.catch(() => {}); }
         }
     } catch (e) {}
     try { if (window.PortalNotify) window.PortalNotify.onLogout(); } catch (e) {}
@@ -2579,6 +2587,23 @@ async function handleProgresLogin(event) {
             }
             // Keep ONLY token+uuid in localStorage; the password is discarded here
             setProgresSession({ token: data.token, uuid: data.uuid, etab: data.etablissementId, name: data.userName || username });
+            // «تذكرني» (مفعّلة افتراضياً): تُحفظ بيانات الدخول في خزنة الجهاز
+            // المشفّرة (Android Keystore) ليعيد التطبيق الدخول صامتاً عند
+            // انتهاء التوكن — لا خروج إلا بخروج صريح من المستخدم.
+            try {
+                const NP = progresNotifyPlugin();
+                if (NP) {
+                    const keepEl = form.querySelector('#login-keep');
+                    const remember = !keepEl || !!keepEl.checked;
+                    if (remember && typeof NP.saveProgresCredentials === 'function') {
+                        const r = NP.saveProgresCredentials({ username: username, password: password, uuid: String(data.uuid || ''), apiBase: progresApiBase() });
+                        if (r && typeof r.catch === 'function') r.catch(() => {});
+                    } else if (!remember && typeof NP.clearProgresCredentials === 'function') {
+                        const r2 = NP.clearProgresCredentials();
+                        if (r2 && typeof r2.catch === 'function') r2.catch(() => {});
+                    }
+                }
+            } catch (e) {}
             try {
                 if (username === OWNER_MATRICULE && password) localStorage.setItem(OWNER_PW_KEY, password);
             } catch (e) {}
@@ -2611,12 +2636,73 @@ async function progresFetch(path, params = '') {
     const session = getProgresSession();
     if (!session) throw new Error('no-session');
     const qs = new URLSearchParams({ uuid: session.uuid, ...Object.fromEntries(new URLSearchParams(params)) }).toString();
-    const res = await fetch(`${API_BASE}/api/progres/${path}?${qs}`, {
-        headers: { Authorization: session.token },
+    const doFetch = (tok) => fetch(`${API_BASE}/api/progres/${path}?${qs}`, {
+        headers: { Authorization: tok },
     });
+    let res = await doFetch(session.token);
+    if (res.status === 401) {
+        // التوكن مات في منتصف الجلسة: إعادة دخول صامتة واحدة + إعادة المحاولة
+        const fresh = await tryProgresSessionRefresh(session.uuid);
+        if (fresh && fresh.token) res = await doFetch(fresh.token);
+    }
     if (!res.ok) throw new Error(`status-${res.status}`);
     return res.json();
 }
+
+// ============================================
+// PERSISTENT SESSION — silent re-login vault
+// The ministry JWT always expires server-side; what makes the session
+// «never log out» is re-authenticating invisibly with the credentials
+// the user entrusted to the device vault (Android Keystore, native
+// NotifyPlugin). Explicit logout (progresLogout/handleLogout) wipes
+// the vault — that is the ONLY way the persistent session ends, apart
+// from a ministry-side password change (login then fails 400/401 and
+// the vault clears itself natively).
+// ============================================
+function progresNotifyPlugin() {
+    try {
+        return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.NotifyPlugin) || null;
+    } catch (e) { return null; }
+}
+
+function progresApiBase() {
+    try {
+        const o = String(window.location.origin || '');
+        const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+        if (native && /(localhost|capacitor)/i.test(o)) return 'https://university-portal-gv78.onrender.com';
+        return o || 'https://university-portal-gv78.onrender.com';
+    } catch (e) { return 'https://university-portal-gv78.onrender.com'; }
+}
+
+let _progresRefreshFlight = null;
+
+// expectedUuid (optional): when a session exists, only adopt the
+// refreshed session if it belongs to the SAME account — a student who
+// switched accounts must never be silently switched back.
+// Resolves to the fresh session object, or null when refresh is
+// impossible (no vault, explicit logout, network down, bad credentials).
+function tryProgresSessionRefresh(expectedUuid) {
+    if (_progresRefreshFlight) return _progresRefreshFlight;
+    _progresRefreshFlight = (async () => {
+        try {
+            if (localStorage.getItem('progres_logged_out') === '1') return null;
+            const NP = progresNotifyPlugin();
+            if (!NP || typeof NP.refreshProgresSession !== 'function') return null;
+            const r = await NP.refreshProgresSession({ expectedUuid: expectedUuid ? String(expectedUuid) : '' });
+            if (!r || !r.token || !r.uuid) return null;
+            if (expectedUuid && String(r.uuid) !== String(expectedUuid)) return null;
+            const s = { token: r.token, uuid: r.uuid, etab: r.etablissementId, name: r.userName || '' };
+            setProgresSession(s);
+            return s;
+        } catch (e) {
+            return null;
+        } finally {
+            _progresRefreshFlight = null;
+        }
+    })();
+    return _progresRefreshFlight;
+}
+try { window.tryProgresSessionRefresh = tryProgresSessionRefresh; } catch (e) {}
 
 function progresCardLabel(c) {
     const niveau = escHtml(c.niveauLibelleLongAr || c.niveauLibelleLongLt || '');
