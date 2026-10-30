@@ -1,13 +1,13 @@
 {
-  "versionCode": 74,
-  "versionName": "1.4.58",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-74.apk",
-  "sha256": "63e0593cdc198bb880d3f997f6f8b5833d493493d9052c03b90976b6b191b3e3",
-  "size": 5870696,
+  "versionCode": 75,
+  "versionName": "1.4.59",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-75.apk",
+  "sha256": "34e69d028a67e2ecb2fd86504141dd8ba2fc5cf7d8f1204f8159abb0cf6c8c5d",
+  "size": 5875221,
   "mandatory": false,
   "changelog": [
-    "واجهة جامعتي بهوية التطبيق الداكنة",
-    "الغيابات صحيحة: تفصيل محاضرة/موجهة/تطبيقية + التواريخ + العتبة الحقيقية",
-    "الاسم بالعربية وإصلاح مشرف غير معين"
+    "الجلسة تبقى مفتوحة: تجديد تلقائي صامت بلا ما تعاود تسجل الدخول، والخروج غير كي تخرج بنفسك",
+    "حجز الوجبات ما عادش يفشل بسبب انتهاء الجلسة",
+    "تقويم جامعتي: سداسي واحد واضح (الأول/الثاني) مع مفتاح للتبديل، بلا خلط مع سداسيات أخرى"
   ]
 }
