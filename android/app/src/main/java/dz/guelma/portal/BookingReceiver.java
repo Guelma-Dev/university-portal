@@ -63,44 +63,97 @@ class BookingRunner {
             return;
         }
 
+        // تجديد استباقي: التوكن ميت أو على وشك الموت → إعادة دخول صامتة
+        // من خزنة الجهاز (بيانات «تذكرني» المشفّرة) قبل ما تفشل السلسلة.
+        if (jwtExpired(token)) {
+            NotifyPlugin.RefreshResult rr = NotifyPlugin.refreshProgres(ctx, uuid);
+            if (rr.error == 0) {
+                token = rr.token;
+            } else if (rr.error == 1 || rr.error == 2 || rr.error == 4) {
+                NotifyPlugin.show(ctx, NotifyPlugin.CH_MEALS, "حجز الوجبات",
+                    "تعذر حجز الوجبة — سجل الدخول في التطبيق أولاً", 7102);
+                NotifyPlugin.rescheduleIfEnabled(ctx);
+                return;
+            }
+            // error 3 (network): نكمل بالتوكن القديم — السلسلة تقرر
+        }
+
         String tomorrow = dayPlus(1);
         List<Integer> meals = parseMeals(mealsCsv);
-        String failReason = null;
-        try {
-            GsChain gs = new GsChain(uuid, dia, token, p);
-            for (int mt : meals) {
-                JSONObject body = new JSONObject();
-                body.put("uuid", uuid);
-                body.put("wilaya", gs.wilayaJson());
-                body.put("residence", gs.residenceJson());
-                body.put("token", gs.gs());
-                JSONObject one = new JSONObject();
-                one.put("date_reserve", tomorrow);
-                one.put("menu_type", mt);
-                one.put("idDepot", depotId);
-                body.put("details", new JSONArray().put(one.toString()));
-                gs.post("/api/reservemeal", body);
-            }
-            int confirmed = gs.countForDate(tomorrow, meals);
-            if (confirmed > 0) {
-                String what = mealNames.isEmpty() ? "الوجبة" : "وجبة " + mealNames;
+        boolean authRetried = false;
+        while (true) {
+            try {
+                GsChain gs = new GsChain(uuid, dia, token, p);
+                for (int mt : meals) {
+                    JSONObject body = new JSONObject();
+                    body.put("uuid", uuid);
+                    body.put("wilaya", gs.wilayaJson());
+                    body.put("residence", gs.residenceJson());
+                    body.put("token", gs.gs());
+                    JSONObject one = new JSONObject();
+                    one.put("date_reserve", tomorrow);
+                    one.put("menu_type", mt);
+                    one.put("idDepot", depotId);
+                    body.put("details", new JSONArray().put(one.toString()));
+                    gs.post("/api/reservemeal", body);
+                }
+                int confirmed = gs.countForDate(tomorrow, meals);
+                if (confirmed > 0) {
+                    String what = mealNames.isEmpty() ? "الوجبة" : "وجبة " + mealNames;
+                    NotifyPlugin.show(ctx, NotifyPlugin.CH_MEALS, "حجز الوجبات",
+                        confirmed == 1 ? ("تم حجز " + what + " بنجاح") : ("تم حجز " + confirmed + " وجبات بنجاح"), 7101);
+                } else {
+                    NotifyPlugin.show(ctx, NotifyPlugin.CH_MEALS, "حجز الوجبات", "تعذر حجز الوجبة", 7102);
+                }
+                break;
+            } catch (GsAuthException e) {
+                // رفض التوكن رغم أنه لم يحن أجله (إبطال من الوزارة؟):
+                // إعادة دخول صامتة واحدة ثم إعادة السلسلة كاملة مرة واحدة.
+                if (!authRetried) {
+                    authRetried = true;
+                    NotifyPlugin.RefreshResult rr = NotifyPlugin.refreshProgres(ctx, uuid);
+                    if (rr.error == 0) {
+                        token = rr.token;
+                        continue;
+                    }
+                    if (rr.error == 3) {
+                        NotifyPlugin.show(ctx, NotifyPlugin.CH_MEALS, "حجز الوجبات", "تعذر حجز الوجبة", 7102);
+                        break;
+                    }
+                }
                 NotifyPlugin.show(ctx, NotifyPlugin.CH_MEALS, "حجز الوجبات",
-                    confirmed == 1 ? ("تم حجز " + what + " بنجاح") : ("تم حجز " + confirmed + " وجبات بنجاح"), 7101);
-            } else {
-                NotifyPlugin.show(ctx, NotifyPlugin.CH_MEALS, "حجز الوجبات", "تعذر حجز الوجبة", 7102);
+                    "تعذر حجز الوجبة — سجل الدخول في التطبيق أولاً", 7102);
+                break;
+            } catch (Exception e) {
+                String failReason = shortMsg(e.getMessage());
+                String body = "تعذر حجز الوجبة";
+                if (failReason != null && !failReason.isEmpty()) body += " — " + failReason;
+                NotifyPlugin.show(ctx, NotifyPlugin.CH_MEALS, "حجز الوجبات", body, 7102);
+                break;
             }
-        } catch (GsAuthException e) {
-            NotifyPlugin.show(ctx, NotifyPlugin.CH_MEALS, "حجز الوجبات",
-                "تعذر حجز الوجبة — سجل الدخول في التطبيق أولاً", 7102);
-        } catch (Exception e) {
-            failReason = shortMsg(e.getMessage());
-            String body = "تعذر حجز الوجبة";
-            if (failReason != null && !failReason.isEmpty()) body += " — " + failReason;
-            NotifyPlugin.show(ctx, NotifyPlugin.CH_MEALS, "حجز الوجبات", body, 7102);
         }
 
         // Daily rollover (setExact does not repeat; same ID => no duplicates).
         NotifyPlugin.rescheduleIfEnabled(ctx);
+    }
+
+    /** JWT exp check (60s early margin). An unreadable token counts as
+     *  NOT expired here — the reactive auth-retry in run() handles the
+     *  real 401 when the ministry rejects it anyway. */
+    private static boolean jwtExpired(String token) {
+        try {
+            String[] parts = token.split("\\.");
+            if (parts.length < 2) return false;
+            String seg = parts[1];
+            while (seg.length() % 4 != 0) seg += "=";
+            String payload = new String(android.util.Base64.decode(seg,
+                android.util.Base64.URL_SAFE | android.util.Base64.NO_WRAP),
+                StandardCharsets.UTF_8);
+            long exp = new JSONObject(payload).optLong("exp", 0);
+            return exp > 0 && System.currentTimeMillis() >= exp * 1000L - 60000L;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** Progres/guest auth failure: the fix is a fresh app login. */
