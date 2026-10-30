@@ -746,7 +746,18 @@
         if (cached) return _resp(200, JSON.stringify(cached), 'application/json; charset=utf-8', null);
         const path = pattern.replace('{u}', encodeURIComponent(uuid)).replace('{id}', String(id));
         try {
-            const r = await _upstreamGet(path, token, firstDia);
+            let r = await _upstreamGet(path, token, firstDia);
+            if (r.status === 401 && typeof window.tryProgresSessionRefresh === 'function') {
+                // توكن منتهٍ: إعادة دخول صامتة واحدة (خزنة الجهاز) ثم إعادة الطلب
+                try {
+                    const fresh = await window.tryProgresSessionRefresh(uuid);
+                    if (fresh && fresh.token && String(fresh.token) !== token) {
+                        const fc = _jwtClaims(String(fresh.token));
+                        const fDia = String(fc.dias || '').split(',')[0].trim();
+                        r = await _upstreamGet(path, String(fresh.token), fDia);
+                    }
+                } catch (e) {}
+            }
             if (r.status === 401) return _errResp(401, 'انتهت صلاحية جلسة الوزارة، أعد تسجيل الدخول');
             if (r.status !== 200) return _errResp(r.status === 404 ? 404 : 502, r.status === 404 ? 'لا توجد بيانات متوفرة' : 'تعذر جلب البيانات من خوادم الوزارة، حاول لاحقاً');
             const data = _parseBody(r.text);
