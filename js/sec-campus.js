@@ -193,27 +193,44 @@
 
     const campusAllowed = () => isAdmin() || (window.CampusAccess && !!window.CampusAccess.level());
 
+    function delegatesListHTML(list) {
+        return list.map(m => `<div class="set-row">
+                <span class="set-lbl"><i class="fas fa-user-check"></i><bdi>${esc(m)}</bdi></span>
+                <button type="button" class="btn btn-ghost btn-sm" data-delaction="del" data-m="${esc(m)}"><i class="fas fa-trash"></i></button>
+            </div>`).join('');
+    }
+
     function renderDelegates() {
         const box = document.getElementById('campus-delegates');
         if (!box) return;
-        if (!isAdmin()) { box.innerHTML = ''; return; }
-        const list = getDelegates();
-        box.innerHTML = `<p class="set-head">حسابات جامعتي المفوضة</p>
+        if (!isAdmin()) { box.innerHTML = ''; box.dataset.built = ''; return; }
+        // الهيكل يُبنى مرة واحدة فقط، وبعدها نحدّث قائمة الأرقام وحدها.
+        // البناء الكامل عند كل عرض كان يدمّر خانة الإدخال: كل عرض يطلق
+        // مزامنة خادم، وعند وصول ردّها يُعاد بناء innerHTML فتختفي الخانة
+        // وترجع فارغة وبلا تركيز أثناء الكتابة (الوميض)، وأحياناً يختفي
+        // القسم كله. الآن الخانة لا تُلمس بعد بنائها أبداً.
+        const needBuild = !box.dataset.built || !document.getElementById('cx-del-input');
+        if (needBuild) {
+            box.innerHTML = `<p class="set-head">حسابات جامعتي المفوضة</p>
             <div class="set-row">
                 <input id="cx-del-input" inputmode="numeric" placeholder="رقم التسجيل" style="flex:1;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text-primary);font-family:inherit" />
                 <button type="button" class="btn btn-ghost btn-sm" data-delaction="add">إضافة</button>
             </div>
-            ${list.map(m => `<div class="set-row">
-                <span class="set-lbl"><i class="fas fa-user-check"></i><bdi>${esc(m)}</bdi></span>
-                <button type="button" class="btn btn-ghost btn-sm" data-delaction="del" data-m="${esc(m)}"><i class="fas fa-trash"></i></button>
-            </div>`).join('')}
+            <div id="cx-del-list"></div>
             <p class="set-note">تُحفظ في الخادم وتعمل على أي هاتف: المفوض يدخل Progres برقمه في جهازه.</p>`;
-        // Refresh from server in background (single-flight).
-        if (!renderDelegates._busy) {
+            box.dataset.built = '1';
+        }
+        const listBox = document.getElementById('cx-del-list');
+        if (listBox) listBox.innerHTML = delegatesListHTML(getDelegates());
+        // مزامنة خلفية عند أول بناء فقط، وتحدّث القائمة وحدها عند وصولها.
+        if (needBuild && !renderDelegates._busy) {
             renderDelegates._busy = true;
             syncDelegatesFromServer().then(ok => {
                 renderDelegates._busy = false;
-                if (ok) renderDelegates();
+                if (ok) {
+                    const lb = document.getElementById('cx-del-list');
+                    if (lb) lb.innerHTML = delegatesListHTML(getDelegates());
+                }
             }).catch(() => { renderDelegates._busy = false; });
         }
     }
@@ -473,49 +490,59 @@
     // ---------- الرزنامة (منتقي أيام + حصص) ----------
     function normTime(t) { return String(t || '').replace(/\s+/g, ''); }
 
-    // PMS يرسل شبكتين منفصلتين: semA = السداسي الأول، semB = السداسي
-    // الثاني. دمجهما في شبكة أسبوعية واحدة (سلوك 1.4.29) كان سليماً حين
-    // كانت الجامعة تنشر سداسياً واحداً؛ منذ نشرت السداسي الثاني أيضاً
-    // صارت الحصص تتصادم في نفس الخانات ومواد السداسي الآخر تتسرب لقسم
-    // جامعتي وللشاشة الرئيسية. القاعدة الآن: شبكة من سداسي واحد فقط —
-    // اختيار المستخدم إن وُجد، وإلا سداسي الفترة الحالية من السنة.
+    // مقارنة مباشرة مع ردّ PMS الحقيقي (get_group_schedule، فُحص
+    // 2026-10-30): الحمولة فيها schedule = قائمة واحدة مسطّحة بكل
+    // الحصص، وكل صف موسوم بحقل semestre (عنده: 20 صفاً للسداسي 3
+    // و17 صفاً للسداسي 4)، وsemA/semB مجرد رقمي السداسيين (3 و4)
+    // لا قائمتي حصص. داخل السداسي الواحد لا تتصادم حصتان أبداً، لكن
+    // 15 خانة مشتركة بين السداسيين بنفس اليوم والوقت — فبناء شبكة
+    // واحدة من كل الصفوف (سلوك كل النسخ حتى 1.4.59، بما فيها محاولة
+    // إصلاحها التي خمّنت شكلاً آخر للبيانات) يكتب اللاحق فوق السابق
+    // وتختلط الرزنامة وتتسرب مواد السداسي الآخر للرئيسية.
+    // القاعدة الآن: شبكة لكل سداسي تُبنى من صفوفه وحدها (semestre)،
+    // بقسمين ظاهرين في الرزنامة بأرقامهما الحقيقية من البيانات.
     const SCHED_SEM_KEY = 'lx_pms_sched_sem';
-    function schedSemDefault() {
+    function schedSemesters(d) {
+        const set = [];
+        if (d && Array.isArray(d.schedule)) d.schedule.forEach(r => {
+            const n = parseInt(r && r.semestre, 10);
+            if (isFinite(n) && n > 0 && set.indexOf(n) === -1) set.push(n);
+        });
+        if (!set.length && d) [d.semA, d.semB].forEach(v => {
+            const n = parseInt(v, 10);
+            if (isFinite(n) && n > 0 && set.indexOf(n) === -1) set.push(n);
+        });
+        return set.sort((a, b) => a - b);
+    }
+    function currentSchedSem(d) {
+        const sems = schedSemesters(d);
+        if (!sems.length) return null;
+        if (sems.length === 1) return sems[0];
         const m = new Date().getMonth(); // 0 = جانفي … 11 = ديسمبر
-        return (m >= 8 || m === 0) ? 'A' : 'B'; // سبتمبر–جانفي: الأول، فيفري–أوت: الثاني
+        return (m >= 8 || m === 0) ? sems[0] : sems[sems.length - 1]; // سبتمبر–جانفي: سداسي الفترة الأولى، فيفري–أوت: الثاني
     }
     function activeSchedSem(d) {
-        const hasA = !!(d && Array.isArray(d.semA) && d.semA.length);
-        const hasB = !!(d && Array.isArray(d.semB) && d.semB.length);
-        if (!hasA && !hasB) return null;
+        const sems = schedSemesters(d);
+        if (!sems.length) return null;
         let want = null;
-        try { want = localStorage.getItem(SCHED_SEM_KEY); } catch (e) {}
-        if (want !== 'A' && want !== 'B') want = schedSemDefault();
-        if (want === 'A' && hasA) return 'A';
-        if (want === 'B' && hasB) return 'B';
-        return hasA ? 'A' : 'B';
+        try { want = parseInt(localStorage.getItem(SCHED_SEM_KEY), 10); } catch (e) {}
+        if (isFinite(want) && sems.indexOf(want) !== -1) return want;
+        return currentSchedSem(d);
     }
-    function bothSchedSems(d) {
-        return !!(d && !(Array.isArray(d.schedule) && d.schedule.length)
-            && Array.isArray(d.semA) && d.semA.length
-            && Array.isArray(d.semB) && d.semB.length);
-    }
-    function schedRows(d) {
+    function schedRows(d, sem) {
         if (!d) return [];
-        if (Array.isArray(d.schedule) && d.schedule.length) return d.schedule;
-        const sem = activeSchedSem(d);
-        if (sem === 'A') return d.semA;
-        if (sem === 'B') return d.semB;
-        if (Array.isArray(d.schedule)) return d.schedule;
-        return [].concat(Array.isArray(d.semA) ? d.semA : [], Array.isArray(d.semB) ? d.semB : []);
+        const rows = Array.isArray(d.schedule) ? d.schedule : [];
+        if (sem == null) return rows;
+        return rows.filter(r => parseInt(r && r.semestre, 10) === sem);
     }
 
-    function pmsBaseGrid() {
+    function pmsBaseGrid(sem) {
         const d = S.cache['sched_raw'];
         const grid = {};
         const extra = [];
         if (!d) return { grid, extra };
-        const rows = schedRows(d);
+        if (sem === undefined) sem = currentSchedSem(d);
+        const rows = schedRows(d, sem);
         const slotNorm = SLOTS.map(normTime);
         rows.forEach(r => {
             const day = FR_DAY[String(r.jours || '').trim().toLowerCase()];
@@ -530,6 +557,25 @@
             else extra.push(Object.assign({ _day: r.jours, _heure: r.heure }, cell));
         });
         return { grid, extra };
+    }
+    // شبكة السداسي الجاري (للرئيسية والمزامنة) وشبكة السداسي المعروض
+    // (لشاشة الرزنامة وتحرير خاناتها) — لا يختلطان أبداً.
+    function pmsCurrentGrid() { return pmsBaseGrid(currentSchedSem(S.cache['sched_raw'])); }
+    function pmsViewGrid() { return pmsBaseGrid(activeSchedSem(S.cache['sched_raw'])); }
+    // خريطة الشبكة المختلطة كما بنتها النسخ القديمة من كل الصفوف
+    // (آخر صف يكتب فوق السابق في نفس الخانة) — تُستعمل مرة واحدة
+    // للتعرف على خلايا المزامنة الخاطئة في الرزنامة الرئيسية.
+    function pmsScrambledMap() {
+        const d = S.cache['sched_raw'];
+        const map = {};
+        if (!d || !Array.isArray(d.schedule)) return map;
+        const slotNorm = SLOTS.map(normTime);
+        d.schedule.forEach(r => {
+            const day = FR_DAY[String(r.jours || '').trim().toLowerCase()];
+            const si = slotNorm.indexOf(normTime(r.heure));
+            if (day && DAYS.includes(day) && si >= 0) map[day + '_' + si] = r.mNameAr || r.mName || '';
+        });
+        return map;
     }
 
     function finalCell(base, key) {
@@ -546,7 +592,7 @@
             const jsDay = new Date().getDay();
             if (jsDay < 0 || jsDay > 4) return [];
             const day = DAYS[jsDay];
-            const { grid } = pmsBaseGrid();
+            const { grid } = pmsCurrentGrid();
             const items = [];
             SLOTS.forEach((rng, i) => {
                 const parts = String(rng).split('-');
@@ -568,6 +614,49 @@
         pms('get_dashboard_data').then(d => { S.dash = d; }).catch(() => {});
     }
 
+    // تنظيف لمرة واحدة (1.4.60): مزامنات النسخ القديمة كتبت في طبقة
+    // الرزنامة الرئيسية خلايا من الشبكة المختلطة (مواد السداسي الآخر
+    // في خانات هذا السداسي)، والمزامنة «تملأ الفارغ فقط» فلا تصلحها
+    // وحدها أبداً. نلمس فقط خلية يطابق موضوعها تماماً ناتج الشبكة
+    // المختلطة في الخانة نفسها ويختلف عن شبكة السداسي الجاري: نستبدلها
+    // بحصة السداسي الجاري أو نحذفها إن لم توجد — خلية كهذه لا يمكن أن
+    // تكون إدخالاً يدوياً صحيحاً لهذا السداسي.
+    const PTS_CLEAN_KEY = 'lx_pms_pts_cleanup_v160';
+    function cleanupScrambledPts() {
+        try {
+            if (localStorage.getItem(PTS_CLEAN_KEY)) return;
+            const d = S.cache['sched_raw'];
+            if (!d || schedSemesters(d).length < 2) return; // لا خلط ممكناً أصلاً
+            if (typeof ptsDb !== 'function' || typeof ptsOwner !== 'function' || typeof ptsPersist !== 'function') return;
+            const cur = pmsCurrentGrid().grid;
+            const scr = pmsScrambledMap();
+            const db = ptsDb();
+            const o = ptsOwner();
+            const map = (db.owners && typeof db.owners[o] === 'object' && !Array.isArray(db.owners[o])) ? db.owners[o] : null;
+            if (!map) { try { localStorage.setItem(PTS_CLEAN_KEY, '1'); } catch (e) {} return; }
+            let n = 0;
+            Object.keys(map).forEach(key => {
+                const e = map[key];
+                if (!e || !e.subject) return;
+                const s = scr[key];
+                if (!s || s !== e.subject) return; // ليست من المزامنة المختلطة
+                const c = cur[key];
+                if (c && c.subject === e.subject) return; // صحيحة في السداسي الجاري
+                if (c && c.subject) {
+                    map[key] = { day: e.day, idx: e.idx, subject: c.subject, type: c.type, room: c.room || '', teacher: c.teacher || '', notes: '', src: 'pms' };
+                } else {
+                    delete map[key];
+                }
+                n++;
+            });
+            try { localStorage.setItem(PTS_CLEAN_KEY, '1'); } catch (e) {}
+            if (n) {
+                ptsPersist(db);
+                try { if (typeof renderSchedule === 'function') renderSchedule(); } catch (e) {}
+            }
+        } catch (e) {}
+    }
+
     // مزامنة أحادية: جامعتي ← طبقة الرزنامة الرئيسية (تملأ الفارغ فقط)
     function syncCampusToPts(manual) {
         try {
@@ -577,7 +666,8 @@
             }
             if (!S.cache['sched_raw']) return 0;
             if (typeof ptsDb !== 'function' || typeof ptsOwner !== 'function' || typeof ptsPersist !== 'function') return 0;
-            const { grid } = pmsBaseGrid();
+            cleanupScrambledPts();
+            const { grid } = pmsCurrentGrid();
             const db = ptsDb();
             const o = ptsOwner();
             if (!db.owners[o] || typeof db.owners[o] !== 'object' || Array.isArray(db.owners[o])) db.owners[o] = {};
@@ -590,7 +680,7 @@
                 const li = key.lastIndexOf('_');
                 db.owners[o][key] = {
                     day: key.slice(0, li), idx: parseInt(key.slice(li + 1), 10),
-                    subject: c.subject, type: c.type, room: c.room || '', teacher: c.teacher || '', notes: '',
+                    subject: c.subject, type: c.type, room: c.room || '', teacher: c.teacher || '', notes: '', src: 'pms',
                 };
                 n++;
             });
@@ -632,12 +722,13 @@
         if (!S.cache['sched_raw']) S.cache['sched_raw'] = await pms('get_group_schedule');
         try { syncCampusToPts(false); } catch (e) {}
         if (S.cxDay < 0) S.cxDay = defaultDay();
-        const { grid, extra } = pmsBaseGrid();
-        const day = DAYS[S.cxDay];
         const rawD = S.cache['sched_raw'];
-        const semTabs = bothSchedSems(rawD) ? `<div class="pm-tabs" style="margin:0 0 10px">` +
-            `<button type="button" class="pm-tab ${activeSchedSem(rawD) === 'A' ? 'on' : ''}" data-action="pms-semtab" data-sem="A">السداسي الأول</button>` +
-            `<button type="button" class="pm-tab ${activeSchedSem(rawD) === 'B' ? 'on' : ''}" data-action="pms-semtab" data-sem="B">السداسي الثاني</button></div>` : '';
+        const sems = schedSemesters(rawD);
+        const actSem = activeSchedSem(rawD);
+        const { grid, extra } = pmsBaseGrid(actSem);
+        const day = DAYS[S.cxDay];
+        const semTabs = sems.length > 1 ? `<div class="pm-tabs" style="margin:0 0 10px">` +
+            sems.map(n => `<button type="button" class="pm-tab ${n === actSem ? 'on' : ''}" data-action="pms-semtab" data-sem="${n}">السداسي ${n}</button>`).join('') + `</div>` : '';
         const picker = `<div class="schedule-day-picker"><div class="day-picker-title">
                 <span><i class="fas fa-calendar-day"></i> اختر اليوم</span>
                 <button type="button" class="sched-edit-btn ${S.cxEdit ? 'active' : ''}" data-action="pms-editmode">
@@ -680,7 +771,7 @@
         const idx = parseInt(parts.pop(), 10);
         const day = parts.join('_');
         if (!DAYS.includes(day) || isNaN(idx) || !SLOTS[idx]) return;
-        const { grid } = pmsBaseGrid();
+        const { grid } = pmsViewGrid();
         const c = finalCell(grid, key) || {};
         const hasOv = !!(cxDb()[key] && cxDb()[key].subject);
         if (typeof window.openSlotEditor !== 'function') { toast('محرر الحصص غير متاح', 'error'); return; }
@@ -727,7 +818,7 @@
             window.deleteSlotOverride = function () {
                 const cx = window.__cxSlot;
                 if (!cx) return origDel();
-                const { grid } = pmsBaseGrid();
+                const { grid } = pmsViewGrid();
                 const db = cxDb();
                 if (grid[cx.key]) db[cx.key] = { deleted: true };
                 else delete db[cx.key];
@@ -1084,7 +1175,7 @@
         if (a === 'pms-day') { S.cxDay = parseInt(el.dataset.day, 10) || 0; openSection('schedule'); return; }
         if (a === 'pms-slot') { openCampusSlot(el.dataset.key); return; }
         if (a === 'pms-modtab') { S.modTab = parseInt(el.dataset.sem, 10) || 0; openSection('modules'); return; }
-        if (a === 'pms-semtab') { try { localStorage.setItem(SCHED_SEM_KEY, el.dataset.sem === 'B' ? 'B' : 'A'); } catch (e) {} openSection('schedule'); return; }
+        if (a === 'pms-semtab') { const n = parseInt(el.dataset.sem, 10); try { if (isFinite(n)) localStorage.setItem(SCHED_SEM_KEY, String(n)); } catch (e) {} openSection('schedule'); return; }
         if (a === 'pms-modopen') { S.modMid = el.dataset.mid; openSection('moddetail'); return; }
         if (a === 'pms-roompage') { S.roomPage = Math.max(1, (S.roomPage || 1) + (parseInt(el.dataset.d, 10) || 0)); openSection('rooms'); return; }
         if (a === 'pms-newspage') { S.newsPage = Math.max(1, (S.newsPage || 1) + (parseInt(el.dataset.d, 10) || 0)); openSection('news'); return; }
