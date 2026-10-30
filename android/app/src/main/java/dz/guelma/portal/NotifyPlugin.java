@@ -181,6 +181,7 @@ public class NotifyPlugin extends Plugin {
                 .edit().remove("uuid").remove("dia")
                 .remove("depotId").remove("depotName")
                 .remove("mealToken").apply();
+            clearCredentials(ctx); // خروج صريح يمسح خزنة الدخول أيضاً
             JSObject r = new JSObject();
             r.put("wiped", true);
             call.resolve(r);
@@ -368,6 +369,229 @@ public class NotifyPlugin extends Plugin {
         } catch (Exception e) {
             call.reject("read failed: " + e.getMessage());
         }
+    }
+
+
+    // ---------- persistent-session credential vault ----------
+    // The ministry JWT always dies server-side; «stay signed in» is
+    // implemented as silent re-login with the credentials the user kept
+    // on THIS device via «تذكرني». The password is encrypted with an
+    // Android Keystore AES-256 key that never leaves the device;
+    // SharedPreferences only ever holds ciphertext. Explicit logout
+    // (JS progresLogout → clearProgresCredentials, or wipeSession)
+    // wipes the vault — that is the only way the session truly ends,
+    // apart from a ministry-side password change (login then returns
+    // 400/401 and the vault clears itself).
+
+    private static final String CRED_ALIAS = "portal_cred_key";
+    private static final String CRED_BLOB = "credBlob";
+    private static final String CRED_UUID = "credUuid";
+    private static final String CRED_BASE = "credBase";
+    static final String FALLBACK_BASE = "https://university-portal-gv78.onrender.com";
+
+    private static javax.crypto.SecretKey credKey() throws Exception {
+        java.security.KeyStore ks = java.security.KeyStore.getInstance("AndroidKeyStore");
+        ks.load(null);
+        java.security.KeyStore.SecretKeyEntry e =
+            (java.security.KeyStore.SecretKeyEntry) ks.getEntry(CRED_ALIAS, null);
+        if (e != null) return e.getSecretKey();
+        javax.crypto.KeyGenerator kg = javax.crypto.KeyGenerator.getInstance(
+            android.security.keystore.KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+        kg.init(new android.security.keystore.KeyGenParameterSpec.Builder(CRED_ALIAS,
+                android.security.keystore.KeyProperties.PURPOSE_ENCRYPT
+                    | android.security.keystore.KeyProperties.PURPOSE_DECRYPT)
+            .setBlockModes(android.security.keystore.KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(android.security.keystore.KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256)
+            .build());
+        return kg.generateKey();
+    }
+
+    private static boolean credSupported() {
+        return Build.VERSION.SDK_INT >= 23; // KeyGenParameterSpec needs API 23+
+    }
+
+    static boolean saveCredentials(Context ctx, String user, String pass, String uuid, String base) {
+        if (!credSupported()) return false;
+        try {
+            javax.crypto.Cipher c = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+            c.init(javax.crypto.Cipher.ENCRYPT_MODE, credKey());
+            byte[] ct = c.doFinal((user + "\u0001" + pass).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            String blob = android.util.Base64.encodeToString(c.getIV(), android.util.Base64.NO_WRAP)
+                + ":" + android.util.Base64.encodeToString(ct, android.util.Base64.NO_WRAP);
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString(CRED_BLOB, blob)
+                .putString(CRED_UUID, uuid == null ? "" : uuid)
+                .putString(CRED_BASE, base == null ? "" : base)
+                .apply();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** @return [username, password] or null when no usable vault entry. */
+    static String[] loadCredentials(Context ctx) {
+        try {
+            if (!credSupported()) return null;
+            String blob = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(CRED_BLOB, "");
+            if (blob == null || blob.isEmpty()) return null;
+            int i = blob.indexOf(':');
+            if (i <= 0) return null;
+            byte[] iv = android.util.Base64.decode(blob.substring(0, i), android.util.Base64.NO_WRAP);
+            byte[] ct = android.util.Base64.decode(blob.substring(i + 1), android.util.Base64.NO_WRAP);
+            javax.crypto.Cipher c = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+            c.init(javax.crypto.Cipher.DECRYPT_MODE, credKey(), new javax.crypto.spec.GCMParameterSpec(128, iv));
+            String plain = new String(c.doFinal(ct), java.nio.charset.StandardCharsets.UTF_8);
+            int sep = plain.indexOf('\u0001');
+            if (sep <= 0) return null;
+            return new String[]{ plain.substring(0, sep), plain.substring(sep + 1) };
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    static void clearCredentials(Context ctx) {
+        try {
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .remove(CRED_BLOB).remove(CRED_UUID).remove(CRED_BASE).apply();
+        } catch (Exception ignored) {}
+    }
+
+    static boolean hasCredentials(Context ctx) {
+        try {
+            String b = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(CRED_BLOB, "");
+            return b != null && !b.isEmpty();
+        } catch (Exception e) { return false; }
+    }
+
+    /** Outcome of a silent re-login attempt. error: 0 ok,
+     *  1 no credentials, 2 credentials rejected (password changed —
+     *  vault self-clears), 3 network/other, 4 account mismatch. */
+    static class RefreshResult {
+        String token, uuid, etab, name;
+        int error = 3;
+    }
+
+    /** Silent re-login through OUR backend (POST /api/progres/login —
+     *  the exact route the app login uses). On success the fresh token
+     *  also re-arms the background meal booker (mealToken/mealUuid). */
+    static RefreshResult refreshProgres(Context ctx, String expectedUuid) {
+        RefreshResult out = new RefreshResult();
+        String[] creds = loadCredentials(ctx);
+        if (creds == null) { out.error = 1; return out; }
+        SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        String base = p.getString(CRED_BASE, "");
+        if (base == null || base.isEmpty()) base = FALLBACK_BASE;
+        java.net.HttpURLConnection c = null;
+        try {
+            org.json.JSONObject body = new org.json.JSONObject();
+            body.put("username", creds[0]);
+            body.put("password", creds[1]);
+            c = (java.net.HttpURLConnection) new java.net.URL(base + "/api/progres/login").openConnection();
+            c.setRequestMethod("POST");
+            c.setDoOutput(true);
+            c.setConnectTimeout(25000);
+            c.setReadTimeout(45000);
+            c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            c.setRequestProperty("Accept", "application/json");
+            byte[] bytes = body.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            try (java.io.OutputStream os = c.getOutputStream()) { os.write(bytes); }
+            int code = c.getResponseCode();
+            if (code == 400 || code == 401) {
+                clearCredentials(ctx);
+                out.error = 2;
+                return out;
+            }
+            if (code < 200 || code >= 300) { out.error = 3; return out; }
+            String text = readAllText(c.getInputStream());
+            org.json.JSONObject d = new org.json.JSONObject(text);
+            String token = d.optString("token", "");
+            String uuid = d.optString("uuid", "");
+            if (token.isEmpty() || uuid.isEmpty()) { out.error = 3; return out; }
+            if (expectedUuid != null && !expectedUuid.isEmpty() && !expectedUuid.equals(uuid)) {
+                out.error = 4;
+                return out;
+            }
+            Object et = d.opt("etablissementId");
+            out.token = token;
+            out.uuid = uuid;
+            out.etab = et == null ? "" : String.valueOf(et);
+            out.name = d.optString("userName", "");
+            p.edit().putString("mealToken", token).putString("mealUuid", uuid).apply();
+            out.error = 0;
+            return out;
+        } catch (Exception e) {
+            out.error = 3;
+            return out;
+        } finally {
+            if (c != null) c.disconnect();
+        }
+    }
+
+    private static String readAllText(java.io.InputStream in) throws Exception {
+        if (in == null) return "";
+        byte[] buf = new byte[8192];
+        StringBuilder sb = new StringBuilder();
+        int n;
+        while ((n = in.read(buf)) != -1) sb.append(new String(buf, 0, n, java.nio.charset.StandardCharsets.UTF_8));
+        return sb.toString();
+    }
+
+    @PluginMethod
+    public void saveProgresCredentials(PluginCall call) {
+        try {
+            String user = call.getString("username", "");
+            String pass = call.getString("password", "");
+            if (user.isEmpty() || pass.isEmpty()) { call.reject("username+password required"); return; }
+            boolean ok = saveCredentials(getContext(), user, pass,
+                call.getString("uuid", ""), call.getString("apiBase", ""));
+            JSObject r = new JSObject();
+            r.put("saved", ok);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("save failed: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void clearProgresCredentials(PluginCall call) {
+        try {
+            clearCredentials(getContext());
+            JSObject r = new JSObject();
+            r.put("cleared", true);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("clear failed: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void hasProgresCredentials(PluginCall call) {
+        JSObject r = new JSObject();
+        r.put("present", hasCredentials(getContext()));
+        call.resolve(r);
+    }
+
+    @PluginMethod
+    public void refreshProgresSession(PluginCall call) {
+        final String expected = call.getString("expectedUuid", "");
+        final Context ctx = getContext().getApplicationContext();
+        new Thread(() -> {
+            RefreshResult rr = refreshProgres(ctx, expected);
+            if (rr.error == 0) {
+                JSObject r = new JSObject();
+                r.put("token", rr.token);
+                r.put("uuid", rr.uuid);
+                r.put("etablissementId", rr.etab);
+                r.put("userName", rr.name);
+                call.resolve(r);
+            } else {
+                call.reject(rr.error == 1 ? "no-credentials"
+                    : rr.error == 2 ? "bad-credentials"
+                    : rr.error == 4 ? "account-mismatch" : "network");
+            }
+        }).start();
     }
 
     // ---------- static helpers (receivers use these without a bridge) ----------
