@@ -473,13 +473,49 @@
     // ---------- الرزنامة (منتقي أيام + حصص) ----------
     function normTime(t) { return String(t || '').replace(/\s+/g, ''); }
 
+    // PMS يرسل شبكتين منفصلتين: semA = السداسي الأول، semB = السداسي
+    // الثاني. دمجهما في شبكة أسبوعية واحدة (سلوك 1.4.29) كان سليماً حين
+    // كانت الجامعة تنشر سداسياً واحداً؛ منذ نشرت السداسي الثاني أيضاً
+    // صارت الحصص تتصادم في نفس الخانات ومواد السداسي الآخر تتسرب لقسم
+    // جامعتي وللشاشة الرئيسية. القاعدة الآن: شبكة من سداسي واحد فقط —
+    // اختيار المستخدم إن وُجد، وإلا سداسي الفترة الحالية من السنة.
+    const SCHED_SEM_KEY = 'lx_pms_sched_sem';
+    function schedSemDefault() {
+        const m = new Date().getMonth(); // 0 = جانفي … 11 = ديسمبر
+        return (m >= 8 || m === 0) ? 'A' : 'B'; // سبتمبر–جانفي: الأول، فيفري–أوت: الثاني
+    }
+    function activeSchedSem(d) {
+        const hasA = !!(d && Array.isArray(d.semA) && d.semA.length);
+        const hasB = !!(d && Array.isArray(d.semB) && d.semB.length);
+        if (!hasA && !hasB) return null;
+        let want = null;
+        try { want = localStorage.getItem(SCHED_SEM_KEY); } catch (e) {}
+        if (want !== 'A' && want !== 'B') want = schedSemDefault();
+        if (want === 'A' && hasA) return 'A';
+        if (want === 'B' && hasB) return 'B';
+        return hasA ? 'A' : 'B';
+    }
+    function bothSchedSems(d) {
+        return !!(d && !(Array.isArray(d.schedule) && d.schedule.length)
+            && Array.isArray(d.semA) && d.semA.length
+            && Array.isArray(d.semB) && d.semB.length);
+    }
+    function schedRows(d) {
+        if (!d) return [];
+        if (Array.isArray(d.schedule) && d.schedule.length) return d.schedule;
+        const sem = activeSchedSem(d);
+        if (sem === 'A') return d.semA;
+        if (sem === 'B') return d.semB;
+        if (Array.isArray(d.schedule)) return d.schedule;
+        return [].concat(Array.isArray(d.semA) ? d.semA : [], Array.isArray(d.semB) ? d.semB : []);
+    }
+
     function pmsBaseGrid() {
         const d = S.cache['sched_raw'];
         const grid = {};
         const extra = [];
         if (!d) return { grid, extra };
-        const rows = Array.isArray(d.schedule) ? d.schedule
-            : [].concat(Array.isArray(d.semA) ? d.semA : [], Array.isArray(d.semB) ? d.semB : []);
+        const rows = schedRows(d);
         const slotNorm = SLOTS.map(normTime);
         rows.forEach(r => {
             const day = FR_DAY[String(r.jours || '').trim().toLowerCase()];
@@ -598,6 +634,10 @@
         if (S.cxDay < 0) S.cxDay = defaultDay();
         const { grid, extra } = pmsBaseGrid();
         const day = DAYS[S.cxDay];
+        const rawD = S.cache['sched_raw'];
+        const semTabs = bothSchedSems(rawD) ? `<div class="pm-tabs" style="margin:0 0 10px">` +
+            `<button type="button" class="pm-tab ${activeSchedSem(rawD) === 'A' ? 'on' : ''}" data-action="pms-semtab" data-sem="A">السداسي الأول</button>` +
+            `<button type="button" class="pm-tab ${activeSchedSem(rawD) === 'B' ? 'on' : ''}" data-action="pms-semtab" data-sem="B">السداسي الثاني</button></div>` : '';
         const picker = `<div class="schedule-day-picker"><div class="day-picker-title">
                 <span><i class="fas fa-calendar-day"></i> اختر اليوم</span>
                 <button type="button" class="sched-edit-btn ${S.cxEdit ? 'active' : ''}" data-action="pms-editmode">
@@ -632,7 +672,7 @@
             ? `<div class="cx-card"><h4><i class="fas fa-clock" style="color:var(--accent)"></i> خارج الدوام</h4>` + extra.map(c =>
                 `<p><strong>${esc(c.subject)}</strong> — ${esc(c._day || '')} ${esc(c._heure || '')}${c.room ? ' — قاعة ' + esc(c.room) : ''}</p>`).join('') + `</div>`
             : '';
-        return picker + `<div class="schedule-mobile-view">${slots}</div>` + extraHtml;
+        return picker + semTabs + `<div class="schedule-mobile-view">${slots}</div>` + extraHtml;
     }
 
     function openCampusSlot(key) {
@@ -1044,6 +1084,7 @@
         if (a === 'pms-day') { S.cxDay = parseInt(el.dataset.day, 10) || 0; openSection('schedule'); return; }
         if (a === 'pms-slot') { openCampusSlot(el.dataset.key); return; }
         if (a === 'pms-modtab') { S.modTab = parseInt(el.dataset.sem, 10) || 0; openSection('modules'); return; }
+        if (a === 'pms-semtab') { try { localStorage.setItem(SCHED_SEM_KEY, el.dataset.sem === 'B' ? 'B' : 'A'); } catch (e) {} openSection('schedule'); return; }
         if (a === 'pms-modopen') { S.modMid = el.dataset.mid; openSection('moddetail'); return; }
         if (a === 'pms-roompage') { S.roomPage = Math.max(1, (S.roomPage || 1) + (parseInt(el.dataset.d, 10) || 0)); openSection('rooms'); return; }
         if (a === 'pms-newspage') { S.newsPage = Math.max(1, (S.newsPage || 1) + (parseInt(el.dataset.d, 10) || 0)); openSection('news'); return; }
