@@ -2864,8 +2864,8 @@ function getSemester(moduleName) {
     return 1;
 }
 
-// نقاط الامتحانات بنفس شكل كشف النقاط: بطاقة لكل سداسي، شارة معدل
-// مرجح بالمعاملات في الترويسة، والمواد صفوفاً داخل البطاقة.
+// نقاط الامتحانات بنفس شكل كشف النقاط: بطاقة لكل سداسي والمواد
+// صفوفاً داخلها — علامات فقط، بلا أي معدل محسوب (طلب صريح).
 function renderExamList(exams) {
     if (!Array.isArray(exams) || !exams.length) return '';
     const s1 = [], s2 = [];
@@ -2874,19 +2874,6 @@ function renderExamList(exams) {
         const codes = [g.mcCode, g.codeMc, g.code, g.apCode].filter(Boolean).join(' ');
         (getSemester(label + ' ' + codes) === 2 ? s2 : s1).push(g);
     });
-    const semAvg = (list) => {
-        let sw = 0, sc = 0, sn = 0, n = 0;
-        list.forEach(g => {
-            if (g.noteExamen == null) return;
-            const note = parseFloat(g.noteExamen);
-            if (!isFinite(note)) return;
-            n++; sn += note;
-            const coef = parseFloat(g.rattachementMcCoefficient);
-            if (isFinite(coef) && coef > 0) { sw += note * coef; sc += coef; }
-        });
-        if (!n) return null;
-        return sc > 0 ? (sw / sc) : (sn / n);
-    };
     const rows = (list) => list.map(g => badgeRow(
         g.matiereLibelleAr || g.mcLibelleAr || g.mcLibelleFr || '',
         gradeBadge(g.noteExamen, g.noteExamen == null || g.noteExamen >= 10),
@@ -2894,14 +2881,9 @@ function renderExamList(exams) {
         `<span class="pbadge pb-info">معامل ${escHtml(g.rattachementMcCoefficient ?? '-')}</span>`
     )).join('');
     const card = (title, list) => {
-        const avg = semAvg(list);
         return `<div class="transcript-card">
             <div class="transcript-header">
                 <span class="period-name">${title}</span>
-                <span class="avg-badge ${avg == null ? '' : (avg >= 10 ? 'pass' : 'fail')}">${avg == null ? '--' : avg.toFixed(2)}</span>
-            </div>
-            <div class="transcript-meta">
-                <span><i class="fas fa-book-open"></i> ${list.length} مادة</span>
             </div>
             <div class="mc-list">${rows(list) || '<div class="sub-row"><span class="sub-name">لا توجد مواد</span></div>'}</div>
         </div>`;
