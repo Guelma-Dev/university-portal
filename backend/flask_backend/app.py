@@ -822,22 +822,43 @@ _SCRIBD_CACHE_TTL = 7 * 24 * 3600
 _SCRIBD_ID_RE = re.compile(r'scribd\.com/(document|presentation)/(\d+)')
 
 
-@app.route('/api/scribd/search', methods=['POST'])
+def _scribd_preflight():
+    # Scoped preflight for this PUBLIC endpoint only (the APK WebView at
+    # origin https://localhost preflights the JSON POST). Authenticated
+    # API routes keep the strict global CORS policy untouched.
+    resp = app.make_response(('', 204))
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+    resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    resp.headers['Access-Control-Max-Age'] = '86400'
+    return resp
+
+
+def _scribd_json(payload, status=200):
+    resp = jsonify(payload)
+    resp.status_code = status
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
+
+@app.route('/api/scribd/search', methods=['POST', 'OPTIONS'])
 def scribd_search():
+    if request.method == 'OPTIONS':
+        return _scribd_preflight()
     if not _SERPER_API_KEY:
-        return jsonify({'error': 'search_not_configured'}), 503
+        return _scribd_json({'error': 'search_not_configured'}, 503)
     data = request.get_json(silent=True) or {}
     q = str(data.get('q') or '').strip()[:120]
     if not q:
-        return jsonify({'results': []})
+        return _scribd_json({'results': []})
     cache_key = q.lower()
     now = time.time()
     with _scribd_cache_lock:
         hit = _scribd_cache.get(cache_key)
         if hit and now - hit[0] < _SCRIBD_CACHE_TTL:
-            return jsonify({'results': hit[1], 'cached': True})
+            return _scribd_json({'results': hit[1], 'cached': True})
     if not rate_limit('scribd', 30, 3600):
-        return jsonify({'error': 'rate_limited'}), 429
+        return _scribd_json({'error': 'rate_limited'}, 429)
     try:
         resp = httpx.post(
             'https://google.serper.dev/search',
@@ -848,7 +869,7 @@ def scribd_search():
         resp.raise_for_status()
         payload = resp.json()
     except Exception:
-        return jsonify({'error': 'search_failed'}), 502
+        return _scribd_json({'error': 'search_failed'}, 502)
     results = []
     seen = set()
     for item in (payload.get('organic') or []):
@@ -864,7 +885,7 @@ def scribd_search():
         })
     with _scribd_cache_lock:
         _scribd_cache[cache_key] = (now, results)
-    return jsonify({'results': results})
+    return _scribd_json({'results': results})
 
 
 @app.route('/api/progres/relay-register', methods=['POST'])
