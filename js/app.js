@@ -4021,7 +4021,7 @@ window.LibraryView = (function () {
     }
     function renderDsResults(repo, items, res) {
         if (!items.length) { res.innerHTML = dsEmptyHint(); return; }
-        const head = `<div class="ds-note"><i class="fas fa-info-circle"></i>${items.length} وثيقة من ${escapeHtml(repo.name)} — الملفات رسمية (مطبوعات الأساتذة)</div>`;
+        const head = `<div class="ds-note">${items.length} وثيقة من ${escapeHtml(repo.name)}</div>`;
         res.innerHTML = head + items.map(function (d, i) {
             return `<div class="ds-result">
                 <span class="ds-ico"><i class="fas fa-file-pdf"></i></span>
@@ -4155,8 +4155,7 @@ window.LibraryView = (function () {
             res.innerHTML = `<div class="lib-empty"><i class="fas fa-folder-open"></i><p>لا نتائج مطابقة</p><small>جرّب كلمات فرنسية أبسط (مثال: comptabilité، macroéconomie) أو اختر مقياساً من الأعلى</small></div>`;
             return;
         }
-        const head = `<div class="ds-note"><i class="fas fa-info-circle"></i>${items.length} وثيقة من سكريبد — عرض فقط داخل التطبيق</div>`;
-        res.innerHTML = head + items.map(function (d, i) {
+        res.innerHTML = items.map(function (d, i) {
             return `<div class="ds-result">
                 <span class="ds-ico"><i class="fas fa-file-lines"></i></span>
                 <span class="ds-body">
