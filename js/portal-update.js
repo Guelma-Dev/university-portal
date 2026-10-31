@@ -162,6 +162,7 @@ window.PortalUpdate = (function () {
                     saveDl(null);
                 }
                 setState({ name: 'update_available', remote: m, error: '' });
+                notifyUpdateAvailable(m);
             } else {
                 saveDl(null);
                 setState({ name: 'up_to_date', remote: null, error: '' });
@@ -250,6 +251,27 @@ window.PortalUpdate = (function () {
         saveDl(null);
         setState({ name: 'up_to_date', remote: null, progress: null, error: '' });
         return state;
+    }
+
+    // New-version notification: once per versionCode, and only when the
+    // user already granted notification permission (never prompts here).
+    var LS_NOTIFIED = 'portal_update_notified';
+    function notifyUpdateAvailable(m) {
+        try {
+            if (!isNative() || !m) return;
+            var last = 0;
+            try { last = Number(localStorage.getItem(LS_NOTIFIED) || 0); } catch (e) {}
+            if (!(m.versionCode > last)) return;
+            try { localStorage.setItem(LS_NOTIFIED, String(m.versionCode)); } catch (e) {}
+            var N = window.PortalNotify;
+            if (!N || typeof N.notify !== 'function' || typeof N.areEnabled !== 'function') return;
+            N.areEnabled().then(function (on) {
+                if (!on) return;
+                var body = 'الإصدار ' + m.versionName + ' جاهز للتنزيل';
+                if (m.changelog && m.changelog.length) body += ' — ' + m.changelog[0];
+                N.notify('تحديث جديد لبوابة الطالب', body, 'general');
+            }).catch(function () {});
+        } catch (e) {}
     }
 
     // Foreground-host mirror (best-effort; native owns the notification).
