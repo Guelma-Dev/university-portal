@@ -1628,27 +1628,80 @@ function isScheduleEmpty() {
     return !schedule || Object.keys(schedule).length === 0;
 }
 
+// ===== رزنامة الرئيسية × جامعتي =====
+// لمن عنده قسم جامعتي وفاتح حسابه فيه: الرزنامة الرئيسية تعرض نفس
+// بيانات رزنامة جامعتي (PMS) بنفس الشكل، بقسمين للسداسيين الظاهرين
+// في البيانات. أولوية الخلية: إدخال يدوي في هذه الرزنامة > خلية
+// جامعتي للسداسي المعروض > خلية متزامنة قديمة (src:'pms') > الجدول
+// الثابت. من لا عنده جامعتي لا يتغير عنده شيء: تبقى الرزنامة كما
+// كانت، فارغة حتى يضيف مواده بنفسه.
+const MAIN_SEM_KEY = 'lx_main_sched_sem';
+let _cmgCache = undefined;
+function campusSemInfo() {
+    try { return (typeof window.__campusSemesters === 'function') ? window.__campusSemesters() : null; } catch (e) { return null; }
+}
+function mainSchedSem() {
+    const info = campusSemInfo();
+    if (!info || !info.list.length) return null;
+    let want = null;
+    try { want = parseInt(localStorage.getItem(MAIN_SEM_KEY), 10); } catch (e) {}
+    return (isFinite(want) && info.list.indexOf(want) !== -1) ? want : info.current;
+}
+function setMainSchedSem(n) {
+    try { localStorage.setItem(MAIN_SEM_KEY, String(n)); } catch (e) {}
+    renderSchedule();
+}
+function campusMainGrid() {
+    if (_cmgCache !== undefined) return _cmgCache;
+    const sem = mainSchedSem();
+    if (sem == null) { _cmgCache = null; return null; }
+    try { _cmgCache = (typeof window.__campusFinalGrid === 'function') ? window.__campusFinalGrid(sem) : null; }
+    catch (e) { _cmgCache = null; }
+    return _cmgCache;
+}
+function mainSlotCell(day, idx) {
+    const ov = ptsOverlay(day, idx);
+    if (ov && ov.src !== 'pms') return { subject: ov.subject, type: ov.type, room: ov.room || '', teacher: ov.teacher || '', notes: ov.notes || '', cls: PTS_CLASS[ov.type] || '' };
+    const g = campusMainGrid();
+    const cc = g && g[day + '_' + idx];
+    if (cc && cc.subject) return { subject: cc.subject, type: cc.type, room: cc.room || '', teacher: cc.teacher || '', notes: cc.notes || '', cls: PTS_CLASS[cc.type] || '' };
+    if (ov) return { subject: ov.subject, type: ov.type, room: ov.room || '', teacher: ov.teacher || '', notes: ov.notes || '', cls: PTS_CLASS[ov.type] || '' };
+    return null;
+}
+function renderMainSemTabs() {
+    const box = document.getElementById('main-sched-semtabs');
+    if (!box) return;
+    const info = campusSemInfo();
+    if (!info || info.list.length < 2) { box.innerHTML = ''; return; }
+    const act = mainSchedSem();
+    box.innerHTML = '<div class="pm-tabs">' + info.list.map(n =>
+        '<button type="button" class="pm-tab' + (n === act ? ' on' : '') + '" onclick="setMainSchedSem(' + n + ')">السداسي ' + n + '</button>'
+    ).join('') + '</div>';
+}
+
 function renderSchedule() {
+    _cmgCache = undefined;
+    renderMainSemTabs();
     const tbody = document.getElementById('schedule-body');
 
     // الجدول يظهر دائماً (حتى الفارغ) ليتسنى التعديل اليدوي؛
     // تنبيه رزنامة الجامعة يظهر كإشعار أعلى الشبكة لا بدلاً منها.
     let html = '';
-    if (isScheduleEmpty()) {
+    if (isScheduleEmpty() && !campusSemInfo()) {
         html += '<tr><td colspan="6" style="border:none;padding:0;"><div class="schedule-not-available"><i class="fas fa-pen-to-square"></i><p>رزنامة الجامعة غير منشورة</p><small>أضف موادك يدوياً: اضغط «تعديل الجدول» ثم المس أي خانة</small></div></td></tr>';
     }
     {
         tbody.innerHTML = html + TIME_SLOTS.map((time, i) => {
             return '<tr><td class="time-col">' + time + '</td>' +
                 DAYS.map(day => {
-                    const cell = schedule[day + '_' + i] || {};
-                    const ov = ptsOverlay(day, i);
+                    const mc = mainSlotCell(day, i);
                     let cls = '';
                     let text = '';
-                    if (ov) {
-                        cls = PTS_CLASS[ov.type] || '';
-                        text = ptsEsc(ov.subject) + (ov.room ? ' • ' + ptsEsc(ov.room) : '');
+                    if (mc) {
+                        cls = mc.cls;
+                        text = ptsEsc(mc.subject) + (mc.room ? ' • ' + ptsEsc(mc.room) : '');
                     } else {
+                        const cell = schedule[day + '_' + i] || {};
                         if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
                         if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
                         text = ptsEsc(cell.text || '');
@@ -1673,6 +1726,8 @@ function renderMobileDayPicker() {
     const picker = document.getElementById('schedule-day-picker');
     if (!picker) return;
     const ptsDays = new Set(ptsEntries().map(x => x.day));
+    const cgDots = campusMainGrid();
+    if (cgDots) Object.keys(cgDots).forEach(k => ptsDays.add(k.slice(0, k.lastIndexOf('_'))));
     document.querySelectorAll('.day-btn').forEach((btn, i) => {
         const hasContent = DAYS.some((day, di) => {
             return TIME_SLOTS.some((_, ti) => {
@@ -1706,18 +1761,18 @@ function renderMobileSchedule() {
     const day = DAYS[selectedScheduleDay];
     const label = DAY_LABELS[selectedScheduleDay];
     let html = '<div class="mobile-day-title"><i class="fas fa-calendar-check"></i> جدول ' + label + '</div>';
-    if (isScheduleEmpty()) {
+    if (isScheduleEmpty() && !campusSemInfo()) {
         html += '<div class="schedule-not-available"><i class="fas fa-pen-to-square"></i><p>رزنامة الجامعة غير منشورة</p><small>فعّل «تعديل الجدول» والمس أي خانة للإضافة</small></div>';
     }
     TIME_SLOTS.forEach((time, i) => {
-        const cell = (!isScheduleEmpty() && schedule[day + '_' + i]) || {};
-        const ov = ptsOverlay(day, i);
+        const mc = mainSlotCell(day, i);
         let cls = '';
         let inner = '';
-        if (ov) {
-            cls = PTS_CLASS[ov.type] || '';
-            inner = ptsSlotText(ov);
+        if (mc) {
+            cls = mc.cls;
+            inner = ptsSlotText(mc);
         } else {
+            const cell = (!isScheduleEmpty() && schedule[day + '_' + i]) || {};
             if (cell.type === 'lecture') cls = 'schedule-cell-lecture';
             if (cell.type === 'tdtp') cls = 'schedule-cell-tdtp';
             inner = ptsEsc(cell.text || '');
@@ -1987,14 +2042,15 @@ function openSlotEditor(day, idx) {
     const ov = ptsOverlay(day, idx);
     const di = DAYS.indexOf(day);
     document.getElementById('pt-ctx').textContent = (di >= 0 ? DAY_LABELS[di] : day) + ' • ' + TIME_SLOTS[idx];
-    let t = (ov && ov.type) || (uni.type === 'tdtp' ? 'td' : 'lecture');
+    const mc = mainSlotCell(day, idx);
+    let t = (mc && mc.type) || (uni.type === 'tdtp' ? 'td' : 'lecture');
     if (!PTS_TYPES[t]) t = 'lecture';
     document.getElementById('pt-type').value = t;
     paintPtsType(t);
     document.getElementById('pt-id').value = day + '_' + idx;
-    document.getElementById('pt-subject').value = (ov && ov.subject) || uni.text || '';
-    document.getElementById('pt-room').value = (ov && ov.room) || '';
-    document.getElementById('pt-teacher').value = (ov && ov.teacher) || '';
+    document.getElementById('pt-subject').value = (mc && mc.subject) || uni.text || '';
+    document.getElementById('pt-room').value = (mc && mc.room) || '';
+    document.getElementById('pt-teacher').value = (mc && mc.teacher) || '';
     document.getElementById('pt-notes').value = (ov && ov.notes) || '';
     document.getElementById('pt-del').style.display = ov ? '' : 'none';
     document.getElementById('session-editor-modal').classList.remove('hidden');
@@ -2780,8 +2836,9 @@ function gradeBadge(val, isPass, suffix = '') {
     return `<span class="pbadge ${isPass ? 'pb-pass' : 'pb-fail'}">${escHtml(val)}${suffix}</span>`;
 }
 
-// Strict hardcoded semester mapping (Finance & Accounting L1 official names).
-// Returns 2 for Semester 2, 1 otherwise (Semester 1 default).
+// Semester-of-year mapping for exam rows: 2 = second semester of the
+// card's year, 1 = first. Data-driven first (unit-code S-parity, then
+// trailing serial-digit parity), L1 Finance name list as fallback.
 function getSemester(moduleName) {
     if (!moduleName) return 1;
     // Light Arabic normalization (alef forms, taa marbuta, whitespace) so API
@@ -2793,12 +2850,22 @@ function getSemester(moduleName) {
         'إقتصاد جزئي 2', 'المحاسبة المالية 2', 'قانون تجاري',
         'أساسيات البرمجة بالبايثون 2', 'المصطلحات الاقتصادية بالإنجليزية',
     ];
+    // أكواد الوحدات تحمل رقم السداسي في الدرجة (S1..S6): الزوجي هو
+    // «الثاني» داخل سنته (S4 في السنة الثانية، S6 في الثالثة).
+    const code = /S([1-6])(?![0-9])/.exec(name);
+    if (code) return (parseInt(code[1], 10) % 2 === 0) ? 2 : 1;
+    // أسماء تنتهي برقم تسلسلي (إحصاء 3/4، اقتصاد كلي 1/2): الفردي
+    // سداسي أول داخل السنة والزوجي ثانٍ — يعمّ L1 كما L2 وL3.
+    const tail = /\s([1-6])$/.exec(name);
+    if (tail) return (parseInt(tail[1], 10) % 2 === 0) ? 2 : 1;
     // Check if name matches S2 or contains S2 unit codes
     if (s2List.some((item) => name.includes(norm(item)))) return 2;
     if (name.includes('S2')) return 2; // unit rows: F00M0001S2, F00F0001S2, F00D0001S2, F00T0001S2
     return 1;
 }
 
+// نقاط الامتحانات بنفس شكل كشف النقاط: بطاقة لكل سداسي، شارة معدل
+// مرجح بالمعاملات في الترويسة، والمواد صفوفاً داخل البطاقة.
 function renderExamList(exams) {
     if (!Array.isArray(exams) || !exams.length) return '';
     const s1 = [], s2 = [];
@@ -2807,23 +2874,39 @@ function renderExamList(exams) {
         const codes = [g.mcCode, g.codeMc, g.code, g.apCode].filter(Boolean).join(' ');
         (getSemester(label + ' ' + codes) === 2 ? s2 : s1).push(g);
     });
+    const semAvg = (list) => {
+        let sw = 0, sc = 0, sn = 0, n = 0;
+        list.forEach(g => {
+            if (g.noteExamen == null) return;
+            const note = parseFloat(g.noteExamen);
+            if (!isFinite(note)) return;
+            n++; sn += note;
+            const coef = parseFloat(g.rattachementMcCoefficient);
+            if (isFinite(coef) && coef > 0) { sw += note * coef; sc += coef; }
+        });
+        if (!n) return null;
+        return sc > 0 ? (sw / sc) : (sn / n);
+    };
     const rows = (list) => list.map(g => badgeRow(
         g.matiereLibelleAr || g.mcLibelleAr || g.mcLibelleFr || '',
         gradeBadge(g.noteExamen, g.noteExamen == null || g.noteExamen >= 10),
         `${g.planningSessionIntitule ? `<span class="pbadge pb-dim">${escHtml(g.planningSessionIntitule)}</span>` : ''}` +
         `<span class="pbadge pb-info">معامل ${escHtml(g.rattachementMcCoefficient ?? '-')}</span>`
     )).join('');
-    const H3 = 'color: #D4AF37; margin: 20px 10px 10px 10px; font-size: 16px; border-bottom: 1px solid #D4AF37; padding-bottom: 8px; text-align: right;';
-    const empty = '<p class="ins-empty">لا توجد مواد</p>';
-    return `
-     <div class="semester-section">
-         <h3 style="${H3}">السداسي الأول</h3>
-         <div class="semester-items" id="s1-items">${rows(s1) || empty}</div>
-     </div>
-     <div class="semester-section">
-         <h3 style="${H3}">السداسي الثاني</h3>
-         <div class="semester-items" id="s2-items">${rows(s2) || empty}</div>
-     </div>`;
+    const card = (title, list) => {
+        const avg = semAvg(list);
+        return `<div class="transcript-card">
+            <div class="transcript-header">
+                <span class="period-name">${title}</span>
+                <span class="avg-badge ${avg == null ? '' : (avg >= 10 ? 'pass' : 'fail')}">${avg == null ? '--' : avg.toFixed(2)}</span>
+            </div>
+            <div class="transcript-meta">
+                <span><i class="fas fa-book-open"></i> ${list.length} مادة</span>
+            </div>
+            <div class="mc-list">${rows(list) || '<div class="sub-row"><span class="sub-name">لا توجد مواد</span></div>'}</div>
+        </div>`;
+    };
+    return card('السداسي الأول', s1) + card('السداسي الثاني', s2);
 }
 
 function renderCcGroups(cc) {
