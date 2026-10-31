@@ -11,6 +11,7 @@ import hmac
 import json
 import os
 import random
+import re
 import secrets
 import string
 import threading
@@ -804,6 +805,66 @@ def _relay_url() -> str:
         _RELAY_URL_MEM = row
         return row
     return _RELAY_URL_MEM or PROGRES_RELAY_URL
+
+
+
+# ============================================
+# SCRIBD SEARCH (discovery only)
+# Finds public Scribd documents through a Google-results API (Serper),
+# restricted to scribd.com. Viewing stays on Scribd's own embed player
+# inside the app - nothing is downloaded or proxied.
+# The API key lives ONLY in the server environment (SERPER_API_KEY).
+# ============================================
+_SERPER_API_KEY = os.environ.get('SERPER_API_KEY', '').strip()
+_scribd_cache = {}
+_scribd_cache_lock = threading.Lock()
+_SCRIBD_CACHE_TTL = 7 * 24 * 3600
+_SCRIBD_ID_RE = re.compile(r'scribd\.com/(document|presentation)/(\d+)')
+
+
+@app.route('/api/scribd/search', methods=['POST'])
+def scribd_search():
+    if not _SERPER_API_KEY:
+        return jsonify({'error': 'search_not_configured'}), 503
+    data = request.get_json(silent=True) or {}
+    q = str(data.get('q') or '').strip()[:120]
+    if not q:
+        return jsonify({'results': []})
+    cache_key = q.lower()
+    now = time.time()
+    with _scribd_cache_lock:
+        hit = _scribd_cache.get(cache_key)
+        if hit and now - hit[0] < _SCRIBD_CACHE_TTL:
+            return jsonify({'results': hit[1], 'cached': True})
+    if not rate_limit('scribd', 30, 3600):
+        return jsonify({'error': 'rate_limited'}), 429
+    try:
+        resp = httpx.post(
+            'https://google.serper.dev/search',
+            json={'q': 'site:scribd.com ' + q, 'num': 10},
+            headers={'X-API-KEY': _SERPER_API_KEY, 'Content-Type': 'application/json'},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+    except Exception:
+        return jsonify({'error': 'search_failed'}), 502
+    results = []
+    seen = set()
+    for item in (payload.get('organic') or []):
+        m = _SCRIBD_ID_RE.search(str(item.get('link') or ''))
+        if not m or m.group(2) in seen:
+            continue
+        seen.add(m.group(2))
+        results.append({
+            'id': m.group(2),
+            'type': m.group(1),
+            'title': str(item.get('title') or '')[:200],
+            'snippet': str(item.get('snippet') or '')[:300],
+        })
+    with _scribd_cache_lock:
+        _scribd_cache[cache_key] = (now, results)
+    return jsonify({'results': results})
 
 
 @app.route('/api/progres/relay-register', methods=['POST'])
