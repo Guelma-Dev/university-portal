@@ -3850,6 +3850,12 @@ window.LibraryView = (function () {
         dsResults: [],
         dsBusy: false,
         dsInputTimer: null,
+        scQ: '',
+        scResults: [],
+        scBusy: false,
+        scChip: '',
+        scInputTimer: null,
+        scCurrent: null,
     };
 
     function setTitle(n, txt) { const el = $('lib-title-' + n); if (el) el.textContent = txt; }
@@ -3860,6 +3866,8 @@ window.LibraryView = (function () {
         }
         const d = $('lib-step-dspace');
         if (d) d.classList.remove('active');
+        const s = $('lib-step-scribd');
+        if (s) s.classList.remove('active');
     }
     function go(step) {
         hideAllLibSteps();
@@ -3869,6 +3877,11 @@ window.LibraryView = (function () {
     function goDspace() {
         hideAllLibSteps();
         const el = $('lib-step-dspace');
+        if (el) el.classList.add('active');
+    }
+    function goScribd() {
+        hideAllLibSteps();
+        const el = $('lib-step-scribd');
         if (el) el.classList.add('active');
     }
     function skeletonHTML(kind, n) {
@@ -3902,7 +3915,7 @@ window.LibraryView = (function () {
     function renderModeTabs() {
         const t = $('lib-mode-tabs');
         if (!t) return;
-        t.innerHTML = `<button type="button" class="lib-tab active"><i class="fas fa-university"></i>الدروس المفتوحة</button>`;
+        t.innerHTML = `<button type="button" class="lib-tab${STATE.mode !== 'scribd' ? ' active' : ''}" onclick="LibraryView.setMode('dspace')"><i class="fas fa-university"></i>الدروس المفتوحة</button><button type="button" class="lib-tab${STATE.mode === 'scribd' ? ' active' : ''}" onclick="LibraryView.setMode('scribd')"><i class="fas fa-book-open"></i>سكريبـد</button>`;
     }
     function setMode(mode) {
         STATE.mode = mode;
@@ -3911,6 +3924,10 @@ window.LibraryView = (function () {
             goDspace();
             renderDsPanel();
             if (STATE.dsQ) dsRun(STATE.dsQ);
+        } else if (mode === 'scribd') {
+            goScribd();
+            renderScPanel();
+            if (STATE.scQ) scRun(STATE.scQ);
         } else {
             go(1);
             setTitle(1, '');
@@ -4062,6 +4079,125 @@ window.LibraryView = (function () {
     }
     function dsView(i) { dsOpen(i, 'view'); }
     function dsDownload(i) { dsOpen(i, 'download'); }
+
+    // ---- SCRIBD (discovery via backend, view-only official embed player) ----
+    const SC_CHIPS = [
+        { label: 'محاسبة التسيير', q: 'comptabilité de gestion cours' },
+        { label: 'إحصاء', q: 'statistiques probabilités cours exercices' },
+        { label: 'اقتصاد كلي', q: 'macroéconomie cours' },
+        { label: 'رياضيات مالية', q: 'mathématiques financières cours exercices' },
+        { label: 'مالية عمومية', q: 'finances publiques cours' },
+        { label: 'اقتصاد نقدي', q: 'économie monétaire cours' },
+        { label: 'منهجية', q: 'méthodologie de recherche mémoire' },
+        { label: 'ذكاء اصطناعي', q: 'intelligence artificielle cours' },
+        { label: 'تسيير', q: 'gestion management cours' },
+    ];
+    function renderScPanel() {
+        const chipBox = $('sc-chips');
+        if (chipBox) {
+            chipBox.innerHTML = SC_CHIPS.map(function (c) {
+                return `<button type="button" class="lib-chip${STATE.scChip === c.q ? ' active' : ''}" onclick="LibraryView.scChip('${escapeHtml(c.q.replace(/'/g, ''))}')">${escapeHtml(c.label)}</button>`;
+            }).join('');
+        }
+        const inp = $('sc-input');
+        if (inp) {
+            inp.value = STATE.scQ;
+            if (!inp.dataset.wired) {
+                inp.dataset.wired = '1';
+                inp.addEventListener('keyup', function () {
+                    if (inp.value.trim() !== STATE.scQ) {
+                        if (STATE.scInputTimer) clearTimeout(STATE.scInputTimer);
+                        STATE.scInputTimer = setTimeout(function () { scRun(inp.value); }, 600);
+                    }
+                });
+                inp.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') { e.preventDefault(); scRun(inp.value); }
+                });
+            }
+        }
+    }
+    function scChip(q) {
+        STATE.scChip = String(q || '');
+        renderScPanel();
+        const inp = $('sc-input');
+        if (inp) inp.value = STATE.scChip;
+        scRun(STATE.scChip);
+    }
+    async function scRun(q) {
+        q = String(q || '').trim();
+        STATE.scQ = q;
+        const res = $('sc-results');
+        if (!res) return;
+        if (!q) { res.innerHTML = ''; return; }
+        if (STATE.scBusy) return;
+        STATE.scBusy = true;
+        res.innerHTML = skeletonHTML('lib-skel-row', 4);
+        try {
+            const r = await fetch(progresApiBase() + '/api/scribd/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ q: q }),
+            });
+            if (r.status === 503) throw new Error('not_configured');
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const json = await r.json();
+            const items = (json && json.results) || [];
+            STATE.scResults = items;
+            renderScResults(items, res);
+        } catch (e) {
+            const notCfg = String((e && e.message) || '') === 'not_configured';
+            res.innerHTML = `<div class="lib-empty"><i class="fas fa-triangle-exclamation"></i><p>${notCfg ? 'بحث سكريبد غير مفعّل بعد' : 'تعذر إجراء البحث'}</p><small>${notCfg ? 'سيُفعَّل قريباً من إدارة التطبيق' : 'تحقق من اتصال الإنترنت ثم أعد المحاولة'}</small></div>`;
+        }
+        STATE.scBusy = false;
+    }
+    function renderScResults(items, res) {
+        if (!items.length) {
+            res.innerHTML = `<div class="lib-empty"><i class="fas fa-folder-open"></i><p>لا نتائج مطابقة</p><small>جرّب كلمات فرنسية أبسط (مثال: comptabilité، macroéconomie) أو اختر مقياساً من الأعلى</small></div>`;
+            return;
+        }
+        const head = `<div class="ds-note"><i class="fas fa-info-circle"></i>${items.length} وثيقة من سكريبد — عرض فقط داخل التطبيق</div>`;
+        res.innerHTML = head + items.map(function (d, i) {
+            return `<div class="ds-result">
+                <span class="ds-ico"><i class="fas fa-file-lines"></i></span>
+                <span class="ds-body">
+                    <span class="ds-name">${escapeHtml(d.title || 'وثيقة')}</span>
+                    <span class="ds-meta">${escapeHtml(d.snippet || '')}</span>
+                </span>
+                <span class="lf-actions">
+                    <button class="lib-btn view pressable" onclick="LibraryView.scView(${i})"><i class="fas fa-eye"></i>عرض</button>
+                </span>
+            </div>`;
+        }).join('');
+    }
+    function scView(i) {
+        const d = (STATE.scResults || [])[i];
+        if (!d || !d.id) return;
+        STATE.scCurrent = d;
+        const modal = $('sc-viewer-modal');
+        const frame = $('sc-viewer-frame');
+        const title = $('sc-viewer-title');
+        if (title) title.textContent = d.title || 'وثيقة سكريبد';
+        if (frame) frame.src = 'https://www.scribd.com/embeds/' + encodeURIComponent(d.id) + '/content';
+        if (modal) modal.classList.remove('hidden');
+    }
+    function scCloseViewer() {
+        const modal = $('sc-viewer-modal');
+        const frame = $('sc-viewer-frame');
+        if (frame) frame.src = 'about:blank';
+        if (modal) modal.classList.add('hidden');
+        STATE.scCurrent = null;
+    }
+    function scOpenExternal() {
+        const d = STATE.scCurrent;
+        if (!d || !d.id) return;
+        const url = 'https://www.scribd.com/' + (d.type === 'presentation' ? 'presentation' : 'document') + '/' + d.id;
+        try {
+            const cap = window.Capacitor && window.Capacitor.Plugins;
+            if (cap && cap.Browser && typeof cap.Browser.open === 'function') { cap.Browser.open({ url: url }); return; }
+        } catch (e) {}
+        window.open(url, '_system');
+    }
+
 
     function isLibraryActive() {
         const s = document.getElementById('section-library');
@@ -4585,6 +4721,10 @@ window.LibraryView = (function () {
         dsChip: dsChip,
         dsView: dsView,
         dsDownload: dsDownload,
+        scChip: scChip,
+        scView: scView,
+        scCloseViewer: scCloseViewer,
+        scOpenExternal: scOpenExternal,
     };
 })();
 
