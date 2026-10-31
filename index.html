@@ -479,6 +479,24 @@
                         </div>
                         <div id="ds-results"><!-- injected --></div>
                     </div>
+
+                    <!-- SCRIBD (view-only, official embed player) -->
+                    <div class="lib-step" id="lib-step-scribd">
+                        <div class="lib-header slim">
+                            <button class="lib-back pressable" onclick="LibraryView.back()"><i class="fas fa-arrow-right"></i></button>
+                            <div class="lib-title">سكريبـد</div>
+                        </div>
+                        <div class="ds-controls">
+                            <div class="lib-section-label" style="margin:14px 0 8px">التخصص أو المقياس</div>
+                            <div class="lib-chips" id="sc-chips"><!-- injected --></div>
+                            <div class="ds-searchbar">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="sc-input" placeholder="بحث في سكريبد بالفرنسية (مثال: macroéconomie، statistiques)..." autocomplete="off">
+                            </div>
+                            <div class="ds-note" style="margin-top:10px"><i class="fas fa-info-circle"></i>محتوى خارجي من سكريبد — العرض فقط، بمشغّل سكريبد الرسمي داخل التطبيق</div>
+                        </div>
+                        <div id="sc-results"><!-- injected --></div>
+                    </div>
                 </div>
 
                 <!-- Subject Cards Grid (legacy static library, hidden) -->
@@ -534,6 +552,20 @@
                         <div class="pdf-viewer-body">
                             <canvas id="pdf-canvas"></canvas>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Scribd Viewer Modal (official embed player) -->
+                <div id="sc-viewer-modal" class="modal-overlay hidden">
+                    <div class="sc-viewer-container">
+                        <div class="pdf-viewer-header">
+                            <span id="sc-viewer-title">وثيقة سكريبد</span>
+                            <div class="pdf-viewer-actions">
+                                <button class="btn-icon" onclick="LibraryView.scOpenExternal()"><i class="fas fa-arrow-up-right-from-square"></i></button>
+                                <button class="btn-icon btn-close-pdf" onclick="LibraryView.scCloseViewer()"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <iframe id="sc-viewer-frame" title="Scribd" allowfullscreen></iframe>
                     </div>
                 </div>
 
