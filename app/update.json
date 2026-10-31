@@ -1,12 +1,12 @@
 {
-  "versionCode": 77,
-  "versionName": "1.4.61",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-77.apk",
-  "sha256": "8b28e505b054f046ca4e341241ecfc7c8f019a56c113be5e28b89d249822edd1",
-  "size": 5878479,
+  "versionCode": 78,
+  "versionName": "1.4.62",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-78.apk",
+  "sha256": "c2ff41549e5d96e9ba366e7a5b3602913a34cd7568e716b5e28e5a1ad39a5fb3",
+  "size": 5878416,
   "mandatory": false,
   "changelog": [
-    "الرزنامة الرئيسية ولّات تعرض نفس حصص رزنامة جامعتي: قسم للسداسي 3 وقسم للسداسي 4 (لمن عندو قسم جامعتي)",
-    "نقاط الامتحانات بشكل جديد: بطاقات كيما كشف النقاط، مع معدل كل سداسي مرجح بالمعاملات"
+    "الرزنامة الرئيسية: قسمي السداسي 3 والسداسي 4 يظهروا دروك مباشرة من فتح التطبيق",
+    "نقاط الامتحانات: العلامات فقط، بلا معدلات محسوبة"
   ]
 }
