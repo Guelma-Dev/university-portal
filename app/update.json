@@ -1,12 +1,12 @@
 {
-  "versionCode": 78,
-  "versionName": "1.4.62",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-78.apk",
-  "sha256": "c2ff41549e5d96e9ba366e7a5b3602913a34cd7568e716b5e28e5a1ad39a5fb3",
-  "size": 5878416,
+  "versionCode": 79,
+  "versionName": "1.4.63",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-79.apk",
+  "sha256": "fda6c490ccd71ee2524e631911f3ae70f0e4ce72f96f77266427c9861fdb2f24",
+  "size": 5879993,
   "mandatory": false,
   "changelog": [
-    "الرزنامة الرئيسية: قسمي السداسي 3 والسداسي 4 يظهروا دروك مباشرة من فتح التطبيق",
-    "نقاط الامتحانات: العلامات فقط، بلا معدلات محسوبة"
+    "المكتبة: تبويب سكريبد جديد — ابحث واقرأ الوثائق داخل التطبيق",
+    "رقاقات سريعة لمقاييسك: محاسبة التسيير، إحصاء، اقتصاد كلي وغيرها"
   ]
 }
