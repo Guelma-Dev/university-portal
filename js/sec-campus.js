@@ -351,6 +351,11 @@
         if (S.cache[key]) return S.cache[key];
         const d = await api('/fetch', Object.assign({ endpoint, student_id: S.sess.student_id }, extra));
         S.cache[key] = d;
+        // نسخة باسم ثابت تستهلكها كل الرزنامات (جامعتي، الرئيسية،
+        // حصص اليوم): قبل هذا كان sched_raw يُملأ فقط عند فتح رزنامة
+        // جامعتي نفسها (vSchedule)، فتبقى الرزنامة الرئيسية بلا قسمي
+        // السداسي وبلا بيانات حية حتى تُفتح جامعتي أولاً.
+        if (endpoint === 'get_group_schedule') S.cache['sched_raw'] = d;
         return d;
     }
 
