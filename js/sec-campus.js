@@ -585,7 +585,34 @@
         return base[key] || null;
     }
 
-        // حصص اليوم للرئيسية (تستهلكها dhTodayItems عند التفعيل)
+        // واجهة الرزنامة الرئيسية: سداسيات PMS وشبكتها النهائية (القاعدة +
+    // تعديلات جامعتي المحلية) — تستهلكها رزنامة التطبيق الرئيسية لتعرض
+    // نفس بيانات رزنامة جامعتي بنفس الشكل لمن عنده قسم جامعتي.
+    window.__campusSemesters = function () {
+        try {
+            if (!S.sess || !S.cache['sched_raw']) return null;
+            const list = schedSemesters(S.cache['sched_raw']);
+            if (!list.length) return null;
+            return { list, current: currentSchedSem(S.cache['sched_raw']) };
+        } catch (e) { return null; }
+    };
+    window.__campusFinalGrid = function (sem) {
+        try {
+            if (!S.sess || !S.cache['sched_raw']) return null;
+            const { grid } = pmsBaseGrid(sem);
+            const keys = {};
+            Object.keys(grid).forEach(k => { keys[k] = 1; });
+            Object.keys(cxDb()).forEach(k => { keys[k] = 1; });
+            const out = {};
+            Object.keys(keys).forEach(k => {
+                const c = finalCell(grid, k);
+                if (c && c.subject) out[k] = c;
+            });
+            return out;
+        } catch (e) { return null; }
+    };
+
+    // حصص اليوم للرئيسية (تستهلكها dhTodayItems عند التفعيل)
     window.__campusTodaySync = function () {
         try {
             if (!S.cache['sched_raw']) return null;
@@ -610,7 +637,10 @@
     function prefetchCampus() {
         try { if (!S.sess) S.sess = loadSess(); } catch (e) { return; }
         if (!S.sess || S.cache['sched_raw']) return;
-        pms('get_group_schedule').catch(() => {});
+        pms('get_group_schedule').then(() => {
+            // وصلت بيانات رزنامة PMS: حدّث رزنامة التطبيق الرئيسية
+            try { if (typeof renderSchedule === 'function') renderSchedule(); } catch (e) {}
+        }).catch(() => {});
         pms('get_dashboard_data').then(d => { S.dash = d; }).catch(() => {});
     }
 
