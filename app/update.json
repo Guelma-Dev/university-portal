@@ -1,12 +1,12 @@
 {
-  "versionCode": 79,
-  "versionName": "1.4.63",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-79.apk",
-  "sha256": "fda6c490ccd71ee2524e631911f3ae70f0e4ce72f96f77266427c9861fdb2f24",
-  "size": 5879993,
+  "versionCode": 80,
+  "versionName": "1.4.64",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-80.apk",
+  "sha256": "acb2a69f45ac9a28a82b2d236f2710b8cf783c2fdf841e4908f3d32a6deacd03",
+  "size": 5880415,
   "mandatory": false,
   "changelog": [
-    "المكتبة: تبويب سكريبد جديد — ابحث واقرأ الوثائق داخل التطبيق",
-    "رقاقات سريعة لمقاييسك: محاسبة التسيير، إحصاء، اقتصاد كلي وغيرها"
+    "المكتبة بشكل محدّث وبحث سكريبد يعمل داخل التطبيق",
+    "إشعار يوصلك مباشرة عند توفر تحديث جديد"
   ]
 }
