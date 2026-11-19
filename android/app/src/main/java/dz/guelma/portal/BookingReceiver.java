@@ -49,6 +49,7 @@ class BookingRunner {
         if (!p.getBoolean("booking_enabled", false)) return;
 
         String uuid = p.getString("uuid", "");
+        if (uuid.isEmpty()) uuid = p.getString("mealUuid", "");
         String dia = p.getString("dia", "");
         String token = p.getString("mealToken", "");
         int depotId = p.getInt("depotId", 0);

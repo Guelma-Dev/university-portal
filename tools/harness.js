@@ -419,7 +419,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
     // ---------- Grades session header removed (app) ----------
     check(!srcWww.includes('grades-student-name'), '[www] redundant session header removed');
-    check(srcWww.includes('id="grades-toolbar-wrap"') && srcWww.includes('خروج'), '[www] single intentional logout kept');
+    check(srcWww.includes('id="grades-toolbar-wrap"') && srcWww.includes('id="logout-btn-account"') && srcWww.includes('تسجيل الخروج'), '[www] single intentional logout kept in account');
+    check(!srcWww.includes('id="logout-btn"') && !srcWww.includes('onclick="progresLogout()"'), '[www] no duplicate logout controls');
     check(appJs.includes("getElementById('grades-student-name')") && appJs.includes('if (gsn)'), 'grades name write guarded (shared JS)');
 
     // ---------- Bottom-nav swipe ----------

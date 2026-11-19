@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('user_name', (meData && meData.username) || localStorage.getItem('user_name') || '');
                 document.getElementById('landing-page').classList.add('hidden');
                 document.getElementById('main-app').classList.remove('hidden');
-                showEl('logout-btn-account'); showEl('logout-btn');
+                showEl('logout-btn-account');
                 if (APP_STATE.role === 'admin') {
                     showEl('admin-menu-item'); showEl('admin-tile');
                     setNameEverywhere((String('<i class="fas fa-shield-halved"></i><span>مسؤول</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
@@ -414,12 +414,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (acc) setProgresSession({ token: acc.token, uuid: acc.uuid, etab: acc.etab, name: acc.name });
         }
     } catch (e) {}
-    // Silent re-login: every saved token expired but the user never
-    // logged out explicitly and credentials are kept on-device
-    // (encrypted, native vault) → mint a fresh token invisibly.
-    if (!getValidProgresSession() && localStorage.getItem('progres_logged_out') !== '1') {
-        try { await tryProgresSessionRefresh(); } catch (e) {}
-    }
+    // Silent renewal with retries; also re-arms the native meal booker.
+    try { await ensureProgresSession(); } catch (e) {}
     // Student auto-login — restore persistent Progres session
     const pSession = getValidProgresSession();
     if (pSession) {
@@ -430,7 +426,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('landing-page').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
         hideEl('admin-menu-item'); hideEl('admin-tile');
-        showEl('logout-btn-account'); showEl('logout-btn');
+        showEl('logout-btn-account');
         setNameEverywhere((String(`<i class="fas fa-user-graduate"></i><span>${uname}</span>`).match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
         try { if (window.CampusAccess) window.CampusAccess.restoreBoot(); } catch (e) {}
         applyInitialRoute();
@@ -502,7 +498,7 @@ function enterAsStudent() {
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     hideEl('admin-menu-item'); hideEl('admin-tile');
-    hideEl('logout-btn-account'); hideEl('logout-btn');
+    hideEl('logout-btn-account');
     setNameEverywhere((String('<i class="fas fa-eye"></i><span>ضيف</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     showToast('مرحباً بك في المنصة (وضع الضيف)', 'info');
     updatePomoVisibility();
@@ -529,10 +525,10 @@ function closeAllModals() {
 }
 
 function showStudentLogin() {
-    // Standalone login modal is gone (landing shows the form directly);
-    // legacy callers land on the login screen instead.
+    // Standalone login modal is gone (landing shows the form directly).
+    // Opening it must NEVER wipe the persistent session: the user may only
+    // be re-authenticating after a transient upstream failure.
     closeAllModals();
-    handleLogout();
     requestAnimationFrame(() => {
         const u = document.getElementById('login-reg');
         if (u) u.focus({ preventScroll: true });
@@ -548,7 +544,7 @@ function enterStudentSession(username) {
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     hideEl('admin-menu-item'); hideEl('admin-tile');
-    showEl('logout-btn-account'); showEl('logout-btn');
+    showEl('logout-btn-account');
     setNameEverywhere((String(`<i class="fas fa-user-graduate"></i><span>${username || 'طالب'}</span>`).match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     greetStudent();
     updatePomoVisibility();
@@ -668,7 +664,7 @@ function enterAdminSession(restored = false) {
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     showEl('admin-menu-item'); showEl('admin-tile');
-    showEl('logout-btn-account'); showEl('logout-btn');
+    showEl('logout-btn-account');
     setNameEverywhere((String('<i class="fas fa-shield-halved"></i><span>مسؤول</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     updateStats();
     prefillTelegramConfig();
@@ -725,7 +721,7 @@ function handleLogout() {
     APP_STATE.wilaya = '';
     APP_STATE.specialtyName = '';
     hideEl('admin-menu-item'); hideEl('admin-tile');
-    hideEl('logout-btn-account'); hideEl('logout-btn');
+    hideEl('logout-btn-account');
     setNameEverywhere((String('<i class="fas fa-eye"></i><span>ضيف</span>').match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
     showToast('تم تسجيل الخروج', 'info');
     updatePomoVisibility();
@@ -2546,18 +2542,25 @@ function getValidProgresSession() {
     return s;
 }
 
+function armMealBooking() {
+    // Re-sync the fresh ministry token to the native vault AND rebuild the
+    // daily alarm after every silent renewal, not only after a manual login.
+    try {
+        const s = getProgresSession();
+        const NP = progresNotifyPlugin();
+        if (s && NP && typeof NP.saveMealSession === 'function') {
+            const r = NP.saveMealSession({ uuid: String(s.uuid), token: String(s.token) });
+            if (r && typeof r.catch === 'function') r.catch(() => {});
+        }
+    } catch (e) {}
+    try { if (window.PortalNotify && typeof window.PortalNotify.restore === 'function') window.PortalNotify.restore(); } catch (e) {}
+}
+
 function setProgresSession(session) {
     localStorage.setItem(PROGRES_SESSION_KEY, JSON.stringify(session));
     try { localStorage.removeItem('progres_logged_out'); } catch (e) {}
     rememberProgresAccount(session);
-    // Keep the native auto-booker armed with the current ministry token.
-    try {
-        const NP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.NotifyPlugin;
-        if (NP && typeof NP.saveMealSession === 'function' && session && session.uuid && session.token) {
-            const r = NP.saveMealSession({ uuid: String(session.uuid), token: String(session.token) });
-            if (r && typeof r.catch === 'function') r.catch(() => {});
-        }
-    } catch (e) {}
+    armMealBooking();
 }
 
 function progresLogout() {
@@ -2731,12 +2734,20 @@ function progresApiBase() {
 }
 
 let _progresRefreshFlight = null;
+const REFRESH_ATTEMPTS = 3;
+const REFRESH_GAP_MS = 6000;
 
-// expectedUuid (optional): when a session exists, only adopt the
-// refreshed session if it belongs to the SAME account — a student who
-// switched accounts must never be silently switched back.
-// Resolves to the fresh session object, or null when refresh is
-// impossible (no vault, explicit logout, network down, bad credentials).
+function _tokenExpiring(s, withinMs) {
+    try {
+        const pay = JSON.parse(atob(String(s.token).split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        if (!pay || !pay.exp) return false;
+        return Date.now() >= pay.exp * 1000 - withinMs;
+    } catch (e) { return false; }
+}
+
+// expectedUuid (optional): only adopt the refreshed session when it belongs
+// to the SAME account. Permanent failures (no vault, rejected credentials,
+// account mismatch) stop at once; network failures are retried.
 function tryProgresSessionRefresh(expectedUuid) {
     if (_progresRefreshFlight) return _progresRefreshFlight;
     _progresRefreshFlight = (async () => {
@@ -2744,13 +2755,21 @@ function tryProgresSessionRefresh(expectedUuid) {
             if (localStorage.getItem('progres_logged_out') === '1') return null;
             const NP = progresNotifyPlugin();
             if (!NP || typeof NP.refreshProgresSession !== 'function') return null;
-            const r = await NP.refreshProgresSession({ expectedUuid: expectedUuid ? String(expectedUuid) : '' });
-            if (!r || !r.token || !r.uuid) return null;
-            if (expectedUuid && String(r.uuid) !== String(expectedUuid)) return null;
-            const s = { token: r.token, uuid: r.uuid, etab: r.etablissementId, name: r.userName || '' };
-            setProgresSession(s);
-            return s;
-        } catch (e) {
+            for (let attempt = 1; attempt <= REFRESH_ATTEMPTS; attempt++) {
+                try {
+                    const r = await NP.refreshProgresSession({ expectedUuid: expectedUuid ? String(expectedUuid) : '' });
+                    if (r && r.token && r.uuid) {
+                        if (expectedUuid && String(r.uuid) !== String(expectedUuid)) return null;
+                        const s = { token: r.token, uuid: r.uuid, etab: r.etablissementId, name: r.userName || '' };
+                        setProgresSession(s);
+                        return s;
+                    }
+                } catch (e) {
+                    const reason = String((e && e.message) || e || '');
+                    if (/no-credentials|bad-credentials|account-mismatch/.test(reason)) return null;
+                }
+                if (attempt < REFRESH_ATTEMPTS) await new Promise(res => setTimeout(res, REFRESH_GAP_MS));
+            }
             return null;
         } finally {
             _progresRefreshFlight = null;
@@ -2758,7 +2777,22 @@ function tryProgresSessionRefresh(expectedUuid) {
     })();
     return _progresRefreshFlight;
 }
+
+// Boot + foreground resume: renew 2h before expiry so the native meal
+// booker never sees an expired JWT. On-demand 401 refresh covers long
+// foreground sessions without a periodic timer.
+function ensureProgresSession() {
+    if (localStorage.getItem('progres_logged_out') === '1') return Promise.resolve(null);
+    const s = getProgresSession();
+    if (s && s.uuid && s.token && !_tokenExpiring(s, 2 * 3600 * 1000)) return Promise.resolve(s);
+    return tryProgresSessionRefresh(s ? s.uuid : '');
+}
+
+document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) ensureProgresSession();
+});
 try { window.tryProgresSessionRefresh = tryProgresSessionRefresh; } catch (e) {}
+try { window.ensureProgresSession = ensureProgresSession; } catch (e) {}
 
 function progresCardLabel(c) {
     const niveau = escHtml(c.niveauLibelleLongAr || c.niveauLibelleLongLt || '');

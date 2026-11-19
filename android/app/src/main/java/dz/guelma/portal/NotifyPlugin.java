@@ -377,11 +377,10 @@ public class NotifyPlugin extends Plugin {
     // implemented as silent re-login with the credentials the user kept
     // on THIS device via «تذكرني». The password is encrypted with an
     // Android Keystore AES-256 key that never leaves the device;
-    // SharedPreferences only ever holds ciphertext. Explicit logout
-    // (JS progresLogout → clearProgresCredentials, or wipeSession)
-    // wipes the vault — that is the only way the session truly ends,
-    // apart from a ministry-side password change (login then returns
-    // 400/401 and the vault clears itself).
+    // SharedPreferences only ever holds ciphertext. Only an explicit
+    // user logout (clearProgresCredentials / wipeSession) wipes the vault.
+    // A transient 400/401 never clears it: the persistent session and the
+    // background meal booker must survive upstream hiccups.
 
     private static final String CRED_ALIAS = "portal_cred_key";
     private static final String CRED_BLOB = "credBlob";
@@ -466,8 +465,8 @@ public class NotifyPlugin extends Plugin {
     }
 
     /** Outcome of a silent re-login attempt. error: 0 ok,
-     *  1 no credentials, 2 credentials rejected (password changed —
-     *  vault self-clears), 3 network/other, 4 account mismatch. */
+     *  1 no credentials, 2 credentials rejected (vault kept for retry),
+     *  3 network/other, 4 account mismatch. */
     static class RefreshResult {
         String token, uuid, etab, name;
         int error = 3;
@@ -499,7 +498,9 @@ public class NotifyPlugin extends Plugin {
             try (java.io.OutputStream os = c.getOutputStream()) { os.write(bytes); }
             int code = c.getResponseCode();
             if (code == 400 || code == 401) {
-                clearCredentials(ctx);
+                // لا نمسح الخزنة تلقائياً: الرفض العابر (صيانة، معدل طلبات،
+                // انقطاع لحظي) يجب ألا يقطع الجلسة الدائمة ولا حجز الوجبات.
+                // المسح يتم فقط عند خروج صريح من المستخدم.
                 out.error = 2;
                 return out;
             }

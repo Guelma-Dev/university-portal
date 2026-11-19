@@ -254,7 +254,6 @@
                     </div>
                     <button onclick="toggleTheme(); toggleAppMenu();"><i class="fas fa-moon"></i><span id="theme-text">الوضع الليلي</span></button>
                     <button onclick="switchSection('admin'); toggleAppMenu();" style="display:none;" id="admin-menu-item"><i class="fas fa-cog"></i>لوحة التحكم</button>
-                    <button onclick="handleLogout()" style="display:none;" id="logout-btn"><i class="fas fa-right-from-bracket"></i>تسجيل الخروج</button>
                 </div>
             </header>
 
@@ -806,9 +805,6 @@
                     <div style="padding: 16px;" id="grades-body-wrap">
                         <div class="grades-toolbar hidden" id="grades-toolbar-wrap">
                             <select id="grades-card-select" class="card-select" onchange="onProgresCardChange(this.value)"></select>
-                            <button class="btn btn-ghost btn-sm" onclick="progresLogout()">
-                                <i class="fas fa-right-from-bracket"></i> خروج
-                            </button>
                         </div>
                         <div id="grades-content"><div class="mobile-empty"><i class="fas fa-spinner fa-spin"></i><p>جاري التحميل...</p></div></div>
                     </div>
