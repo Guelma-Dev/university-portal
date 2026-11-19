@@ -144,26 +144,45 @@
         } catch (e) {}
     }
 
-    // ---- Splash v7-slow: clip-reveal draw (2.4s, user: let it take its
-    // time) + pen + fill + swallow (~4.45s); min 3850ms, fail-safe 4550ms ----
-    var T0 = Date.now();    function dismissSplash() {
+    // ---- Splash ----
+    // Browser: CSS splash keeps its own draw -> fill -> wordmark -> fade.
+    // Native shell: the splash is a Canvas overlay owned by Android. The very
+    // same readiness signal now calls NativeSplash.hide() instead; the native
+    // layer also carries its own 6s failsafe, so it can never stick.
+    var T0 = Date.now();
+    function nativeSplashHost() {
+        try {
+            var c = window.Capacitor;
+            var p = c && c.Plugins && c.Plugins.NativeSplash;
+            return (p && typeof p.hide === 'function') ? p : null;
+        } catch (e) { return null; }
+    }
+    function dismissSplash() {
+        var ns = nativeSplashHost();
+        if (ns) { try { ns.hide().catch(function () {}); } catch (e) {} }
         try {
             var el = document.getElementById('nova-splash');
-            if (!el || el.classList.contains('done')) return;
-            el.classList.add('done');
-            setTimeout(function () {
-                try { el.remove(); } catch (e) {}
-            }, 600);
+            if (!el) return;
+            if (!isNative()) {
+                el.classList.add('done');
+                setTimeout(function () { try { el.remove(); } catch (e) {} }, 600);
+            } else {
+                el.remove();
+            }
         } catch (e) {}
     }
     function splashSchedule() {
+        if (nativeSplashHost()) {
+            // Native timeline is 2600ms; hide just after it finishes.
+            setTimeout(dismissSplash, Math.max(0, 2700 - (Date.now() - T0)));
+            return;
+        }
         var wait = Math.max(0, 3850 - (Date.now() - T0));
         setTimeout(dismissSplash, wait);
-        setTimeout(dismissSplash, 4550); // fail-safe
+        setTimeout(dismissSplash, 4550); // browser fail-safe (native has its own)
         try {
             if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                var el = document.getElementById('nova-splash');
-                if (el) el.remove();
+                dismissSplash();
             }
         } catch (e) {}
     }

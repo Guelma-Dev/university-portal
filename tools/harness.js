@@ -444,6 +444,36 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(novaCss.includes('#section-library .ds-searchbar input') && novaCss.includes('background: transparent !important'), 'search bar has no nested input box / second line');
     check(fs.existsSync(path.join(ROOT, 'preview', 'library.html')), 'library before/after preview exists');
 
+    // ---------- Native Canvas splash (GPU path, parallel WebView load) ----------
+    const javaDir = path.join(ROOT, 'android', 'app', 'src', 'main', 'java', 'dz', 'guelma', 'portal');
+    const drawJava = fs.readFileSync(path.join(javaDir, 'PortalLogoDrawView.java'), 'utf8');
+    check(drawJava.includes('onSizeChanged') && drawJava.includes('new PathMeasure(capPath, false)'), 'logo paths/measures built once on size change');
+    const onDrawBody = drawJava.slice(drawJava.indexOf('protected void onDraw'));
+    check(!onDrawBody.includes('new Path(') && !onDrawBody.includes('new Paint('), 'onDraw allocates no Path/Paint');
+    check(drawJava.includes('getSegment(0f, length * p, segment, true)'), 'strokes revealed via PathMeasure.getSegment');
+    check(drawJava.includes('setProgress(float value)') && drawJava.includes('invalidate(); // this 148dp view only'), 'one t invalidates the small view only');
+    check(drawJava.includes('0xFFD9A93F') && drawJava.includes('0xFFF4F1EA') && drawJava.includes('0xFFA87B22'), 'logo uses the original gold/cream/bronze palette');
+    check(drawJava.includes('drawRoundRect(tasselRect') && drawJava.includes('drawLine(32f, 43.5f, 32f, 53f'), 'original tassel and book spine are drawn');
+    check(!drawJava.includes('LinearGradient') && !drawJava.includes('setShader'), 'no blue gradient shader remains');
+    const splashJava = fs.readFileSync(path.join(javaDir, 'PortalSplashView.java'), 'utf8');
+    check(splashJava.includes('ValueAnimator.ofFloat(0f, 1f)') && splashJava.includes('TIMELINE_MS = 2600L'), 'one faster (2.6s) timeline animator');
+    check(!splashJava.includes('حسابك الجامعي في جيبك') && !splashJava.includes('TextView tag'), 'second line removed from native splash');
+    check(splashJava.includes('FAILSAFE_MS = 6000L') && splashJava.includes('postDelayed(failsafe, FAILSAFE_MS)'), 'native splash has a 6s failsafe');
+    check(splashJava.includes('withEndAction') && splashJava.includes('removeView(PortalSplashView.this)'), 'fade-out removes the overlay');
+    check(splashJava.includes('scaleX(8f)') && splashJava.includes('scaleY(8f)') && splashJava.includes('new PathInterpolator(0.4f, 0f, 1f, 1f)'), 'final swallow zoom matches CSS scale(8)');
+    check(splashJava.includes('setClipChildren(false)'), 'zoom not clipped by the logo box');
+    check(splashJava.includes('setClickable(true)'), 'overlay swallows touches while visible');
+    const splashPluginJava = fs.readFileSync(path.join(javaDir, 'NativeSplashPlugin.java'), 'utf8');
+    check(splashPluginJava.includes('@CapacitorPlugin(name = "NativeSplash")') && splashPluginJava.includes('public void hide('), 'NativeSplash.hide() bridge exists');
+    const mainActSplash = fs.readFileSync(path.join(javaDir, 'MainActivity.java'), 'utf8');
+    check(mainActSplash.includes('registerPlugin(NativeSplashPlugin.class)') && mainActSplash.includes('addContentView(new PortalSplashView(this)'), 'overlay added in onCreate; WebView loads underneath');
+    const capCfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'capacitor.config.json'), 'utf8'));
+    check(capCfg.plugins.SplashScreen.launchShowDuration === 0 && capCfg.plugins.SplashScreen.launchFadeOutDuration === 0, 'system splash hides immediately (no flash)');
+    check(novaCss.includes('html.native-shell #nova-splash'), 'CSS splash disabled in native shell only');
+    check(srcIdx.includes("classList.add('native-shell')"), 'native flag set from the shell');
+    const feelJs = fs.readFileSync(path.join(ROOT, 'js', 'portal-feel.js'), 'utf8');
+    check(feelJs.includes('Plugins.NativeSplash') && feelJs.includes('ns.hide()'), 'dismiss signal calls NativeSplash.hide()');
+
     // ---------- Grades session header removed (app) ----------
     check(!srcWww.includes('grades-student-name'), '[www] redundant session header removed');
     check(srcWww.includes('id="grades-toolbar-wrap"') && srcWww.includes('id="logout-btn-account"') && srcWww.includes('تسجيل الخروج'), '[www] single intentional logout kept in account');

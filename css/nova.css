@@ -198,6 +198,9 @@ body.native-app .bottom-nav .bn-inner {
     transition: opacity .55s ease, visibility .55s;
 }
 #nova-splash.done { opacity: 0; visibility: hidden; }
+/* Native shell draws its own hardware-accelerated Canvas splash over the WebView.
+   The legacy CSS splash must never appear there — browser keeps it unchanged. */
+html.native-shell #nova-splash { display: none !important; }
 .df-dotgrid {
     position: absolute; inset: 0; opacity: 1;
     background-image: radial-gradient(rgba(191, 217, 255, .10) 1.2px, transparent 1.8px);

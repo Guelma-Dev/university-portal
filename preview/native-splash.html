@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>معاينة — سبلاش أندرويد الأصلي</title>
+<style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#0B0E14;font-family:Tajawal,Arial,sans-serif}
+    #grid{position:absolute;inset:0;width:100%;height:100%}
+    #stage{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+    #logo{width:148px;height:148px}
+    #word{font-size:26px;font-weight:800;color:#F4F1EA;opacity:0}
+    #word em{font-family:Georgia,serif;font-style:italic;color:#D9A93F}
+    #ui{position:fixed;z-index:10;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:8px;
+        padding:7px;border-radius:999px;background:rgba(19,25,39,.94);border:1px solid rgba(255,255,255,.12);
+        box-shadow:0 16px 40px rgba(0,0,0,.55);backdrop-filter:blur(12px)}
+    #ui button{border:0;cursor:pointer;padding:9px 18px;border-radius:999px;background:transparent;
+        color:#94A3B8;font:inherit;font-weight:800;font-size:12.5px}
+    #ui button.on{background:linear-gradient(135deg,#D9A93F,#A87B22);color:#141414}
+    #status{position:fixed;top:18px;right:18px;z-index:10;padding:8px 14px;border-radius:999px;
+        background:#131927;border:1px solid rgba(255,255,255,.1);color:#F0CE8A;font-size:12px;font-weight:800}
+</style>
+</head>
+<body>
+<canvas id="grid" aria-hidden="true"></canvas>
+<div id="stage">
+    <canvas id="logo" aria-hidden="true"></canvas>
+    <div id="word">بوابة <em>الطالب</em></div>
+</div>
+<div id="status">جارٍ الرسم…</div>
+<div id="ui">
+    <button id="restart" class="on">إعادة التشغيل</button>
+    <button id="ready">إشارة الجاهزية (تكبير الفلاش)</button>
+    <button id="failsafe">اختبر الـfailsafe (6 ثوانٍ)</button>
+</div>
+<script>
+(function () {
+    'use strict';
+    var GOLD = '#D9A93F', CREAM = '#F4F1EA', BRONZE = '#A87B22';
+    var DPR = Math.min(2, window.devicePixelRatio || 1);
+    var grid = document.getElementById('grid'), gx = grid.getContext('2d');
+    var cv = document.getElementById('logo'), ctx = cv.getContext('2d');
+    var word = document.getElementById('word');
+    var status = document.getElementById('status');
+    var S = 148 * DPR, scale = S / 64;
+    cv.width = cv.height = S;
+    ctx.scale(scale, scale);
+    ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    // ---- geometry, prepared once (mirrors PortalLogoDrawView.onSizeChanged) ----
+    function sample(cmds, steps) {
+        var pts = [], cur = [0, 0];
+        for (var i = 0; i < cmds.length; i++) {
+            var c = cmds[i];
+            if (c[0] === 'M') { cur = [c[1], c[2]]; pts.push(cur); }
+            else if (c[0] === 'L') { cur = [c[1], c[2]]; pts.push(cur); }
+            else if (c[0] === 'C') {
+                for (var s = 1; s <= steps; s++) {
+                    var t = s / steps, u = 1 - t;
+                    pts.push([
+                        u*u*u*cur[0] + 3*u*u*t*c[1] + 3*u*t*t*c[3] + t*t*t*c[5],
+                        u*u*u*cur[1] + 3*u*u*t*c[2] + 3*u*t*t*c[4] + t*t*t*c[6]
+                    ]);
+                }
+                cur = pts[pts.length - 1];
+            }
+        }
+        var cum = [0];
+        for (var j = 1; j < pts.length; j++) {
+            cum.push(cum[j-1] + Math.hypot(pts[j][0]-pts[j-1][0], pts[j][1]-pts[j-1][1]));
+        }
+        return { pts: pts, cum: cum, len: cum[cum.length - 1] };
+    }
+    function path2d(cmds) {
+        var p = new Path2D();
+        for (var i = 0; i < cmds.length; i++) {
+            var c = cmds[i];
+            if (c[0] === 'M') p.moveTo(c[1], c[2]);
+            else if (c[0] === 'L') p.lineTo(c[1], c[2]);
+            else if (c[0] === 'C') p.bezierCurveTo(c[1],c[2],c[3],c[4],c[5],c[6]);
+            else if (c[0] === 'Z') p.closePath();
+        }
+        return p;
+    }
+    function roundRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath(); ctx.fill();
+    }
+
+    var capCmds = [['M',32,9],['L',58,21],['L',32,33],['L',6,21],['Z']];
+    var bookCmds = [['M',10,43],['C',17,39,25,39,32,43],['C',39,39,47,39,54,43],
+                    ['L',54,53],['C',47,49,39,49,32,53],['C',25,49,17,49,10,53],['Z']];
+    var bandCmds = [['M',22,27.5],['L',22,34.3],['C',22,39.5,42,39.5,42,34.3],
+                    ['L',42,27.5],['L',32,31.7],['Z']];
+    var bookFillCmds = [['M',10,43.5],['C',17,39.9,25,39.9,32,43.5],['C',39,39.9,47,39.9,54,43.5],
+                        ['L',54,53],['C',47,49.4,39,49.4,32,53],['C',25,49.4,17,49.4,10,53],['Z']];
+    var cap = sample(capCmds, 1), book = sample(bookCmds, 32);
+    var capFill = path2d(capCmds), bandFill = path2d(bandCmds), bookFill = path2d(bookFillCmds);
+    var anchors = [[32,9],[58,21],[32,33],[6,21],[10,43],[54,43]];
+
+    // ---- static background + dot grid, drawn once ----
+    function drawGrid() {
+        var w = window.innerWidth, h = window.innerHeight;
+        grid.width = w * DPR; grid.height = h * DPR;
+        gx.setTransform(DPR,0,0,DPR,0,0);
+        var bg = gx.createRadialGradient(w/2, h*.20, 0, w/2, h*.20, Math.max(w,h)*1.2);
+        bg.addColorStop(0,'#101828'); bg.addColorStop(.5,'#0B0E14'); bg.addColorStop(1,'#0B0E14');
+        gx.fillStyle = bg; gx.fillRect(0,0,w,h);
+        gx.fillStyle = '#BFD9FF';
+        var cx = w/2, cy = h*.45, rx = w*.75, ry = h*.65;
+        for (var x = 11; x < w; x += 22) for (var y = 11; y < h; y += 22) {
+            var dx=(x-cx)/rx, dy=(y-cy)/ry, d=Math.hypot(dx,dy);
+            var fade = d <= .35 ? 1 : 1-(d-.35)/.65;
+            if (fade <= 0) continue;
+            gx.globalAlpha = .10*fade;
+            gx.beginPath(); gx.arc(x,y,1.2,0,Math.PI*2); gx.fill();
+        }
+        gx.globalAlpha = 1;
+    }
+    drawGrid();
+    window.addEventListener('resize', drawGrid);
+
+    function sub(a,b,t){ if(t<=a)return 0; if(t>=b)return 1; var x=(t-a)/(b-a); return x*x*(3-2*x); }
+
+    function strokePartial(o, p) {
+        if (p <= 0) return null;
+        ctx.beginPath(); ctx.moveTo(o.pts[0][0], o.pts[0][1]);
+        if (p >= 1) { for (var k=1;k<o.pts.length;k++) ctx.lineTo(o.pts[k][0],o.pts[k][1]); ctx.stroke(); return o.pts[o.pts.length-1]; }
+        var target = o.len*p, last = o.pts[0];
+        for (var i=1;i<o.pts.length;i++) {
+            if (o.cum[i] <= target) { ctx.lineTo(o.pts[i][0],o.pts[i][1]); last = o.pts[i]; }
+            else { var f=(target-o.cum[i-1])/(o.cum[i]-o.cum[i-1]);
+                last=[o.pts[i-1][0]+(o.pts[i][0]-o.pts[i-1][0])*f, o.pts[i-1][1]+(o.pts[i][1]-o.pts[i-1][1])*f];
+                ctx.lineTo(last[0],last[1]); break; }
+        }
+        ctx.stroke(); return last;
+    }
+
+    var t = 0, raf = 0, start = 0, signalled = false, fading = false, signaledAt = 0;
+    var TIMELINE = 2600, FAILSAFE = 6000, FADE = 560;
+
+    function paint() {
+        ctx.clearRect(0,0,64,64);
+        var capP = sub(.03,.40,t), bookP = sub(.34,.62,t);
+        ctx.strokeStyle = GOLD;   var pen1 = strokePartial(cap,capP);
+        ctx.strokeStyle = CREAM;  var pen2 = strokePartial(book,bookP);
+        var pen = capP < 1 ? pen1 : pen2;
+        if (t > .02 && t < .64 && pen) {
+            ctx.globalAlpha = Math.min(1, (capP<1?capP:bookP)*8);
+            ctx.fillStyle = CREAM; ctx.beginPath(); ctx.arc(pen[0],pen[1],1.4,0,Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+        var anchorA = t < .62 ? sub(.02,.09,t) : 1-sub(.62,.74,t);
+        if (anchorA > 0) { ctx.globalAlpha=anchorA; ctx.fillStyle=GOLD;
+            anchors.forEach(function(a){ctx.fillRect(a[0]-2,a[1]-2,4,4);}); ctx.globalAlpha=1; }
+        [[sub(.62,.78,t),capFill,GOLD],[sub(.67,.83,t),bandFill,CREAM],[sub(.72,.90,t),bookFill,CREAM]]
+          .forEach(function(f){ if(f[0]>0){ctx.globalAlpha=f[0];ctx.fillStyle=f[2];ctx.fill(f[1]);ctx.globalAlpha=1;} });
+        var tasselA = sub(.64,.78,t);
+        if (tasselA > 0) { ctx.globalAlpha=tasselA; ctx.fillStyle=BRONZE;
+            roundRect(54.8,21,2.6,14.5,1.3);
+            ctx.beginPath(); ctx.arc(56.1,38.2,3.1,0,Math.PI*2); ctx.fill();
+            ctx.globalAlpha=1; }
+        var spineA = sub(.72,.86,t);
+        if (spineA > 0) { ctx.globalAlpha=spineA; ctx.strokeStyle=BRONZE; ctx.lineWidth=2.1;
+            ctx.beginPath(); ctx.moveTo(32,43.5); ctx.lineTo(32,53); ctx.stroke();
+            ctx.lineWidth=2; ctx.globalAlpha=1; }
+        var wa=sub(.78,.92,t);
+        word.style.opacity=wa; word.style.transform='translateY('+((1-wa)*14)+'px)';
+    }
+    function frame(now) {
+        if (!start) start = now;
+        t = Math.min(1, (now-start)/TIMELINE);
+        paint();
+        status.textContent = t < 1 ? 'جارٍ الرسم…' : 'الرسمة كاملة — بانتظار إشارة الجاهزية';
+        if (signalled && now-signaledAt >= FAILSAFE) hide(true);
+        else raf = setTimeout(function () { frame(performance.now()); }, 16);
+    }
+    function hide(failsafe) {
+        if (fading) return;
+        fading = true; clearTimeout(raf);
+        status.textContent = failsafe ? 'failsafe: أخفى السبلاش بعد 6 ثوانٍ ✅' : 'إشارة الجاهزية: تكبير + تلاشٍ ✅';
+        // Mirror df-stage-swallow / df-word-out from the app CSS.
+        word.style.transition='opacity .22s ease, transform .22s ease';
+        word.style.opacity='0'; word.style.transform='translateY(-6px)';
+        cv.style.transition='transform '+(FADE/1000)+'s cubic-bezier(.4,0,1,1), opacity '+(FADE/1000)+'s ease';
+        cv.style.transform='scale(8)'; cv.style.opacity='0';
+        var stage=document.getElementById('stage');
+        stage.style.transition='opacity '+(FADE/1000)+'s ease';
+        stage.style.opacity='0';
+        setTimeout(function(){ stage.style.display='none'; }, FADE);
+    }
+    function restart() {
+        clearTimeout(raf);
+        t=0; start=0; signalled=false; fading=false; signaledAt=0;
+        status.textContent='جارٍ الرسم…';
+        var s=document.getElementById('stage'); s.style.transition=''; s.style.opacity='1'; s.style.display='flex';
+        word.style.transition=''; word.style.transform='translateY(0)'; word.style.opacity='0';
+        cv.style.transition=''; cv.style.transform='scale(1)'; cv.style.opacity='1';
+        raf=setTimeout(function () { frame(performance.now()); }, 16);
+    }
+    document.getElementById('restart').addEventListener('click', restart);
+    document.getElementById('ready').addEventListener('click', function(){ hide(false); });
+    document.getElementById('failsafe').addEventListener('click', function(){
+        signalled = true; signaledAt = performance.now(); // readiness signal disabled on purpose
+        status.textContent='إشارة الجاهزية معطّلة… العدّاد 6 ثوانٍ';
+    });
+    restart();
+})();
+</script>
+</body>
+</html>
