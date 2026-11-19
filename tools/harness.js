@@ -436,6 +436,14 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(novaCss.includes('width: 34px !important') && novaCss.includes('padding: 13px 14px !important'), 'home service cards copy the quick-access card metrics');
     check(novaCss.includes('color: #F4F1EA !important'), 'greeting logo keeps the original app colors');
 
+    // ---------- Library section (app) ----------
+    check(novaCss.includes('#section-library, [data-theme="light"] #section-library'), 'library gets its own design-token scope');
+    check(novaCss.includes('--lx-glass:') && novaCss.includes('--lx-gold-line:') && novaCss.includes('--s-card:  #131927'), 'library cards resolve the app glass tokens');
+    check(novaCss.includes('#section-library .lib-chip.active') && novaCss.includes('background: #0B0E14 !important'), 'selected library chips get the filled pill');
+    check(novaCss.includes('#section-library .lf-ico') && novaCss.includes('#section-library .lr-badge'), 'library file/badge accents join the blue family');
+    check(novaCss.includes('#section-library .ds-searchbar input') && novaCss.includes('background: transparent !important'), 'search bar has no nested input box / second line');
+    check(fs.existsSync(path.join(ROOT, 'preview', 'library.html')), 'library before/after preview exists');
+
     // ---------- Grades session header removed (app) ----------
     check(!srcWww.includes('grades-student-name'), '[www] redundant session header removed');
     check(srcWww.includes('id="grades-toolbar-wrap"') && srcWww.includes('id="logout-btn-account"') && srcWww.includes('تسجيل الخروج'), '[www] single intentional logout kept in account');

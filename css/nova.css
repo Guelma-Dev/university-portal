@@ -757,3 +757,66 @@ body.native-app .subject-card:focus-visible { outline-color: #60A5FA !important;
     color: #fff !important;
 }
 .dia-switch { display: none !important; }
+
+/* ============================================================
+   D10 — LIBRARY: bring back the app's dark-glass cards.
+   Root cause: the .lib-* rules use --lx-* tokens (defined only under
+   .lx-p-root, the profile namespace) and --s-* tokens (defined only
+   under #section-home). Inside #section-library both families are
+   undefined, so every card lost its background/border/shadow and read
+   as bare floating text. Defining them here fixes every card type at
+   once with the same glass recipe the rest of the app uses.
+   ============================================================ */
+#section-library, [data-theme="light"] #section-library {
+    --lx-glass:     linear-gradient(160deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02)), #131927;
+    --lx-gold:      #3B82F6;
+    --lx-gold-2:    #60A5FA;
+    --lx-gold-deep: #2563EB;
+    --lx-gold-soft: rgba(59, 130, 246, .12);
+    --lx-gold-line: rgba(255, 255, 255, .08);
+    --lx-ok:        #34D399;
+    --lx-bad:       #FF7070;
+    --s-card:  #131927;
+    --s-card2: #161E32;
+    --s-card3: #1A2234;
+    --s-edge:     rgba(255, 255, 255, .08);
+    --s-edge-hi:  rgba(255, 255, 255, .10);
+    --s-shadow:   0 10px 32px rgba(2, 6, 18, .45);
+    --shadow-sm:  0 10px 32px rgba(2, 6, 18, .45);
+}
+/* content cards share the app's 18px card radius */
+#section-library .lib-row,
+#section-library .lib-file,
+#section-library .ds-result,
+#section-library .lib-select,
+#section-library .ds-searchbar { border-radius: 18px !important; }
+/* selected source chips: JS uses .active (not .on) → filled pill */
+#section-library .lib-chip.active {
+    background: #0B0E14 !important;
+    color: #fff !important;
+    border-color: #0B0E14 !important;
+}
+/* readable primary button + active tab: white on the blue gradient */
+#section-library .lib-btn.view,
+#section-library .lib-tab.active { color: #fff !important; }
+/* one blue icon chip everywhere (the rainbow 4n+2/4n+3 variants too) */
+#section-library .ls-ico, #section-library .lr-ico,
+#section-library .ds-ico, #section-library .lf-ico, #section-library .lib-chip i {
+    color: #60A5FA !important;
+    background: rgba(59, 130, 246, .12) !important;
+    border-color: rgba(59, 130, 246, .26) !important;
+}
+#section-library .lr-badge {
+    background: rgba(59, 130, 246, .18) !important;
+    color: #93C5FD !important;
+}
+/* the global input[type=text] !important box draws a thin second line
+   inside the search bar — flatten it so the bar is one clean field */
+#section-library .ds-searchbar input {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    color: #fff !important;
+}
