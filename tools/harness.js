@@ -418,6 +418,10 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(campusCss.includes('linear-gradient(165deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .025)), #131927'), 'campus cx-card uses the app dark glass');
     check(!campusCss.includes('background: #fff') && !campusCss.includes('border: 1px solid #e4e9f2'), 'campus has no light-theme leftovers');
     check(!campusJs.includes('background:#e2e8f0'), 'campus module dot uses the app blue');
+    check(campusJs.includes('PMS_CACHE_KEY') && campusJs.includes('pmsCached(key)') && campusJs.includes('pmsStore(key'), 'campus keeps last PMS data on device');
+    check(campusJs.includes("S.sess.student_id + '|' + endpoint"), 'campus PMS cache is per student');
+    check(campusJs.includes('PMS_TIMEOUT_MS') && campusJs.includes('Promise.race([work, deadline])'), 'campus PMS calls are bounded locally');
+    check(campusJs.includes('S.openSeq') && campusJs.includes('if (seq !== S.openSeq) return;'), 'stale campus loads cannot overwrite the visible screen');
 
     // ---------- Home greeting card (app) ----------
     check(!srcWww.includes('ملخص يومك') && !srcWww.includes('dh-ctx'), '[www] summary sentence removed');
@@ -425,6 +429,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(srcWww.includes('class="dh-greet"') && srcWww.includes('id="dh-who"'), '[www] greeting card keeps live name');
     const wwwCss = fs.readFileSync(path.join(ROOT, 'www', 'css', 'styles.css'), 'utf8');
     check(wwwCss.includes('.dh-greet') && wwwCss.includes('var(--s-card)') && wwwCss.includes('var(--s-radius)'), '[www] greeting uses design-system card');
+    const novaCss = fs.readFileSync(path.join(ROOT, 'css', 'nova.css'), 'utf8');
+    check(!srcIdx.includes('id="dia-switch"'), 'home greeting has no academic-year chips');
+    check(novaCss.includes('#section-home .dh-sv-row') && novaCss.includes('rgba(255, 255, 255, .08) !important'), 'home services rows use app glass');
+    check(novaCss.includes('#dh-who') && novaCss.includes('font-size: 2rem !important'), 'greeting name is large and clear');
+    check(novaCss.includes('width: 34px !important') && novaCss.includes('padding: 13px 14px !important'), 'home service cards copy the quick-access card metrics');
+    check(novaCss.includes('color: #F4F1EA !important'), 'greeting logo keeps the original app colors');
 
     // ---------- Grades session header removed (app) ----------
     check(!srcWww.includes('grades-student-name'), '[www] redundant session header removed');

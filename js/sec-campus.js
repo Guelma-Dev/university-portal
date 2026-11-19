@@ -6,6 +6,9 @@
 
     const API = window.location.origin + '/api/pms';
     const SCHED_KEY = 'lx_pms_sched_v1';
+    const PMS_CACHE_KEY = 'lx_pms_cache_v1';
+    const PMS_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+    const PMS_TIMEOUT_MS = 9000;
     const SID = 997;
 
     const SEED_PROFILE = {
@@ -260,7 +263,7 @@
         window.__cxDelListener = true;
     }
 
-    const S = { root: null, view: 'menu', sess: null, cache: {}, loading: false, html: '', dash: null, unread: 0, cxEdit: false, cxDay: -1 };
+    const S = { root: null, view: 'menu', sess: null, cache: {}, loading: false, html: '', dash: null, unread: 0, cxEdit: false, cxDay: -1, openSeq: 0 };
 
     // ---------- جلسات PMS لكل مستخدم (المالك مزروع، المفوض يتحقق مرة) ----------
     const PMS_USERS_KEY = 'lx_pms_users';
@@ -315,20 +318,43 @@
     }
     function cxSave(db) { try { localStorage.setItem(SCHED_KEY, JSON.stringify(db)); } catch (e) {} }
 
-    async function api(path, body) {
-        let ctrl = null, timer = null;
+    // آخر رد ناجح من PMS يبقى على الجهاز: سيرفر الجامعة كثير ما يعلق،
+    // والنسخة القديمة أفضل من شاشة تحميل ما تنتهيش.
+    function pmsCache() {
         try {
-            if (typeof AbortController !== 'undefined') {
-                ctrl = new AbortController();
-                timer = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 25000);
+            const d = JSON.parse(localStorage.getItem(PMS_CACHE_KEY) || '{}');
+            return d && typeof d === 'object' && !Array.isArray(d) ? d : {};
+        } catch (e) { return {}; }
+    }
+    function pmsCached(key) {
+        const hit = pmsCache()[key];
+        if (!hit || !hit.d || Date.now() - (hit.t || 0) > PMS_CACHE_TTL) return null;
+        return hit.d;
+    }
+    function pmsCachePut(key, d) {
+        try {
+            const db = pmsCache();
+            db[key] = { t: Date.now(), d: d };
+            const keys = Object.keys(db);
+            if (keys.length > 30) {
+                keys.sort((a, b) => (db[b].t || 0) - (db[a].t || 0)).slice(30).forEach(k => { delete db[k]; });
             }
-        } catch (e) { ctrl = null; }
-        try {
+            localStorage.setItem(PMS_CACHE_KEY, JSON.stringify(db));
+        } catch (e) {}
+    }
+
+    async function api(path, body) {
+        let timer = null;
+        // المهلة محلية: طبقة native.js ما تمرّرش signal للـplugin، فالاعتماد
+        // على AbortController وحده كان يخلي الشاشة تتحمل بلا نهاية.
+        const deadline = new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error('انتهت المهلة — تحقق من الاتصال وحاول مجدداً')), PMS_TIMEOUT_MS);
+        });
+        const work = (async () => {
             const res = await fetch(API + path, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body || {}),
-                signal: ctrl ? ctrl.signal : undefined,
             });
             if (!res.ok) {
                 let msg = 'خطأ ' + res.status;
@@ -336,21 +362,34 @@
                 throw new Error(msg);
             }
             return res.json();
-        } catch (e) {
-            if (e && (e.name === 'AbortError' || e.name === 'TimeoutError')) {
-                throw new Error('انتهت المهلة — تحقق من الاتصال وحاول مجدداً');
-            }
-            throw e;
+        })();
+        try {
+            return await Promise.race([work, deadline]);
         } finally {
             try { if (timer) clearTimeout(timer); } catch (e) {}
         }
     }
 
     async function pms(endpoint, extra) {
-        const key = endpoint + '|' + JSON.stringify(extra || {});
+        const key = S.sess.student_id + '|' + endpoint + '|' + JSON.stringify(extra || {});
         if (S.cache[key]) return S.cache[key];
+        const cached = pmsCached(key);
+        if (cached) {
+            S.cache[key] = cached;
+            if (endpoint === 'get_group_schedule') S.cache['sched_raw'] = cached;
+            // تحديث صامت في الخلفية: لا نوقف الشاشة على سيرفر معطّل.
+            api('/fetch', Object.assign({ endpoint, student_id: S.sess.student_id }, extra))
+                .then(d => { pmsStore(key, endpoint, d); })
+                .catch(() => {});
+            return cached;
+        }
         const d = await api('/fetch', Object.assign({ endpoint, student_id: S.sess.student_id }, extra));
+        return pmsStore(key, endpoint, d);
+    }
+
+    function pmsStore(key, endpoint, d) {
         S.cache[key] = d;
+        pmsCachePut(key, d);
         // نسخة باسم ثابت تستهلكها كل الرزنامات (جامعتي، الرئيسية،
         // حصص اليوم): قبل هذا كان sched_raw يُملأ فقط عند فتح رزنامة
         // جامعتي نفسها (vSchedule)، فتبقى الرزنامة الرئيسية بلا قسمي
@@ -470,9 +509,11 @@
     }
 
     async function openSection(tab) {
+        const seq = ++S.openSeq;
         S.view = tab; S.loading = true; S.html = ''; render();
+        let html;
         try {
-            S.html =
+            html =
                 tab === 'schedule' ? await vSchedule() :
                 tab === 'exams' ? await vExams() :
                 tab === 'absences' ? await vAbsences() :
@@ -486,9 +527,12 @@
                 tab === 'notifs' ? await vNotifs() :
                 await vProfile();
         } catch (e) {
-            S.html = `<div class="cx-card"><p>تعذر الجلب: ${esc(e.message)}</p><button type="button" class="cx-btn gold" data-action="pms-open" data-tab="${tab}">إعادة المحاولة</button></div>`;
+            html = `<div class="cx-card"><p>تعذر الجلب: ${esc(e.message)}</p><button type="button" class="cx-btn gold" data-action="pms-open" data-tab="${tab}">إعادة المحاولة</button></div>`;
         }
-        S.loading = false; render();
+        if (seq !== S.openSeq) return;
+        S.html = html;
+        S.loading = false;
+        render();
     }
 
     // ---------- الرزنامة (منتقي أيام + حصص) ----------

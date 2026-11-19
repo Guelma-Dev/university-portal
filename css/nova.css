@@ -705,3 +705,55 @@ body.native-app .subject-card:focus-visible { outline-color: #60A5FA !important;
 .df-ob-body p { color: #8A93A6; font-size: .92rem; margin: 0 0 16px; }
 .df-ob-body .btn { height: 52px; border-radius: 999px !important; }
 .df-ob-cap { text-align: center; font-size: .75rem !important; margin: 12px 0 0 !important; }
+
+/* ---- الرئيسية: بطاقات الخدمات بنفس زجاج «وصول سريع».
+   التعديل في الألوان والهالة وشكل الخانة فقط؛ الترتيب والمساحات ما تغيّرتش. ---- */
+#section-home .dh-sv {
+    background: transparent !important;
+    /* حد شفاف باش الأبعاد ما تبدّلش؛ الخانات ولاو هم البطاقات */
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+}
+#section-home .dh-sv-row {
+    background: linear-gradient(160deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02)), #131927 !important;
+    border: 1px solid rgba(255, 255, 255, .08) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 10px 32px rgba(2, 6, 18, .45) !important;
+    color: #fff !important;
+    padding: 13px 14px !important;
+    gap: 10px !important;
+}
+#section-home .dh-sv-row .dh-sv-ico {
+    flex: 0 0 auto !important;
+    box-sizing: border-box !important;
+    width: 34px !important; height: 34px !important;
+    border-radius: 10px !important; font-size: .88rem !important;
+}
+#section-home .dh-sv .dh-sv-name { color: #fff !important; font-size: .9rem !important; font-weight: 800 !important; }
+#section-home .dh-sv .dh-go { color: #7A869E !important; }
+
+/* ---- ترحيب أكبر وواضح، بلا شريط السنة الدراسية قدّامه ---- */
+#section-home .dh-greet {
+    padding: 18px !important;
+    gap: 16px !important;
+    background: linear-gradient(160deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02)), #131927 !important;
+    border: 1px solid rgba(255, 255, 255, .08) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 12px 32px rgba(2, 6, 18, .45), inset 0 1px 0 rgba(255, 255, 255, .06) !important;
+}
+#section-home .dh-seal {
+    width: 58px !important; height: 58px !important;
+    border-radius: 18px !important;
+    /* نفس لوغو التطبيق الأصلي: قبعة ذهبية وكتاب بلون النص، بلا خلفية زرقاء */
+    color: #F4F1EA !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+#dh-who {
+    font-size: 2rem !important;
+    line-height: 1.2 !important;
+    font-weight: 900 !important;
+    color: #fff !important;
+}
+.dia-switch { display: none !important; }
