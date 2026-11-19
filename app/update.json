@@ -1,12 +1,12 @@
 {
-  "versionCode": 81,
-  "versionName": "1.4.65",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-81.apk",
-  "sha256": "cb316be7a036ab7d6d94f4eadb40f4f42681eb00cb7f2f0f3fa387948e23082c",
-  "size": 5880955,
+  "versionCode": 82,
+  "versionName": "1.4.66",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-82.apk",
+  "sha256": "c8678766c49145ec1b78d9d9df534e8d3f85d6ba20704e8410a222ddaa8502a0",
+  "size": 5881010,
   "mandatory": false,
   "changelog": [
-    "جلسة دائمة: ما في خروج تلقائي — تجديد صامت عند الإقلاع وعند الرجوع للتطبيق",
-    "حجز الوجبات ما يتوقفش: الخزنة ما تتمسحش عند أي خطأ عابر والمنبّه يتجدّد مع التوكن"
+    "جامعتي (قالمة): خدماتها ولاو بنفس بطاقات «وصول سريع» — تصميم موحّد",
+    "كل أقسام جامعتي (13 شاشة) ولاو بنفس زجاج التطبيق الأزرق بلا بقايا ألوان فاتحة"
   ]
 }
