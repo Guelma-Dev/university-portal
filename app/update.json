@@ -1,12 +1,12 @@
 {
-  "versionCode": 80,
-  "versionName": "1.4.64",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-80.apk",
-  "sha256": "acb2a69f45ac9a28a82b2d236f2710b8cf783c2fdf841e4908f3d32a6deacd03",
-  "size": 5880415,
+  "versionCode": 81,
+  "versionName": "1.4.65",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-81.apk",
+  "sha256": "cb316be7a036ab7d6d94f4eadb40f4f42681eb00cb7f2f0f3fa387948e23082c",
+  "size": 5880955,
   "mandatory": false,
   "changelog": [
-    "المكتبة بشكل محدّث وبحث سكريبد يعمل داخل التطبيق",
-    "إشعار يوصلك مباشرة عند توفر تحديث جديد"
+    "جلسة دائمة: ما في خروج تلقائي — تجديد صامت عند الإقلاع وعند الرجوع للتطبيق",
+    "حجز الوجبات ما يتوقفش: الخزنة ما تتمسحش عند أي خطأ عابر والمنبّه يتجدّد مع التوكن"
   ]
 }
