@@ -1,12 +1,12 @@
 {
-  "versionCode": 82,
-  "versionName": "1.4.66",
-  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-82.apk",
-  "sha256": "c8678766c49145ec1b78d9d9df534e8d3f85d6ba20704e8410a222ddaa8502a0",
-  "size": 5881010,
+  "versionCode": 83,
+  "versionName": "1.4.67",
+  "apkUrl": "https://guelma-dev.github.io/university-portal/app/releases/app-83.apk",
+  "sha256": "f6561a9ef5638fd9c0da88e04e6f426384c90efafce2688276cb3cfbe4f170be",
+  "size": 5882207,
   "mandatory": false,
   "changelog": [
-    "جامعتي (قالمة): خدماتها ولاو بنفس بطاقات «وصول سريع» — تصميم موحّد",
-    "كل أقسام جامعتي (13 شاشة) ولاو بنفس زجاج التطبيق الأزرق بلا بقايا ألوان فاتحة"
+    "جامعتي: البيانات تبقى محفوظة على الجهاز وتفتح فوراً حتى لو سيرفر PMS معطّل أو بطيء — مهلة 9 ثوان ورسالة واضحة بدل التحميل اللامتناهي",
+    "الرئيسية: بطاقات الخدمات ولاو بنفس زجاج كشف النقاط والرزنامة وبطاقة الطالب، والترحيب أكبر بشعار التطبيق الأصلي بلا سنة دراسية قدّامه"
   ]
 }
