@@ -300,9 +300,9 @@
 
     function loginHTML() {
         return `<div class="pm-card" style="margin-top:14px">
-            <h3><i class="fas fa-building-columns" style="color:#1d4ed8"></i> جامعتي</h3>
+            <h3><i class="fas fa-building-columns" style="color:#60A5FA"></i> جامعتي</h3>
             <p class="pm-muted">سجل دخولك الجامعي (PMS) مرة واحدة — تبقى جلستك على هذا الجهاز.</p>
-            ${S.loginErr ? `<p style="color:#dc2626">${esc(S.loginErr)}</p>` : ''}
+            ${S.loginErr ? `<p style="color:#FF7070">${esc(S.loginErr)}</p>` : ''}
             <div class="pm-search"><input id="pms-user" inputmode="numeric" placeholder="رقم التسجيل الجامعي" autocomplete="username" /></div>
             <div class="pm-search"><input id="pms-pass" type="password" placeholder="كلمة المرور" autocomplete="current-password" /></div>
             <button type="button" class="pm-goldbtn" data-action="pms-login"${S.logging ? ' disabled' : ''}>${S.logging ? '<i class="fas fa-spinner fa-spin"></i> جاري الدخول...' : '<i class="fas fa-right-to-bracket"></i> دخول'}</button>
@@ -424,10 +424,9 @@
             <i class="fas fa-chevron-left dh-qa-go"></i></button>`;
     }
     function svRow(tab, icon, tone, name, badge) {
-        return `<button class="dh-sv-row pressable" data-action="pms-open" data-tab="${tab}">
+        return `<button class="dh-qa-cell pressable" data-action="pms-open" data-tab="${tab}">
             <span class="dh-sv-ico ${tone}"><i class="fas ${icon}"></i></span>
-            <span class="dh-sv-name">${name}${badge ? ` <span class="cx-pill bad">${badge}</span>` : ''}</span>
-            <i class="fas fa-chevron-left dh-go"></i></button>`;
+            <span class="dh-qa-m"><span>${name}${badge ? ` <span class="cx-pill bad">${badge}</span>` : ''}</span></span></button>`;
     }
 
     function menuHTML() {
@@ -444,11 +443,11 @@
         <section class="dh-sv-sec" style="padding:0 14px">
             <h2 class="dh-minihead">الخدمات</h2>
             <p class="dh-sv-head">النتائج الدراسية</p>
-            <div class="dh-sv">${svRow('absences', 'fa-user-xmark', 'sx-amber', 'غياباتي')}</div>
+            <div class="dh-sv-grid">${svRow('absences', 'fa-user-xmark', 'sx-amber', 'غياباتي')}</div>
             <p class="dh-sv-head">الحياة الجامعية</p>
-            <div class="dh-sv">${svRow('rooms', 'fa-door-open', 'sx-green', 'القاعات')}</div>
+            <div class="dh-sv-grid">${svRow('rooms', 'fa-door-open', 'sx-green', 'القاعات')}</div>
             <p class="dh-sv-head">الملف الجامعي</p>
-            <div class="dh-sv">
+            <div class="dh-sv-grid">
                 ${svRow('tutor', 'fa-user-tie', 'sx-blue', 'المشرف')}
                 ${svRow('stage', 'fa-briefcase', 'sx-gold', 'التربص')}
                 ${svRow('defense', 'fa-graduation-cap', 'sx-amber', 'المناقشة')}
@@ -901,7 +900,7 @@
             return `<div class="pm-card">
                 <div style="display:flex;align-items:center;gap:10px">
                     <h3 style="flex:1;margin:0">${esc(m.nameAr || m.name || '')}</h3>
-                    <span style="width:14px;height:14px;border-radius:50%;background:#e2e8f0;flex:0 0 auto"></span>
+                    <span style="width:14px;height:14px;border-radius:50%;background:rgba(96,165,250,.25);border:1px solid rgba(96,165,250,.5);flex:0 0 auto"></span>
                 </div>
                 <div class="pm-mstat">
                     <span><i class="fas fa-star pm-c-blue"></i><b>${esc(m.credit ?? m.TotalCredit ?? '—')}</b><span>الرصيد</span></span>

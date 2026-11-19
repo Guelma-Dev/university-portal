@@ -410,6 +410,15 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check((srcWww.match(/class="dh-sv-ico/g) || []).length >= 10, '[www] service + qa chips present');
     check(!srcIdx.includes('dh-qa-fic'), 'no legacy qa-fic in index.html');
 
+    // ---------- Campus (جامعتي) — one design language in every sub-screen ----------
+    const campusJs = fs.readFileSync(path.join(ROOT, 'js', 'sec-campus.js'), 'utf8');
+    const campusCss = fs.readFileSync(path.join(ROOT, 'css', 'campus.css'), 'utf8');
+    check(campusJs.includes('class="dh-sv-grid"') && !campusJs.includes('<div class="dh-sv">'), 'campus services use qa-card grid');
+    check(campusCss.includes('.dh-sv-grid') && campusCss.includes('nth-child(odd)'), 'campus services grid keeps odd card full width');
+    check(campusCss.includes('linear-gradient(165deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .025)), #131927'), 'campus cx-card uses the app dark glass');
+    check(!campusCss.includes('background: #fff') && !campusCss.includes('border: 1px solid #e4e9f2'), 'campus has no light-theme leftovers');
+    check(!campusJs.includes('background:#e2e8f0'), 'campus module dot uses the app blue');
+
     // ---------- Home greeting card (app) ----------
     check(!srcWww.includes('ملخص يومك') && !srcWww.includes('dh-ctx'), '[www] summary sentence removed');
     check(!srcWww.includes('dh-idsub') && !srcWww.includes('رقم التسجيل ·'), '[www] reg number removed from home');
