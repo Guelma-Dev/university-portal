@@ -414,26 +414,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (acc) setProgresSession({ token: acc.token, uuid: acc.uuid, etab: acc.etab, name: acc.name });
         }
     } catch (e) {}
-    // Silent renewal with retries; also re-arms the native meal booker.
-    try { await ensureProgresSession(); } catch (e) {}
-    // Student auto-login — restore persistent Progres session
-    const pSession = getValidProgresSession();
+
+    // A locally valid token means the student is signed in: paint the app
+    // now and renew in the background. First paint must never wait on the
+    // network (the old flow blocked here until a sleeping backend answered).
+    let pSession = getValidProgresSession();
     if (pSession) {
-        APP_STATE.role = 'student';
-        localStorage.setItem('user_role', 'student');
-        const uname = pSession.name || localStorage.getItem('user_name') || 'طالب';
-        localStorage.setItem('user_name', uname);
-        document.getElementById('landing-page').classList.add('hidden');
-        document.getElementById('main-app').classList.remove('hidden');
-        hideEl('admin-menu-item'); hideEl('admin-tile');
-        showEl('logout-btn-account');
-        setNameEverywhere((String(`<i class="fas fa-user-graduate"></i><span>${uname}</span>`).match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
-        try { if (window.CampusAccess) window.CampusAccess.restoreBoot(); } catch (e) {}
-        applyInitialRoute();
-        updatePomoVisibility();
-        try { if (window.PortalNotify) window.PortalNotify.restore(); } catch (e) {}
+        restoreStudentSessionUI(pSession);
+        ensureProgresSession().catch(() => {});
         return;
     }
+
+    // Token expired: one silent re-login from the device vault. The wait is
+    // bounded so a dead network cannot freeze the login screen; if renewal
+    // lands later the app still enters on its own.
+    const renewal = ensureProgresSession().catch(() => null);
+    await Promise.race([renewal, new Promise(res => setTimeout(res, 10000))]);
+    pSession = getValidProgresSession();
+    if (pSession) {
+        restoreStudentSessionUI(pSession);
+        return;
+    }
+    renewal.then(function (s) {
+        if (!s || APP_STATE.role === 'student') return;
+        const fresh = getValidProgresSession();
+        if (fresh) restoreStudentSessionUI(fresh);
+    });
 
     // No valid token - show landing page
     APP_STATE.role = 'guest';
@@ -551,6 +557,25 @@ function enterStudentSession(username) {
     try { if (window.PortalNotify) window.PortalNotify.restore(); } catch (e) {}
     loadSubjectsFromAPI().then(() => { renderSubjects(); updateStats(); });
     applyInitialRoute();
+}
+
+// Boot restore of a persisted student session. Pure local UI: never blocks
+// on the network, so a sleeping server cannot leave the user on the login
+// screen while a perfectly valid token sits in localStorage.
+function restoreStudentSessionUI(pSession) {
+    APP_STATE.role = 'student';
+    localStorage.setItem('user_role', 'student');
+    const uname = pSession.name || localStorage.getItem('user_name') || 'طالب';
+    localStorage.setItem('user_name', uname);
+    document.getElementById('landing-page').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+    hideEl('admin-menu-item'); hideEl('admin-tile');
+    showEl('logout-btn-account');
+    setNameEverywhere((String(`<i class="fas fa-user-graduate"></i><span>${uname}</span>`).match(/<span>([\s\S]*?)<\/span>/) || [])[1]);
+    try { if (window.CampusAccess) window.CampusAccess.restoreBoot(); } catch (e) {}
+    applyInitialRoute();
+    updatePomoVisibility();
+    try { if (window.PortalNotify) window.PortalNotify.restore(); } catch (e) {}
 }
 
 // Welcome banner with the student's REAL name (never the registration number).
@@ -1795,9 +1820,9 @@ function dhToMin(t) {
 }
 // Today's timetable items (overlay wins over university cell); null on Fri/Sat
 function dhTodayItems() {
-    // مسئول/مفوض: حصص اليوم من رزنامة جامعتي (تُجلب مسبقاً في الخلفية)
+    // حصص اليوم من رزنامة «جامعتي» لكل طالب سجّل دخول PMS (تُجلب صامتاً).
     try {
-        if (window.CampusAccess && window.CampusAccess.level() && typeof window.__campusTodaySync === 'function') {
+        if (typeof window.__campusTodaySync === 'function') {
             const c = window.__campusTodaySync();
             if (c) return c;
         }
@@ -2655,7 +2680,7 @@ async function handleProgresLogin(event) {
                     const keepEl = form.querySelector('#login-keep');
                     const remember = !keepEl || !!keepEl.checked;
                     if (remember && typeof NP.saveProgresCredentials === 'function') {
-                        const r = NP.saveProgresCredentials({ username: username, password: password, uuid: String(data.uuid || ''), apiBase: progresApiBase() });
+                        const r = NP.saveProgresCredentials({ username: username, password: password, uuid: String(data.uuid || '') });
                         if (r && typeof r.catch === 'function') r.catch(() => {});
                     } else if (!remember && typeof NP.clearProgresCredentials === 'function') {
                         const r2 = NP.clearProgresCredentials();

@@ -144,7 +144,7 @@ window.PortalNotify = (function () {
         try {
             var r = await pl.scheduleBooking({
                 hour: p.hour, minute: p.minute,
-                apiBase: apiBase(), uuid: String(s.uuid), dia: String(s.dia || ''),
+                uuid: String(s.uuid), dia: String(s.dia || ''),
                 depotId: Number(depotId), depotName: String(depotName || ''),
                 meals: meals.join(','), mealNames: names,
             });

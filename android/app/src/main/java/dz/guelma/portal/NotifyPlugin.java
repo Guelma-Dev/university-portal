@@ -134,7 +134,6 @@ public class NotifyPlugin extends Plugin {
                 .putBoolean("booking_enabled", true)
                 .putInt("hour", hour)
                 .putInt("minute", minute)
-                .putString("apiBase", call.getString("apiBase", ""))
                 .putString("uuid", call.getString("uuid", ""))
                 .putString("dia", call.getString("dia", ""))
                 .putInt("depotId", numInt(call, "depotId", 0))
@@ -385,8 +384,13 @@ public class NotifyPlugin extends Plugin {
     private static final String CRED_ALIAS = "portal_cred_key";
     private static final String CRED_BLOB = "credBlob";
     private static final String CRED_UUID = "credUuid";
-    private static final String CRED_BASE = "credBase";
-    static final String FALLBACK_BASE = "https://university-portal-gv78.onrender.com";
+    // Ministry gateway — exactly the endpoint the in-app login uses. Silent
+    // renewal must never depend on our Render backend: its free-tier cold
+    // start (~50s) outlives the refresh budget, so a 24h JWT expiry used to
+    // surface as an unexpected logout.
+    static final String AUTH_URL = "https://progres.mesrs.dz/api/authentication/v1/";
+    private static final String MOBILE_UA =
+        "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36";
 
     private static javax.crypto.SecretKey credKey() throws Exception {
         java.security.KeyStore ks = java.security.KeyStore.getInstance("AndroidKeyStore");
@@ -410,7 +414,7 @@ public class NotifyPlugin extends Plugin {
         return Build.VERSION.SDK_INT >= 23; // KeyGenParameterSpec needs API 23+
     }
 
-    static boolean saveCredentials(Context ctx, String user, String pass, String uuid, String base) {
+    static boolean saveCredentials(Context ctx, String user, String pass, String uuid) {
         if (!credSupported()) return false;
         try {
             javax.crypto.Cipher c = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
@@ -421,7 +425,6 @@ public class NotifyPlugin extends Plugin {
             ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putString(CRED_BLOB, blob)
                 .putString(CRED_UUID, uuid == null ? "" : uuid)
-                .putString(CRED_BASE, base == null ? "" : base)
                 .apply();
             return true;
         } catch (Exception e) {
@@ -453,7 +456,7 @@ public class NotifyPlugin extends Plugin {
     static void clearCredentials(Context ctx) {
         try {
             ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                .remove(CRED_BLOB).remove(CRED_UUID).remove(CRED_BASE).apply();
+                .remove(CRED_BLOB).remove(CRED_UUID).apply();
         } catch (Exception ignored) {}
     }
 
@@ -472,28 +475,28 @@ public class NotifyPlugin extends Plugin {
         int error = 3;
     }
 
-    /** Silent re-login through OUR backend (POST /api/progres/login —
-     *  the exact route the app login uses). On success the fresh token
-     *  also re-arms the background meal booker (mealToken/mealUuid). */
+    /** Silent re-login straight to the ministry gateway (the same route the
+     *  app login uses). On success the fresh token also re-arms the background
+     *  meal booker (mealToken/mealUuid). */
     static RefreshResult refreshProgres(Context ctx, String expectedUuid) {
         RefreshResult out = new RefreshResult();
         String[] creds = loadCredentials(ctx);
         if (creds == null) { out.error = 1; return out; }
         SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        String base = p.getString(CRED_BASE, "");
-        if (base == null || base.isEmpty()) base = FALLBACK_BASE;
         java.net.HttpURLConnection c = null;
         try {
             org.json.JSONObject body = new org.json.JSONObject();
             body.put("username", creds[0]);
             body.put("password", creds[1]);
-            c = (java.net.HttpURLConnection) new java.net.URL(base + "/api/progres/login").openConnection();
+            c = (java.net.HttpURLConnection) new java.net.URL(AUTH_URL).openConnection();
             c.setRequestMethod("POST");
             c.setDoOutput(true);
-            c.setConnectTimeout(25000);
-            c.setReadTimeout(45000);
+            c.setConnectTimeout(15000);
+            c.setReadTimeout(25000);
             c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             c.setRequestProperty("Accept", "application/json");
+            c.setRequestProperty("User-Agent", MOBILE_UA);
+            c.setRequestProperty("Connection", "close");
             byte[] bytes = body.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
             try (java.io.OutputStream os = c.getOutputStream()) { os.write(bytes); }
             int code = c.getResponseCode();
@@ -546,7 +549,7 @@ public class NotifyPlugin extends Plugin {
             String pass = call.getString("password", "");
             if (user.isEmpty() || pass.isEmpty()) { call.reject("username+password required"); return; }
             boolean ok = saveCredentials(getContext(), user, pass,
-                call.getString("uuid", ""), call.getString("apiBase", ""));
+                call.getString("uuid", ""));
             JSObject r = new JSObject();
             r.put("saved", ok);
             call.resolve(r);

@@ -1,4 +1,4 @@
-// ==== جامعتي — نفس مكونات بوابة الطالب (مسئول فقط، جلسة دائمة) ====
+// ==== جامعتي — نفس مكونات بوابة الطالب (متاحة لكل طالب، جلسة PMS خاصة) ====
 // القائمة: وصول سريع + خدمات (مطابق للرئيسية). الرزنامة: منتقي أيام + حصص
 // (مطابق لرزنامة التطبيق) مع تعديل محلي يعيد استعمال محرر الحصص الأصلي.
 (() => {
@@ -46,117 +46,27 @@
     const isAdmin = () => { try { return localStorage.getItem('user_role') === 'admin'; } catch (e) { return false; } };
     const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
 
-    // ---------- تفويض جامعتي ----------
+    // «جامعتي» متاحة لأي طالب: كل واحد يدخل بحساب PMS الخاص به ويشوف
+    // بياناته هو فقط. لا قائمة مفوضين ولا خادم وسيط — كل الطلبات تخرج
+    // مباشرة من الهاتف إلى PMS/الوزارة، وجلسة كل طالب محفوظة بمفتاح رقمه.
     const OWNER_MAT = '202536255705';
-    const DEL_KEY = 'lx_admin_delegates';
-    const LINK_KEY = 'lx_progres_user';
+    const LINK_KEY = 'lx_progres_user';      // ربط حساب الوزارة (لوضع المسئول فقط)
+    const CAMPUS_ME_KEY = 'lx_campus_me';    // آخر رقم تسجيل دخل «جامعتي» على الجهاز
 
-    function getDelegates() {
-        try {
-            const a = JSON.parse(localStorage.getItem(DEL_KEY) || '[]');
-            if (Array.isArray(a)) return a.map(x => String(x)).filter(x => /^\d{8,20}$/.test(x));
-        } catch (e) {}
-        return [];
-    }
-    function saveDelegates(a) { try { localStorage.setItem(DEL_KEY, JSON.stringify(a)); } catch (e) {} }
-
-    const CAMPUS_API = window.location.origin + '/api/campus';
-
-    function ownerToken() {
-        try {
-            const s = JSON.parse(localStorage.getItem('progres_session') || 'null');
-            return (s && s.token) || '';
-        } catch (e) { return ''; }
-    }
-
-    // Render free tier sleeps: first touch wakes it (15-60s). Fire a
-    // no-wait warmup whenever campus opens so the real sync lands warm.
-    function wakeCampusServer() {
-        try {
-            const ctrl = new AbortController();
-            const t = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 8000);
-            fetch(CAMPUS_API + '/delegates', { signal: ctrl.signal, cache: 'no-store' })
-                .catch(() => {}).finally(() => clearTimeout(t));
-        } catch (e) {}
-    }
-
-    async function fetchDelegatesOnce(ms) {
-        try {
-            const ctrl = new AbortController();
-            const t = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, ms);
-            const res = await fetch(CAMPUS_API + '/delegates', { signal: ctrl.signal, cache: 'no-store' });
-            clearTimeout(t);
-            if (!res.ok) return false;
-            const d = await res.json();
-            if (d && Array.isArray(d.delegates)) {
-                saveDelegates(d.delegates.filter(x => /^\d{8,20}$/.test(String(x))));
-                return true;
-            }
-        } catch (e) {}
-        return false;
-    }
-
-    // Server is truth, localStorage is cache (works offline + cross-device).
-    // One retry with a longer budget: covers a cold Render waking up.
-    async function syncDelegatesFromServer() {
-        if (await fetchDelegatesOnce(20000)) return true;
-        wakeCampusServer();
-        await new Promise(r => setTimeout(r, 3000));
-        return fetchDelegatesOnce(45000);
-    }
-
-    async function serverWriteDelegate(method, matricule) {
-        const token = ownerToken();
-        if (!token) { toast('سجل دخول المالك بـ Progres أولاً', 'error'); return false; }
-        // Two attempts (25s + 45s): the second covers a cold Render waking up.
-        const budgets = [25000, 45000];
-        for (let a = 0; a < budgets.length; a++) {
-            try {
-                const ctrl = new AbortController();
-                const t = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, budgets[a]);
-                const res = await fetch(CAMPUS_API + '/delegates', {
-                    method, signal: ctrl.signal,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ owner_token: token, matricule }),
-                });
-                clearTimeout(t);
-                const d = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    const he = new Error((d && d.error) || ('خطأ ' + res.status));
-                    he.__http = true;
-                    throw he;
-                }
-                if (d && Array.isArray(d.delegates)) saveDelegates(d.delegates);
-                return true;
-            } catch (e) {
-                // Server answered (4xx/5xx): no retry, it is already awake.
-                if ((e && e.__http) || a === budgets.length - 1) {
-                    toast(e.message || 'تعذر المزامنة مع الخادم', 'error');
-                    return false;
-                }
-                wakeCampusServer();
-                await new Promise(r => setTimeout(r, 3000));
-            }
-        }
-        return false;
-    }
+    function setCampusMe(u) { try { if (u) localStorage.setItem(CAMPUS_ME_KEY, String(u)); } catch (e) {} }
 
     window.CampusAccess = {
         owner: OWNER_MAT,
-        delegates: getDelegates,
         level() {
             let u = '';
             try { u = String(localStorage.getItem(LINK_KEY) || ''); } catch (e) {}
-            if (u === OWNER_MAT) return 'full';
-            if (u && getDelegates().indexOf(u) !== -1) return 'campus';
-            return null;
+            return u === OWNER_MAT ? 'full' : null;
         },
         link(u) { try { if (u) localStorage.setItem(LINK_KEY, String(u)); } catch (e) {} },
         unlink() { try { localStorage.removeItem(LINK_KEY); } catch (e) {} },
         elevate(username) {
             this.link(username);
-            const lv = this.level();
-            if (lv === 'full') {
+            if (this.level() === 'full') {
                 try {
                     APP_STATE.role = 'admin';
                     localStorage.setItem('user_role', 'admin');
@@ -164,112 +74,32 @@
                     if (typeof setNameEverywhere === 'function') setNameEverywhere('مسؤول');
                 } catch (e) {}
                 toast('تم تفعيل وضع المسئول', 'success');
-            } else if (lv === 'campus') {
-                toast('تم تفعيل قسم جامعتي', 'success');
             }
-            syncTile();
-            renderDelegates();
-            try { if (window.CampusAccess.level()) prefetchCampus(); } catch (e) {}
-            // Delegates live on the server: refresh the local cache on every
-            // Progres login so any phone learns its access immediately.
-            try { syncDelegatesFromServer().then(ok => { if (ok) { renderDelegates(); syncTile(); } }); } catch (e) {}
+            try { prefetchCampus(); } catch (e) {}
         },
         restoreBoot() {
-            if (this.level() !== 'full') {
-                // Non-owner sessions still refresh the delegates cache so a
-                // newly-added delegate unlocks without re-login.
-                try { syncDelegatesFromServer().then(ok => { if (ok) syncTile(); }); } catch (e) {}
-                return;
+            if (this.level() === 'full') {
+                try {
+                    APP_STATE.role = 'admin';
+                    localStorage.setItem('user_role', 'admin');
+                    if (typeof showEl === 'function') { showEl('admin-menu-item'); showEl('admin-tile'); }
+                    if (typeof setNameEverywhere === 'function') setNameEverywhere('مسؤول');
+                } catch (e) {}
+                try {
+                    if (typeof silentOwnerProgres === 'function' && typeof getValidProgresSession === 'function' && !getValidProgresSession()) silentOwnerProgres(false);
+                } catch (e) {}
             }
-            try {
-                APP_STATE.role = 'admin';
-                localStorage.setItem('user_role', 'admin');
-                if (typeof showEl === 'function') { showEl('admin-menu-item'); showEl('admin-tile'); }
-                if (typeof setNameEverywhere === 'function') setNameEverywhere('مسؤول');
-            } catch (e) {}
-            try { prefetchCampus(); } catch (e) {}
-            try {
-                if (typeof silentOwnerProgres === 'function' && typeof getValidProgresSession === 'function' && !getValidProgresSession()) silentOwnerProgres(false);
-            } catch (e) {}
+            // الجلب عند الإقلاع مؤجّل عبر bootPrefetch حتى لا يعطّل أول رسم.
         },
     };
 
-    const campusAllowed = () => isAdmin() || (window.CampusAccess && !!window.CampusAccess.level());
-
-    function delegatesListHTML(list) {
-        return list.map(m => `<div class="set-row">
-                <span class="set-lbl"><i class="fas fa-user-check"></i><bdi>${esc(m)}</bdi></span>
-                <button type="button" class="btn btn-ghost btn-sm" data-delaction="del" data-m="${esc(m)}"><i class="fas fa-trash"></i></button>
-            </div>`).join('');
-    }
-
-    function renderDelegates() {
-        const box = document.getElementById('campus-delegates');
-        if (!box) return;
-        if (!isAdmin()) { box.innerHTML = ''; box.dataset.built = ''; return; }
-        // الهيكل يُبنى مرة واحدة فقط، وبعدها نحدّث قائمة الأرقام وحدها.
-        // البناء الكامل عند كل عرض كان يدمّر خانة الإدخال: كل عرض يطلق
-        // مزامنة خادم، وعند وصول ردّها يُعاد بناء innerHTML فتختفي الخانة
-        // وترجع فارغة وبلا تركيز أثناء الكتابة (الوميض)، وأحياناً يختفي
-        // القسم كله. الآن الخانة لا تُلمس بعد بنائها أبداً.
-        const needBuild = !box.dataset.built || !document.getElementById('cx-del-input');
-        if (needBuild) {
-            box.innerHTML = `<p class="set-head">حسابات جامعتي المفوضة</p>
-            <div class="set-row">
-                <input id="cx-del-input" inputmode="numeric" placeholder="رقم التسجيل" style="flex:1;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text-primary);font-family:inherit" />
-                <button type="button" class="btn btn-ghost btn-sm" data-delaction="add">إضافة</button>
-            </div>
-            <div id="cx-del-list"></div>
-            <p class="set-note">تُحفظ في الخادم وتعمل على أي هاتف: المفوض يدخل Progres برقمه في جهازه.</p>`;
-            box.dataset.built = '1';
-        }
-        const listBox = document.getElementById('cx-del-list');
-        if (listBox) listBox.innerHTML = delegatesListHTML(getDelegates());
-        // مزامنة خلفية عند أول بناء فقط، وتحدّث القائمة وحدها عند وصولها.
-        if (needBuild && !renderDelegates._busy) {
-            renderDelegates._busy = true;
-            syncDelegatesFromServer().then(ok => {
-                renderDelegates._busy = false;
-                if (ok) {
-                    const lb = document.getElementById('cx-del-list');
-                    if (lb) lb.innerHTML = delegatesListHTML(getDelegates());
-                }
-            }).catch(() => { renderDelegates._busy = false; });
-        }
-    }
-
-    if (!window.__cxDelListener) {
-        document.addEventListener('click', (e) => {
-            const b = e.target.closest('[data-delaction]');
-            if (!b) return;
-            if (!isAdmin()) return;
-            if (b.dataset.delaction === 'add') {
-                const inp = document.getElementById('cx-del-input');
-                const m = String((inp && inp.value) || '').trim();
-                if (!/^\d{8,20}$/.test(m)) { toast('أدخل رقم تسجيل صحيح', 'error'); return; }
-                b.disabled = true;
-                serverWriteDelegate('POST', m).then(ok => {
-                    b.disabled = false;
-                    if (ok) { renderDelegates(); syncTile(); toast('تمت الإضافة وتعمل على كل الأجهزة', 'success'); }
-                });
-            } else if (b.dataset.delaction === 'del') {
-                b.disabled = true;
-                serverWriteDelegate('DELETE', String(b.dataset.m)).then(ok => {
-                    b.disabled = false;
-                    if (ok) { renderDelegates(); syncTile(); toast('تم الحذف', 'success'); }
-                });
-            }
-        });
-        window.__cxDelListener = true;
-    }
-
     const S = { root: null, view: 'menu', sess: null, cache: {}, loading: false, html: '', dash: null, unread: 0, cxEdit: false, cxDay: -1, openSeq: 0 };
 
-    // ---------- جلسات PMS لكل مستخدم (المالك مزروع، المفوض يتحقق مرة) ----------
+    // ---------- جلسات PMS لكل مستخدم (المالك مزروع، وكل طالب له جلسته) ----------
     const PMS_USERS_KEY = 'lx_pms_users';
 
     function pmsLinkedUser() {
-        try { return String(localStorage.getItem(LINK_KEY) || ''); } catch (e) { return ''; }
+        try { return String(localStorage.getItem(CAMPUS_ME_KEY) || ''); } catch (e) { return ''; }
     }
     function pmsUserSessions() {
         try {
@@ -284,10 +114,14 @@
         const u = pmsLinkedUser() || 'guest';
         const all = pmsUserSessions();
         if (all[u] && all[u].student_id) return all[u];
-        // المالك (Progres أو admin) → حسابه مزروع دائماً بلا دخول
-        if (u === OWNER_MAT || isAdmin()) {
+        // المالك فقط: حسابه مزروع بلا دخول (وضع المسئول). بقية الطلاب
+        // يسجّلون دخول PMS بأنفسهم وتُحفظ جلستهم تحت رقمهم.
+        let ownerLinked = false;
+        try { ownerLinked = String(localStorage.getItem(LINK_KEY) || '') === OWNER_MAT; } catch (e) {}
+        if (ownerLinked || isAdmin()) {
             const s = { student_id: SID, profile: Object.assign({}, SEED_PROFILE) };
-            all[u] = s;
+            all[OWNER_MAT] = s;
+            setCampusMe(OWNER_MAT);
             pmsSaveUserSessions(all);
             return s;
         }
@@ -304,7 +138,7 @@
     function loginHTML() {
         return `<div class="pm-card" style="margin-top:14px">
             <h3><i class="fas fa-building-columns" style="color:#60A5FA"></i> جامعتي</h3>
-            <p class="pm-muted">سجل دخولك الجامعي (PMS) مرة واحدة — تبقى جلستك على هذا الجهاز.</p>
+            <p class="pm-muted">خدمة خاصة بجامعات ولاية قالمة. سجّل دخولك الجامعي (PMS) مرة واحدة — تبقى جلستك على هذا الجهاز.</p>
             ${S.loginErr ? `<p style="color:#FF7070">${esc(S.loginErr)}</p>` : ''}
             <div class="pm-search"><input id="pms-user" inputmode="numeric" placeholder="رقم التسجيل الجامعي" autocomplete="username" /></div>
             <div class="pm-search"><input id="pms-pass" type="password" placeholder="كلمة المرور" autocomplete="current-password" /></div>
@@ -398,21 +232,6 @@
         return d;
     }
 
-    function syncTile() {
-        try {
-            const t = document.getElementById('campus-tile');
-            if (t) t.style.display = campusAllowed() ? '' : 'none';
-        } catch (e) {}
-    }
-
-    function lockHTML() {
-        return `<div class="cx-card"><div class="cx-lock">
-            <i class="fas fa-shield-halved"></i>
-            <h3>منطقة المسئول</h3>
-            <p>قسم «جامعتي» خاص بإدارة التطبيق فقط.</p>
-        </div></div>`;
-    }
-
     // ---------- القائمة (لوحة قيادة PMS + وصول سريع) ----------
     function dashHeadHTML() {
         const p = (S.sess && S.sess.profile) || {};
@@ -498,7 +317,6 @@
 
     function render() {
         if (!S.root) return;
-        if (!campusAllowed()) { S.root.innerHTML = lockHTML(); return; }
         if (!S.sess) { S.root.innerHTML = loginHTML(); return; }
         if (S.view === 'menu') { S.root.innerHTML = menuHTML(); return; }
         const back = `<button type="button" class="cx-back pressable" data-action="pms-menu"><i class="fas fa-chevron-right"></i> الأقسام</button>`;
@@ -1240,6 +1058,7 @@
                 const d = await api('/login', { username: u, password: p });
                 if (d.status !== 'success' || !d.data || !(d.data.Id || d.data.student_id)) throw new Error(d.message || 'فشل الدخول');
                 S.sess = { student_id: d.data.Id || d.data.student_id, profile: d.data };
+                setCampusMe(u);
                 saveSess(S.sess);
                 S.cache = {}; S.view = 'menu'; S.loginErr = ''; S.logging = false;
                 toast('مرحباً ' + (d.data.NomAr || d.data.Nom || ''), 'success');
@@ -1268,9 +1087,7 @@
 
     function mount(root) {
         S.root = root;
-        syncTile();
         wrapSlotPersistence();
-        if (!campusAllowed()) { S.root.innerHTML = lockHTML(); return; }
         S.sess = loadSess();
         S.cache = {};
         if (root.dataset.mountedInitDone) { render(); if (S.sess) prefetchCampus(); return; }
@@ -1307,7 +1124,6 @@
         S.sess = loadSess();
         S.view = 'menu';
         render();
-        wakeCampusServer();
         prefetchCampus();
         pms('get_dashboard_data').then(d => { S.dash = d; if (S.view === 'menu') render(); }).catch(() => {});
         pms('get_all_notifications').then(n => {
@@ -1319,19 +1135,9 @@
     window.PortalSections = window.PortalSections || [];
     window.PortalSections.push({ id: 'campus', title: 'جامعتي', icon: 'fa-building-columns', mount });
 
-    if (window.navigateToSection && !window.navigateToSection.__cxPatched) {
-        const orig = window.navigateToSection;
-        window.navigateToSection = function (sec) {
-            syncTile();
-            if (sec === 'campus' && !campusAllowed()) {
-                toast('خاص بالمسئول فقط', 'error');
-                return orig.call(this, 'home');
-            }
-            if (sec === 'account') setTimeout(renderDelegates, 60);
-            return orig.apply(this, arguments);
-        };
-        window.navigateToSection.__cxPatched = true;
-    }
-    if (document.readyState !== 'loading') { syncTile(); renderDelegates(); try { if (window.CampusAccess.level()) prefetchCampus(); } catch (e) {} }
-    else document.addEventListener('DOMContentLoaded', () => { syncTile(); renderDelegates(); try { if (window.CampusAccess.level()) prefetchCampus(); } catch (e) {} });
+    // لا نبدأ جلب PMS عند الإقلاع مباشرة: أول رسم للتطبيق أهم من رزنامة
+    // تُعرض لاحقاً. تأخير قصير يخلي الشركة/MainActivity يتحمل مباشرة.
+    function bootPrefetch() { setTimeout(() => { try { prefetchCampus(); } catch (e) {} }, 1200); }
+    if (document.readyState !== 'loading') bootPrefetch();
+    else document.addEventListener('DOMContentLoaded', bootPrefetch);
 })();

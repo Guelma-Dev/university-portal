@@ -351,6 +351,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(brJava.includes('confirmed > 0'), 'success only on verified confirmation');
     check(brJava.includes('GsAuthException') && brJava.includes('mealToken'), 'native uses stored ministry token, honest re-login prompt');
     check(npJava.includes('saveMealSession') && npJava.includes('clearMealSession'), 'token sync methods exist');
+    check(npJava.includes('https://progres.mesrs.dz/api/authentication/v1/') && !npJava.includes('onrender.com'), 'silent renewal goes straight to the ministry (no Render dependency)');
+    check(!npJava.includes('CRED_BASE') && !npJava.includes('FALLBACK_BASE') && !npJava.includes('"apiBase"'), 'dead Render-base credential fields removed');
+    check(/let pSession = getValidProgresSession\(\);\s*if \(pSession\) \{\s*restoreStudentSessionUI\(pSession\);/.test(_appJs2), 'valid session paints before any network wait');
     check(_appJs2.includes('saveMealSession') && _appJs2.includes('clearMealSession'), 'token synced at login/logout');
     const natJs = fs.readFileSync(path.join(ROOT, 'js', 'native.js'), 'utf8');
     check(natJs.includes('_routeGsContext') && natJs.includes('_routeGsReserve') && natJs.includes('_routeGsReservations'), 'onou routes served on-device');
@@ -422,6 +425,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(campusJs.includes("S.sess.student_id + '|' + endpoint"), 'campus PMS cache is per student');
     check(campusJs.includes('PMS_TIMEOUT_MS') && campusJs.includes('Promise.race([work, deadline])'), 'campus PMS calls are bounded locally');
     check(campusJs.includes('S.openSeq') && campusJs.includes('if (seq !== S.openSeq) return;'), 'stale campus loads cannot overwrite the visible screen');
+    check(!campusJs.includes('wakeCampusServer') && !/api\/campus|fetchDelegatesOnce|syncDelegatesFromServer|refreshCampusIfOpen|renderDelegates/.test(campusJs), 'campus has zero Render/delegate code — all data comes from the phone');
+    check(!campusJs.includes('campusAllowed') && !campusJs.includes('lockHTML'), 'campus is public: no admin gate or lock screen');
+    check(srcIdx.includes('id="campus-tile"') && !/id="campus-tile"[^>]*style="display:none/.test(srcIdx), 'campus tile is visible for everyone from first paint');
+    check(campusJs.includes('CAMPUS_ME_KEY') && campusJs.includes('setCampusMe(u)'), 'each student keeps their own PMS session on their own device');
+    check(campusJs.includes("api('/login'") && campusJs.includes('PMS_TIMEOUT_MS'), 'campus login goes straight to PMS with a local timeout');
+    check(campusJs.includes('bootPrefetch') && campusJs.includes('setTimeout('), 'campus prefetch never blocks the first paint');
 
     // ---------- Home greeting card (app) ----------
     check(!srcWww.includes('ملخص يومك') && !srcWww.includes('dh-ctx'), '[www] summary sentence removed');
